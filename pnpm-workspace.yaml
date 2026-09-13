@@ -1,19 +1,52 @@
-packages:
-  - apps/*
-  - packages/*
-  - tools/*
-
 catalogMode: prefer
 
-catalog:
-  "@types/node": ^24
-  typescript: ^7.0.2
-  vite: npm:@voidzero-dev/vite-plus-core@0.2.8
-  vite-plus: 0.2.8
-overrides:
-  vite: "catalog:"
+minimumReleaseAgeExcludePrune: true
+minimumReleaseAgeExclude:
+  - "@iconify-json/lucide@1.2.132"
+
+trustPolicy: no-downgrade
+trustPolicyExclude:
+  # The 6.x backport lacks provenance present in earlier 7.x releases.
+  # https://github.com/pnpm/pnpm/issues/10202
+  - semver@6.3.1
+
 peerDependencyRules:
   allowAny:
     - vite
   allowedVersions:
     vite: "*"
+
+shellEmulator: true
+
+packages:
+  - apps/*
+  - packages/*
+  - tools/*
+
+overrides:
+  vite: "catalog:"
+
+allowBuilds:
+  esbuild: true
+  unrs-resolver: true
+
+catalog:
+  "@antfu/eslint-config": ^9.5.1
+  "@iconify-json/lucide": 1.2.132
+  "@nuxt/eslint": ^1.17.0
+  "@types/node": ^26.1.1
+  "@unocss/eslint-plugin": ^66.10.2
+  "@unocss/nuxt": 66.10.2
+  "@vueuse/core": ^14.4.0
+  "@vueuse/nuxt": ^14.4.0
+  bumpp: ^11.1.0
+  eslint: ^10.10.0
+  eslint-plugin-format: ^2.0.1
+  nuxt: 4.5.2
+  typescript: ^6.0.3
+  unocss: 66.10.2
+  vite: npm:@voidzero-dev/vite-plus-core@0.2.8
+  vite-plus: 0.2.8
+  vue: ^3.5.42
+  vue-router: ^5.3.1
+  vue-tsc: 3.3.11

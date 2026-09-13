@@ -4,13 +4,29 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vp dev",
-    "build": "tsc && vp build",
-    "preview": "vp preview"
+    "dev": "nuxt dev",
+    "build": "nuxt build",
+    "preview": "nuxt preview",
+    "postinstall": "nuxt prepare",
+    "typecheck": "nuxt typecheck",
+    "test": "vp test run --config vitest.config.ts"
+  },
+  "dependencies": {
+    "@vueuse/core": "catalog:",
+    "@vueuse/nuxt": "catalog:",
+    "nuxt": "catalog:",
+    "vue": "catalog:",
+    "vue-router": "catalog:"
   },
   "devDependencies": {
-    "typescript": "^7.0.2",
+    "@iconify-json/lucide": "catalog:",
+    "@nuxt/eslint": "catalog:",
+    "@types/node": "catalog:",
+    "@unocss/nuxt": "catalog:",
+    "typescript": "catalog:",
+    "unocss": "catalog:",
     "vite": "catalog:",
-    "vite-plus": "catalog:"
+    "vite-plus": "catalog:",
+    "vue-tsc": "catalog:"
   }
 }

@@ -11,6 +11,10 @@ node_modules
 dist
 dist-ssr
 *.local
+.nuxt
+.output
+.data
+.wrangler
 
 # dotenv environment variable files
 .env
@@ -34,3 +38,6 @@ dist-ssr
 !.vscode/
 !.vscode/settings.json
 !.vscode/extensions.json
+
+# temp
+docs

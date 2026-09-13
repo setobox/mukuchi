@@ -1,0 +1,22 @@
+export const icons = {
+  notebook: "i-lucide-notebook-pen",
+  layers: "i-lucide-layers-2",
+  shapes: "i-lucide-shapes",
+  user: "i-lucide-user-round",
+  search: "i-lucide-search",
+  command: "i-lucide-command",
+  menu: "i-lucide-menu",
+  close: "i-lucide-x",
+  home: "i-lucide-house",
+  left: "i-lucide-arrow-left",
+  up: "i-lucide-arrow-up",
+  arrow: "i-lucide-arrow-up-right",
+  chevron: "i-lucide-chevron-right",
+  pen: "i-lucide-pen-line",
+  image: "i-lucide-image",
+  languages: "i-lucide-languages",
+  folder: "i-lucide-folder-open",
+  terminal: "i-lucide-terminal",
+} as const;
+
+export type IconName = keyof typeof icons;
