@@ -1,5 +1,6 @@
 <script setup lang="ts">
 const { site } = useAppConfig()
+const palette = useCommandPalette()
 const route = useRoute()
 const page = usePageContext()
 const { y } = useWindowScroll()
@@ -68,20 +69,25 @@ watch(desktop, (value) => {
       <div class="ml-auto flex items-center gap-0.5 lg:ml-0 lg:border-l lg:border-line lg:pl-4">
         <ThemeToggle />
         <button
+          v-if="site.features.search"
           type="button"
           class="icon-button"
-          :disabled="!site.features.search"
-          aria-label="站内搜索（尚未开放）"
-          title="站内搜索（尚未开放）"
+          aria-label="站内搜索"
+          aria-haspopup="dialog"
+          title="站内搜索（Ctrl / ⌘ P）"
+          @click="palette.open('search')"
         >
           <AppIcon name="search" />
         </button>
         <button
+          v-if="site.features.commands"
           type="button"
-          class="hidden icon-button md:inline-flex"
-          :disabled="!site.features.commands"
-          aria-label="命令面板（尚未开放）"
-          title="命令面板（尚未开放）"
+          class="icon-button"
+          :class="{ 'hidden md:inline-flex': site.features.search }"
+          aria-label="命令面板"
+          aria-haspopup="dialog"
+          title="命令面板"
+          @click="palette.open('commands')"
         >
           <AppIcon name="command" />
         </button>

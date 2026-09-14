@@ -12,7 +12,7 @@ export default defineAppConfig({
       { label: '工具', to: '/tools', icon: 'shapes', section: 'tools' },
       { label: '关于', to: '/about', icon: 'user', section: 'about' },
     ],
-    features: { search: false, commands: false },
+    features: { search: true, commands: true },
     article: { notices: { wip: true, staleAfterDays: 365 as number | null } },
   },
 })

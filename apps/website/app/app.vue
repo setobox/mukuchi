@@ -1,5 +1,6 @@
 <script setup lang="ts">
 useProvideActionButtons()
+useProvideCommandPalette()
 useThemeHead()
 
 const { site } = useAppConfig()
@@ -11,4 +12,5 @@ useHead({
 <template>
   <NuxtRouteAnnouncer />
   <NuxtLayout><NuxtPage /></NuxtLayout>
+  <ClientOnly><CommandPalette /></ClientOnly>
 </template>

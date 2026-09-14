@@ -1,14 +1,15 @@
 <script setup lang="ts">
 withDefaults(
-  defineProps<{ title: string, description?: string, placement?: 'default' | 'toc' | 'image' }>(),
+  defineProps<{ title: string, description?: string, placement?: 'default' | 'toc' | 'image' | 'commands' }>(),
   { placement: 'default' },
 )
-const emit = defineEmits<{ closed: [], keydown: [event: KeyboardEvent] }>()
+const emit = defineEmits<{ opened: [], closed: [], keydown: [event: KeyboardEvent] }>()
 const open = defineModel<boolean>({ default: false })
 const dialog = useTemplateRef<HTMLDialogElement>('dialog')
 const titleId = useId()
 const descriptionId = useId()
 const reducedMotion = usePreferredReducedMotion()
+const { height: visualHeight } = useWindowSize({ type: 'visual', initialHeight: 0 })
 const body = shallowRef<HTMLElement | null>(null)
 const locked = useScrollLock(body)
 let returnFocus: HTMLElement | null = null
@@ -77,6 +78,7 @@ onMounted(() => {
             = document.activeElement instanceof HTMLElement ? document.activeElement : null
           element.showModal()
           locked.value = true
+          emit('opened')
         }
         return
       }
@@ -115,13 +117,16 @@ onBeforeUnmount(() => {
   <Teleport to="body">
     <dialog
       ref="dialog"
+      :style="placement === 'commands' && visualHeight > 0 ? { '--dialog-viewport-height': `${visualHeight}px` } : undefined"
       class="acrylic-dialog mx-auto mb-auto border border-line-strong rounded-[20px] bg-acrylic text-ink shadow-dialog backdrop-blur-[24px]"
       :class="
         placement === 'image'
           ? 'mt-4 h-[calc(100dvh-32px)] w-[calc(100vw-32px)] max-w-site overflow-hidden p-3 [&[open]]:flex flex-col gap-3'
-          : placement === 'toc'
-            ? 'mt-[calc(var(--header-height)+44px)] w-[calc(100%-40px)] max-w-site max-h-[min(60dvh,28rem,calc(100dvh-var(--header-height)-60px))] overflow-auto p-6 md:w-[calc(100%-64px)]'
-            : 'mt-[calc(var(--header-height)+14px)] w-[min(480px,calc(100vw-40px))] max-h-[calc(100dvh-100px)] overflow-auto p-6'
+          : placement === 'commands'
+            ? 'mt-[min(var(--header-height),calc(var(--dialog-viewport-height,100dvh)*0.08))] w-[min(640px,calc(100vw-32px))] max-h-[calc(var(--dialog-viewport-height,100dvh)-32px-min(var(--header-height),calc(var(--dialog-viewport-height,100dvh)*0.08)))] overflow-hidden p-4 md:p-6 [&[open]]:flex flex-col'
+            : placement === 'toc'
+              ? 'mt-[calc(var(--header-height)+44px)] w-[calc(100%-40px)] max-w-site max-h-[min(60dvh,28rem,calc(100dvh-var(--header-height)-60px))] overflow-auto p-6 md:w-[calc(100%-64px)]'
+              : 'mt-[calc(var(--header-height)+14px)] w-[min(480px,calc(100vw-40px))] max-h-[calc(100dvh-100px)] overflow-auto p-6'
       "
       tabindex="-1"
       :aria-labelledby="titleId"
@@ -134,7 +139,7 @@ onBeforeUnmount(() => {
     >
       <header class="flex shrink-0 items-start justify-between gap-2">
         <div class="min-w-0" :class="{ 'self-center': placement === 'image' }">
-          <h2 :id="titleId" class="text-heading" :class="placement === 'image' ? 'text-s' : 'mt-1 text-[22px]'">
+          <h2 :id="titleId" class="text-heading" :class="placement === 'commands' ? 'mt-1 text-[18px] leading-7' : placement === 'image' ? 'text-s' : 'mt-1 text-[22px]'">
             {{ title }}
           </h2>
           <p v-if="description" :id="descriptionId" class="mt-2 text-base text-muted">
@@ -148,7 +153,7 @@ onBeforeUnmount(() => {
           </button>
         </div>
       </header>
-      <div :class="placement === 'image' ? 'min-h-0 flex-1' : 'py-6'">
+      <div :class="placement === 'commands' ? 'min-h-0 flex flex-1 flex-col pt-4' : placement === 'image' ? 'min-h-0 flex-1' : 'py-6'">
         <slot />
       </div>
       <footer
