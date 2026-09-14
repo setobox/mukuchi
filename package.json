@@ -2,6 +2,7 @@
   "name": "mukuchi",
   "type": "module",
   "private": true,
+  "license": "MIT",
   "engines": {
     "node": "^22.19.0 || ^24.11.0 || >=26.0.0"
   },

@@ -11,6 +11,8 @@ definePageMeta({
 })
 const route = useRoute()
 const pagePath = route.path
+const requestUrl = useRequestURL()
+const { app } = useRuntimeConfig()
 let path: string
 try {
   path = decodeURI(route.path).replace(/\/$/, '')
@@ -24,6 +26,10 @@ if (error.value)
   throw createError({ statusCode: 500, message: '文章加载失败' })
 if (!post.value)
   throw createError({ statusCode: 404, message: '文章不存在' })
+const permalink = computed(() => new URL(
+  `${app.baseURL.replace(/\/$/, '')}${post.value?.path ?? pagePath}`,
+  requestUrl.origin,
+).href)
 useArticleTheme(pagePath, () => post.value?.theme)
 const root = useTemplateRef<HTMLElement>('articleRoot')
 const links = computed(() => post.value?.body.toc?.links ?? [])
@@ -135,6 +141,12 @@ useActionButton({
           >
         </header>
         <ArticleContent :value="post" />
+        <ArticleLicense
+          class="mt-10"
+          :title="post.title"
+          :permalink="permalink"
+          :published-at="post.publish"
+        />
         <footer class="mt-12 border-t border-line pt-6">
           <NuxtLink to="/posts" class="text-link">
             <AppIcon name="left" />返回文章列表
