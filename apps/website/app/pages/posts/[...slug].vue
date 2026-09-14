@@ -124,6 +124,7 @@ useActionButton({
             {{ post.description }}
           </p>
           <PostTags :tags="post.tags" />
+          <ArticleNotices :post="post" :path="pagePath" />
           <img
             v-if="post.cover"
             :src="post.cover"

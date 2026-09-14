@@ -1,9 +1,9 @@
 <script setup lang="ts">
 withDefaults(
-  defineProps<{ title: string, description?: string, placement?: 'default' | 'toc' }>(),
+  defineProps<{ title: string, description?: string, placement?: 'default' | 'toc' | 'image' }>(),
   { placement: 'default' },
 )
-const emit = defineEmits<{ closed: [] }>()
+const emit = defineEmits<{ closed: [], keydown: [event: KeyboardEvent] }>()
 const open = defineModel<boolean>({ default: false })
 const dialog = useTemplateRef<HTMLDialogElement>('dialog')
 const titleId = useId()
@@ -13,6 +13,19 @@ const body = shallowRef<HTMLElement | null>(null)
 const locked = useScrollLock(body)
 let returnFocus: HTMLElement | null = null
 let exitAnimation: Animation | undefined
+const backdropPressed = ref(false)
+
+function onKeydown(event: KeyboardEvent) {
+  keepFocusInside(event)
+  emit('keydown', event)
+}
+
+function isBackdrop(event: MouseEvent) {
+  if (!dialog.value || event.target !== dialog.value)
+    return false
+  const rect = dialog.value.getBoundingClientRect()
+  return event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom
+}
 
 function keepFocusInside(event: KeyboardEvent) {
   const element = dialog.value
@@ -43,18 +56,10 @@ function keepFocusInside(event: KeyboardEvent) {
 }
 
 function closeOnBackdrop(event: MouseEvent) {
-  if (event.target !== dialog.value)
-    return
-  const rect = dialog.value?.getBoundingClientRect()
-  if (
-    rect
-    && (event.clientX < rect.left
-      || event.clientX > rect.right
-      || event.clientY < rect.top
-      || event.clientY > rect.bottom)
-  ) {
+  if (backdropPressed.value && isBackdrop(event)) {
     open.value = false
   }
+  backdropPressed.value = false
 }
 
 onMounted(() => {
@@ -110,39 +115,45 @@ onBeforeUnmount(() => {
   <Teleport to="body">
     <dialog
       ref="dialog"
-      class="acrylic-dialog mx-auto mb-auto overflow-auto border border-line-strong rounded-[20px] bg-acrylic p-6 text-ink shadow-dialog backdrop-blur-[24px]"
+      class="acrylic-dialog mx-auto mb-auto border border-line-strong rounded-[20px] bg-acrylic text-ink shadow-dialog backdrop-blur-[24px]"
       :class="
-        placement === 'toc'
-          ? 'mt-[calc(var(--header-height)+44px)] w-[calc(100%-40px)] max-w-site max-h-[min(60dvh,28rem,calc(100dvh-var(--header-height)-60px))] md:w-[calc(100%-64px)]'
-          : 'mt-[calc(var(--header-height)+14px)] w-[min(480px,calc(100vw-40px))] max-h-[calc(100dvh-100px)]'
+        placement === 'image'
+          ? 'mt-4 h-[calc(100dvh-32px)] w-[calc(100vw-32px)] max-w-site overflow-hidden p-3 [&[open]]:flex flex-col gap-3'
+          : placement === 'toc'
+            ? 'mt-[calc(var(--header-height)+44px)] w-[calc(100%-40px)] max-w-site max-h-[min(60dvh,28rem,calc(100dvh-var(--header-height)-60px))] overflow-auto p-6 md:w-[calc(100%-64px)]'
+            : 'mt-[calc(var(--header-height)+14px)] w-[min(480px,calc(100vw-40px))] max-h-[calc(100dvh-100px)] overflow-auto p-6'
       "
       tabindex="-1"
       :aria-labelledby="titleId"
       :aria-describedby="description ? descriptionId : undefined"
       @cancel.prevent="open = false"
-      @keydown="keepFocusInside"
+      @keydown="onKeydown"
+      @pointerdown="backdropPressed = isBackdrop($event)"
       @click="closeOnBackdrop"
       @close="open = false"
     >
-      <header class="flex items-start justify-between gap-3">
-        <div>
-          <h2 :id="titleId" class="mt-1 text-[22px] text-heading">
+      <header class="flex shrink-0 items-start justify-between gap-2">
+        <div class="min-w-0" :class="{ 'self-center': placement === 'image' }">
+          <h2 :id="titleId" class="text-heading" :class="placement === 'image' ? 'text-s' : 'mt-1 text-[22px]'">
             {{ title }}
           </h2>
           <p v-if="description" :id="descriptionId" class="mt-2 text-base text-muted">
             {{ description }}
           </p>
         </div>
-        <button type="button" class="icon-button" aria-label="关闭弹窗" @click="open = false">
-          <AppIcon name="close" />
-        </button>
+        <div class="flex shrink-0 gap-1">
+          <slot name="actions" />
+          <button type="button" class="icon-button" aria-label="关闭弹窗" @click="open = false">
+            <AppIcon name="close" />
+          </button>
+        </div>
       </header>
-      <div class="py-6">
+      <div :class="placement === 'image' ? 'min-h-0 flex-1' : 'py-6'">
         <slot />
       </div>
       <footer
         v-if="$slots.footer"
-        class="flex items-center justify-between gap-3 border-t border-line pt-3.5"
+        class="max-h-24 flex shrink-0 items-center justify-between gap-3 overflow-auto border-t border-line pt-3.5"
       >
         <slot name="footer" />
       </footer>

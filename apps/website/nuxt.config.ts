@@ -1,11 +1,12 @@
 import { relative } from 'node:path'
+import githubSnapshots from './content/github/module'
 import { postsRoot, validateContentDirectory, validateFrontmatter } from './content/validation.ts'
 import { postPath } from './shared/content/catalog.ts'
 import { themeCookieBootstrap, themeCookieKey, themeCookieOptions } from './shared/theme/preference.ts'
 
 export default defineNuxtConfig({
   compatibilityDate: '2026-09-13',
-  modules: ['@nuxt/content', '@nuxtjs/color-mode', '@unocss/nuxt', '@vueuse/nuxt', '@nuxt/eslint'],
+  modules: ['@nuxt/content', '@nuxtjs/color-mode', '@unocss/nuxt', '@vueuse/nuxt', '@nuxt/eslint', githubSnapshots],
   colorMode: {
     preference: 'system',
     fallback: 'dark',

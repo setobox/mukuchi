@@ -25,8 +25,11 @@
   "devDependencies": {
     "@iconify-json/lucide": "catalog:",
     "@nuxt/eslint": "catalog:",
+    "@nuxtjs/mdc": "catalog:",
     "@types/node": "catalog:",
     "@unocss/nuxt": "catalog:",
+    "@vitejs/plugin-vue": "catalog:",
+    "happy-dom": "catalog:",
     "typescript": "catalog:",
     "unocss": "catalog:",
     "vite": "catalog:",

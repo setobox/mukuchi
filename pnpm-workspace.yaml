@@ -37,14 +37,17 @@ catalog:
   '@nuxt/content': 3.16.0
   '@nuxt/eslint': ^1.17.0
   '@nuxtjs/color-mode': 4.0.1
+  '@nuxtjs/mdc': 0.23.1
   '@types/node': ^26.1.1
   '@unocss/eslint-plugin': ^66.10.2
   '@unocss/nuxt': 66.10.2
+  '@vitejs/plugin-vue': 6.0.8
   '@vueuse/core': ^14.4.0
   '@vueuse/nuxt': ^14.4.0
   bumpp: ^11.1.0
   eslint: ^10.10.0
   eslint-plugin-format: ^2.0.1
+  happy-dom: 20.14.5
   nuxt: 4.5.2
   typescript: ^6.0.3
   unocss: 66.10.2

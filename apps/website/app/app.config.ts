@@ -13,5 +13,6 @@ export default defineAppConfig({
       { label: '关于', to: '/about', icon: 'user', section: 'about' },
     ],
     features: { search: false, commands: false },
+    article: { notices: { wip: true, staleAfterDays: 365 as number | null } },
   },
 })
