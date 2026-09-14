@@ -1,10 +1,10 @@
 export default defineAppConfig({
   site: {
-    name: "mukuchi",
+    name: "Setobox",
     description: "个人博客，提供文章阅读、专栏分类和工具入口。",
     owner: {
-      name: "mukuchi",
-      description: "负责本站的内容发布与维护。",
+      name: "姬顶盒",
+      description: "分享技术、工具与有趣的见闻。",
     },
     navigation: [
       { label: "文章", to: "/posts", icon: "notebook", section: "posts" },
