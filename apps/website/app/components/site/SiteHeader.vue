@@ -40,7 +40,7 @@ watch(desktop, (value) => {
         class="inline-flex flex-none items-center gap-3 rounded text-[19px] text-heading tracking-[-0.8px] font-mono"
         :aria-label="`${site.owner.name}，返回文章列表`"
       >
-        <span>{{ site.owner.name }}</span>
+        <span>{{ site.name }}</span>
       </NuxtLink>
       <div class="relative hidden h-[26px] min-w-0 flex-1 lg:block" aria-live="polite">
         <Transition name="header-title">
