@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useArticleToc } from "~/features/toc/useArticleToc";
+import { resolveBackTarget } from "~/shared/navigation";
 definePageMeta({
   section: "posts",
   pageKind: "detail",
@@ -46,6 +47,49 @@ useSeoMeta({
   ogType: "article",
   articlePublishedTime: () => `${post.value?.publish}T00:00:00+08:00`,
   articleModifiedTime: () => `${post.value?.update ?? post.value?.publish}T00:00:00+08:00`,
+});
+
+const page = usePageContext();
+const previousPath = useState<string | null>("navigation:previous", () => null);
+const router = useRouter();
+const { isScrolled, scrollToTop } = useScrollToTop();
+
+useActionButton({
+  id: "home",
+  icon: "i-lucide-house",
+  label: "返回文章列表",
+  order: 10,
+  async onClick() {
+    await navigateTo("/posts");
+  },
+});
+useActionButton({
+  id: "back",
+  icon: "i-lucide-arrow-left",
+  label: "返回上一页",
+  order: 30,
+  async onClick() {
+    if (!import.meta.client) return;
+    const target = resolveBackTarget(previousPath.value, page.value);
+    const state: unknown = window.history.state;
+    if (
+      previousPath.value === target &&
+      state &&
+      typeof state === "object" &&
+      "back" in state &&
+      state.back === target
+    )
+      router.back();
+    else await navigateTo(target);
+  },
+});
+useActionButton({
+  id: "top",
+  icon: "i-lucide-chevron-up",
+  label: "回到页面顶部",
+  order: 40,
+  visible: isScrolled,
+  onClick: scrollToTop,
 });
 </script>
 <template>
