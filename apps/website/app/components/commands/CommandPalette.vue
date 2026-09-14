@@ -248,7 +248,7 @@ onScopeDispose(() => {
     <BaseButton v-if="mode === 'search' && status === 'error'" class="mb-3 self-start" variant="border" @click="loader.load()">
       重新加载
     </BaseButton>
-    <div :id="listId" role="listbox" :aria-label="mode === 'search' ? '文章搜索结果' : '可用命令'" :aria-busy="mode === 'search' && status === 'loading'" class="overflow-y-auto overscroll-contain pb-1" :class="[modeMenuOpen ? 'min-h-26' : 'min-h-0', !message ? 'mt-3' : '']">
+    <div :id="listId" role="listbox" :aria-label="mode === 'search' ? '文章搜索结果' : '可用命令'" :aria-busy="mode === 'search' && status === 'loading'" class="[scrollbar-gutter:stable] overflow-y-auto overscroll-contain pb-1" :class="[modeMenuOpen ? 'min-h-26' : 'min-h-0', !message ? 'mt-3' : '']">
       <template v-if="mode === 'search'">
         <div
           v-for="(result, index) in matches.results" :id="`${listId}-${index}`" :key="result.id"

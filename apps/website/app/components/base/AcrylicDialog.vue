@@ -125,8 +125,8 @@ onBeforeUnmount(() => {
           : placement === 'commands'
             ? 'mt-[min(var(--header-height),calc(var(--dialog-viewport-height,100dvh)*0.08))] w-[min(640px,calc(100vw-32px))] max-h-[calc(var(--dialog-viewport-height,100dvh)-32px-min(var(--header-height),calc(var(--dialog-viewport-height,100dvh)*0.08)))] overflow-hidden p-4 md:p-6 [&[open]]:flex flex-col'
             : placement === 'toc'
-              ? 'mt-[calc(var(--header-height)+44px)] w-[calc(100%-40px)] max-w-site max-h-[min(60dvh,28rem,calc(100dvh-var(--header-height)-60px))] overflow-auto p-6 md:w-[calc(100%-64px)]'
-              : 'mt-[calc(var(--header-height)+14px)] w-[min(480px,calc(100vw-40px))] max-h-[calc(100dvh-100px)] overflow-auto p-6'
+              ? 'mt-[calc(var(--header-height)+44px)] w-[calc(100%-40px)] max-w-site max-h-[min(60dvh,28rem,calc(100dvh-var(--header-height)-60px))] overflow-auto [scrollbar-gutter:stable] p-6 md:w-[calc(100%-64px)]'
+              : 'mt-[calc(var(--header-height)+14px)] w-[min(480px,calc(100vw-40px))] max-h-[calc(100dvh-100px)] overflow-auto [scrollbar-gutter:stable] p-6'
       "
       tabindex="-1"
       :aria-labelledby="titleId"
@@ -158,7 +158,7 @@ onBeforeUnmount(() => {
       </div>
       <footer
         v-if="$slots.footer"
-        class="max-h-24 flex shrink-0 items-center justify-between gap-3 overflow-auto border-t border-line pt-3.5"
+        class="[scrollbar-gutter:stable] max-h-24 flex shrink-0 items-center justify-between gap-3 overflow-auto border-t border-line pt-3.5"
       >
         <slot name="footer" />
       </footer>

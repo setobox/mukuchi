@@ -163,7 +163,7 @@ onClickOutside(container, () => close())
         :id="popupId"
         ref="popup"
         :inert="!open"
-        class="absolute right-0 top-[calc(100%+8px)] z-20 max-h-[min(60dvh,28rem)] max-w-full w-72 overflow-y-auto border border-line-strong rounded-panel bg-acrylic p-2 shadow-lg backdrop-blur-xl"
+        class="[scrollbar-gutter:stable] absolute right-0 top-[calc(100%+8px)] z-20 max-h-[min(60dvh,28rem)] max-w-full w-72 overflow-y-auto border border-line-strong rounded-panel bg-acrylic p-2 shadow-lg backdrop-blur-xl"
       >
         <NuxtLink
           v-for="category in overflow"

@@ -7,7 +7,7 @@ defineProps<{ sticky?: boolean }>()
     <aside
       aria-label="侧边栏"
       :class="{
-        'lg:sticky lg:top-[calc(var(--header-height)+24px)] lg:max-h-[calc(100dvh-var(--header-height)-48px)] lg:overflow-y-auto':
+        'lg:sticky lg:top-[calc(var(--header-height)+24px)] lg:max-h-[calc(100dvh-var(--header-height)-48px)] lg:overflow-y-auto lg:[scrollbar-gutter:stable]':
           sticky,
       }"
     >
