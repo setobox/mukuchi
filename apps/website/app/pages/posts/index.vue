@@ -6,8 +6,6 @@ useSeoMeta({ title: "文章", description: "浏览本站发布的全部文章。
 <template>
   <div>
     <PageHeading title="文章" />
-    <SiteColumns>
-      <ContentEmptyState />
-    </SiteColumns>
+    <PostCollection />
   </div>
 </template>

@@ -6,8 +6,8 @@ useHead({ title: notFound.value ? "页面不存在 - mukuchi" : "页面加载失
 </script>
 
 <template>
-  <div class="site-container min-h-dvh flex flex-col items-start justify-center gap-6">
-    <span class="font-display text-[100px] italic leading-[normal] text-accent">{{
+  <div class="site-container flex flex-col items-start justify-center gap-6 min-h-dvh">
+    <span class="text-[100px] text-accent leading-[normal] font-display italic">{{
       error.statusCode
     }}</span>
     <h1 class="text-error-title text-heading">{{ notFound ? "页面不存在" : "页面加载失败" }}</h1>

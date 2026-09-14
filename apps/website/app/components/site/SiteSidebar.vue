@@ -1,11 +1,20 @@
 <script setup lang="ts">
+withDefaults(
+  defineProps<{
+    tags?: { name: string; count: number }[];
+    selectedTag?: string;
+    filterBase?: string;
+    category?: string;
+  }>(),
+  { selectedTag: "", filterBase: "/posts", category: "" },
+);
 const { site } = useAppConfig();
 </script>
 
 <template>
   <div class="flex flex-col gap-6">
     <section
-      class="rounded-panel border border-line bg-surface grid grid-cols-[72px_minmax(0,1fr)] items-center gap-4 overflow-hidden p-4 lg:block lg:p-0"
+      class="grid grid-cols-[72px_minmax(0,1fr)] items-center gap-4 overflow-hidden border border-line rounded-panel bg-surface p-4 lg:block lg:p-0"
       aria-label="站点信息"
     >
       <div
@@ -13,12 +22,12 @@ const { site } = useAppConfig();
         aria-hidden="true"
       >
         <div
-          class="profile-orbit absolute hidden size-[178px] translate-x-[62px] translate-y-[45px] rounded-full border border-[color-mix(in_srgb,var(--color-accent)_12%,transparent)] lg:block"
+          class="profile-orbit absolute hidden size-[178px] translate-x-[62px] translate-y-[45px] border border-[color-mix(in_srgb,var(--color-accent)_12%,transparent)] rounded-full lg:block"
         />
       </div>
-      <div class="relative lg:static lg:px-6 lg:pt-[22px] lg:pb-5">
+      <div class="relative lg:static lg:px-6 lg:pb-5 lg:pt-[22px]">
         <p
-          class="flex items-center gap-[9px] font-mono text-[18px] font-medium leading-[normal] tracking-[-0.7px] text-heading lg:text-[20px]"
+          class="flex items-center gap-[9px] text-[18px] text-heading font-medium leading-[normal] tracking-[-0.7px] font-mono lg:text-[20px]"
         >
           {{ site.owner.name }}
         </p>
@@ -30,13 +39,21 @@ const { site } = useAppConfig();
       </div>
     </section>
     <slot name="after-profile" />
-    <section class="hidden px-2 lg:block" aria-labelledby="sidebar-tags">
+    <section v-if="tags" class="hidden px-2 lg:block" aria-labelledby="sidebar-tags">
       <h2 id="sidebar-tags" class="section-label">标签</h2>
-      <p class="mt-3.5 text-muted">暂无标签</p>
+      <TagFilter
+        v-if="tags.length"
+        :tags="tags"
+        :selected="selectedTag"
+        :base="filterBase"
+        :category="category"
+        class="mt-3.5"
+      />
+      <p v-else class="mt-3.5 text-muted">暂无标签</p>
     </section>
     <section class="hidden px-2 lg:block" aria-labelledby="sidebar-stats">
       <h2 id="sidebar-stats" class="section-label">网站统计</h2>
-      <dl class="mb-0 mt-5 grid grid-cols-3">
+      <dl class="grid grid-cols-3 mb-0 mt-5">
         <div
           v-for="(label, index) in ['文章', '标签', '专栏']"
           :key="label"
@@ -44,7 +61,7 @@ const { site } = useAppConfig();
         >
           <dt class="text-muted">{{ label }}</dt>
           <dd
-            class="m-0 mt-1.5 font-mono text-[18px] leading-[normal] text-ink"
+            class="m-0 mt-1.5 text-[18px] text-ink leading-[normal] font-mono"
             aria-label="暂无数据"
           >
             —

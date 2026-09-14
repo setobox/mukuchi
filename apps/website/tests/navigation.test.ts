@@ -1,8 +1,6 @@
+import type { ActionContext } from "../app/features/floating-actions/registry.ts";
 import { expect, test } from "vite-plus/test";
-import {
-  getVisibleActions,
-  type ActionContext,
-} from "../app/features/floating-actions/registry.ts";
+import { getVisibleActions } from "../app/features/floating-actions/registry.ts";
 import { resolveBackTarget } from "../app/shared/navigation.ts";
 
 const page: ActionContext = {

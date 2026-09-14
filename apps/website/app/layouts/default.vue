@@ -1,8 +1,8 @@
 <template>
-  <div class="min-h-dvh flex flex-col">
+  <div class="flex flex-col min-h-dvh">
     <a
       href="#main-content"
-      class="fixed -top-20 left-5 z-100 rounded-lg bg-accent px-5 py-3 text-canvas focus:top-3"
+      class="fixed left-5 z-100 rounded-lg bg-accent px-5 py-3 text-canvas -top-20 focus:top-3"
       >跳转到正文</a
     >
     <SiteHeader />

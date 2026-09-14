@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="675" viewBox="0 0 1200 675">
+  <rect width="1200" height="675" fill="#302e2d"/>
+  <path d="M80 490H1120" stroke="#65605d"/>
+  <g fill="none" stroke="#a369ff" stroke-width="3">
+    <rect x="80" y="230" width="280" height="180" rx="16"/>
+    <rect x="460" y="230" width="280" height="180" rx="16"/>
+    <rect x="840" y="230" width="280" height="180" rx="16"/>
+    <path d="M380 320H440l-12-12m12 12-12 12M760 320H820l-12-12m12 12-12 12"/>
+  </g>
+  <g fill="#eeebe8" font-family="system-ui,sans-serif" text-anchor="middle" font-size="30">
+    <text x="220" y="332">Markdown</text><text x="600" y="332">Nuxt Content</text><text x="980" y="332">Article</text>
+  </g>
+  <text x="80" y="145" fill="#c3a0ff" font-family="system-ui,sans-serif" font-size="46">Content workflow</text>
+  <text x="80" y="550" fill="#b4b1af" font-family="system-ui,sans-serif" font-size="26">mukuchi / example</text>
+</svg>

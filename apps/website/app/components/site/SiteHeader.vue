@@ -25,7 +25,7 @@ watch(desktop, (value) => {
 
 <template>
   <header
-    class="fixed inset-x-0 top-0 z-header h-[var(--header-height)] border-b [transition-property:background,border-color] duration-180 ease-[ease]"
+    class="[transition-property:background,border-color] fixed inset-x-0 top-0 z-header h-[var(--header-height)] border-b duration-180 ease-[ease]"
     :class="
       y > 8
         ? 'border-line bg-[color-mix(in_srgb,var(--color-canvas)_90%,transparent)] backdrop-blur-[18px]'
@@ -35,7 +35,7 @@ watch(desktop, (value) => {
     <div class="site-container h-full flex items-center gap-4 lg:gap-7">
       <NuxtLink
         to="/posts"
-        class="inline-flex flex-none items-center gap-3 rounded font-mono text-[19px] tracking-[-0.8px] text-heading"
+        class="inline-flex flex-none items-center gap-3 rounded text-[19px] text-heading tracking-[-0.8px] font-mono"
         :aria-label="`${site.owner.name}，返回文章列表`"
         ><span>{{ site.owner.name }}</span></NuxtLink
       >
@@ -74,7 +74,7 @@ watch(desktop, (value) => {
         </button>
         <button
           type="button"
-          class="icon-button hidden md:inline-flex"
+          class="hidden icon-button md:inline-flex"
           :disabled="!site.features.commands"
           aria-label="命令面板（尚未开放）"
           title="命令面板（尚未开放）"

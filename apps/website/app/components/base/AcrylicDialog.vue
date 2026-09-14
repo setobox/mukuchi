@@ -1,5 +1,9 @@
 <script setup lang="ts">
-defineProps<{ title: string; description?: string }>();
+withDefaults(
+  defineProps<{ title: string; description?: string; placement?: "default" | "toc" }>(),
+  { placement: "default" },
+);
+const emit = defineEmits<{ closed: [] }>();
 const open = defineModel<boolean>({ default: false });
 const dialog = useTemplateRef<HTMLDialogElement>("dialog");
 const titleId = useId();
@@ -80,6 +84,7 @@ onMounted(() => {
         element.close();
         locked.value = false;
         if (returnFocus?.isConnected) returnFocus.focus({ preventScroll: true });
+        emit("closed");
       }
     },
     { immediate: true },
@@ -97,7 +102,12 @@ onBeforeUnmount(() => {
   <Teleport to="body">
     <dialog
       ref="dialog"
-      class="acrylic-dialog mx-auto mb-auto mt-[calc(var(--header-height)+14px)] w-[min(480px,calc(100vw-40px))] max-h-[calc(100dvh-100px)] overflow-auto rounded-[20px] border border-line-strong bg-acrylic p-6 text-ink [box-shadow:0_24px_80px_#0005] backdrop-blur-[24px]"
+      class="acrylic-dialog [box-shadow:0_24px_80px_#0005] mx-auto mb-auto overflow-auto border border-line-strong rounded-[20px] bg-acrylic p-6 text-ink backdrop-blur-[24px]"
+      :class="
+        placement === 'toc'
+          ? 'mt-[calc(var(--header-height)+44px)] w-[calc(100%-40px)] max-w-site max-h-[min(60dvh,28rem,calc(100dvh-var(--header-height)-60px))] md:w-[calc(100%-64px)]'
+          : 'mt-[calc(var(--header-height)+14px)] w-[min(480px,calc(100vw-40px))] max-h-[calc(100dvh-100px)]'
+      "
       tabindex="-1"
       :aria-labelledby="titleId"
       :aria-describedby="description ? descriptionId : undefined"

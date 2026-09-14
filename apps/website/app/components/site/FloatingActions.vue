@@ -1,8 +1,6 @@
 <script setup lang="ts">
-import {
-  getVisibleActions,
-  type FloatingActionBehavior,
-} from "~/features/floating-actions/registry";
+import type { FloatingActionBehavior } from "~/features/floating-actions/registry";
+import { getVisibleActions } from "~/features/floating-actions/registry";
 import { resolveBackTarget } from "~/shared/navigation";
 
 const page = usePageContext();
@@ -38,7 +36,7 @@ async function execute(behavior: FloatingActionBehavior) {
 <template>
   <nav
     v-if="actions.length"
-    class="fixed right-[max(16px,env(safe-area-inset-right))] bottom-[max(20px,env(safe-area-inset-bottom))] z-actions flex flex-col gap-2 lg:right-7 lg:bottom-7"
+    class="fixed bottom-[max(20px,env(safe-area-inset-bottom))] right-[max(16px,env(safe-area-inset-right))] z-actions flex flex-col gap-2 lg:bottom-7 lg:right-7"
     aria-label="页面快捷操作"
   >
     <TransitionGroup name="floating-action"
@@ -46,7 +44,7 @@ async function execute(behavior: FloatingActionBehavior) {
         v-for="action in actions"
         :key="action.id"
         type="button"
-        class="grid size-11 place-items-center rounded-xl border border-line-strong bg-acrylic text-muted backdrop-blur-[12px] transition-[color,border-color] duration-160 ease-[ease] hover:border-accent hover:text-accent-soft"
+        class="grid size-11 place-items-center border border-line-strong rounded-xl bg-acrylic text-muted backdrop-blur-[12px] transition-[color,border-color] duration-160 ease-[ease] hover:border-accent hover:text-accent-soft"
         :aria-label="action.label"
         :title="action.label"
         @click="execute(action.behavior)"

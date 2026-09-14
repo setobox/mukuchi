@@ -12,11 +12,14 @@
     "test": "vp test run --config vitest.config.ts"
   },
   "dependencies": {
+    "@nuxt/content": "catalog:",
     "@vueuse/core": "catalog:",
     "@vueuse/nuxt": "catalog:",
     "nuxt": "catalog:",
     "vue": "catalog:",
-    "vue-router": "catalog:"
+    "vue-router": "catalog:",
+    "yaml": "catalog:",
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@iconify-json/lucide": "catalog:",

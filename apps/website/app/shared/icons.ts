@@ -17,6 +17,11 @@ export const icons = {
   languages: "i-lucide-languages",
   folder: "i-lucide-folder-open",
   terminal: "i-lucide-terminal",
+  list: "i-lucide-list",
+  grid: "i-lucide-layout-grid",
+  pin: "i-lucide-pin",
+  down: "i-lucide-chevron-down",
+  toc: "i-lucide-list-tree",
 } as const;
 
 export type IconName = keyof typeof icons;

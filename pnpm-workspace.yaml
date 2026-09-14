@@ -3,6 +3,7 @@ catalogMode: prefer
 minimumReleaseAgeExcludePrune: true
 minimumReleaseAgeExclude:
   - "@iconify-json/lucide@1.2.132"
+  - zod@4.6.4
 
 trustPolicy: no-downgrade
 trustPolicyExclude:
@@ -24,7 +25,7 @@ packages:
   - tools/*
 
 overrides:
-  vite: "catalog:"
+  vite: "npm:@voidzero-dev/vite-plus-core@0.2.8"
 
 allowBuilds:
   esbuild: true
@@ -33,6 +34,7 @@ allowBuilds:
 catalog:
   "@antfu/eslint-config": ^9.5.1
   "@iconify-json/lucide": 1.2.132
+  "@nuxt/content": 3.16.0
   "@nuxt/eslint": ^1.17.0
   "@types/node": ^26.1.1
   "@unocss/eslint-plugin": ^66.10.2
@@ -50,3 +52,5 @@ catalog:
   vue: ^3.5.42
   vue-router: ^5.3.1
   vue-tsc: 3.3.11
+  yaml: ^2.9.1
+  zod: 4.6.4

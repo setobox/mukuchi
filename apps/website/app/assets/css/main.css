@@ -6,6 +6,7 @@
   --color-heading: #eeebe8;
   --color-muted: #9b9591;
   --color-accent: #a369ff;
+  --color-accent-surface: color-mix(in srgb, var(--color-accent) 10%, transparent);
   --color-accent-text: #c3a0ff;
   --color-border: #ffffff12;
   --color-border-strong: #ffffff24;
@@ -15,11 +16,6 @@
   --color-error: #ff9191;
   --color-acrylic: #302e2deb;
   --color-scrim: #17161599;
-  --color-category-surface: #1c1c1f;
-  --color-category-text: #f5f5f5;
-  --color-category-border: #ffffff1a;
-  --color-category-active: #ffcf45;
-  --color-category-active-text: #17181c;
   --font-sans: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
   --font-mono: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
   --font-display: Georgia, "Times New Roman", serif;
@@ -49,7 +45,7 @@ html {
   scrollbar-width: thin;
   scrollbar-color: var(--color-border-strong) transparent;
   background: var(--color-canvas);
-  scroll-padding-top: calc(var(--header-height) + 24px);
+  scroll-padding-top: calc(var(--header-height) + var(--toc-offset, 0px) + 24px);
 }
 body {
   margin: 0;
@@ -108,12 +104,24 @@ a {
 :focus {
   outline: none;
 }
+:focus-visible {
+  outline: 2px solid var(--color-accent-text);
+  outline-offset: 4px;
+}
 @media (min-width: 900px) {
   :root {
     --header-height: 80px;
     --text-xxxl: 3.25rem;
     --text-xxl: 2.5rem;
     --text-xl: 1.75rem;
+  }
+}
+html.has-article-toc {
+  --toc-offset: 44px;
+}
+@media (min-width: 1200px) {
+  html.has-article-toc {
+    --toc-offset: 0px;
   }
 }
 

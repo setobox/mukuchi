@@ -14,6 +14,7 @@ export default defineConfig({
       heading: "var(--color-heading)",
       muted: "var(--color-muted)",
       accent: "var(--color-accent)",
+      "accent-surface": "var(--color-accent-surface)",
       "accent-soft": "var(--color-accent-text)",
       line: "var(--color-border)",
       "line-strong": "var(--color-border-strong)",
@@ -23,13 +24,6 @@ export default defineConfig({
       error: "var(--color-error)",
       acrylic: "var(--color-acrylic)",
       scrim: "var(--color-scrim)",
-      category: {
-        DEFAULT: "var(--color-category-surface)",
-        ink: "var(--color-category-text)",
-        line: "var(--color-category-border)",
-        active: "var(--color-category-active)",
-        "active-ink": "var(--color-category-active-text)",
-      },
     },
     fontFamily: {
       sans: "var(--font-sans)",
