@@ -20,7 +20,7 @@ defineProps<{ post: PostSummary }>()
     </NuxtLink>
     <div class="flex flex-1 flex-col p-5 md:p-6">
       <PostMeta :post="post" />
-      <h2 class="mt-3 text-title text-heading">
+      <h2 class="mt-3 text-title text-themed font-bold">
         <NuxtLink :to="post.path" class="break-words transition-colors hover:text-accent-soft">
           {{ post.title }}
         </NuxtLink>

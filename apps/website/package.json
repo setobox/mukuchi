@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@nuxt/content": "catalog:",
+    "@nuxtjs/color-mode": "catalog:",
     "@vueuse/core": "catalog:",
     "@vueuse/nuxt": "catalog:",
     "nuxt": "catalog:",

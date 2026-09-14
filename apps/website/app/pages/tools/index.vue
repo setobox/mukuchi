@@ -41,7 +41,7 @@ useActionButton({
           </div>
           <AppIcon
             name="image"
-            class="absolute bottom-[35px] right-[calc(50%-140px)] border border-line-strong rounded-[13px] p-[13px] size-[50px]! bg-accent-soft!"
+            class="absolute bottom-[35px] right-[calc(50%-140px)] border border-line-strong rounded-[13px] bg-accent p-[13px] text-on-accent size-[50px]!"
           />
         </div>
         <div class="px-[26px] py-[25px]">

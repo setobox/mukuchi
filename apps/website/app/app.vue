@@ -1,5 +1,6 @@
 <script setup lang="ts">
 useProvideActionButtons()
+useThemeHead()
 
 const { site } = useAppConfig()
 useHead({

@@ -8,7 +8,7 @@ defineProps<{ post: PostSummary }>()
   <article class="flex gap-5 border-b border-line py-7 md:gap-7">
     <div class="min-w-0 flex-1">
       <PostMeta :post="post" />
-      <h2 class="mt-2 text-title text-heading">
+      <h2 class="mt-2 text-title text-themed font-bold">
         <NuxtLink :to="post.path" class="break-words transition-colors hover:text-accent-soft">
           {{ post.title }}
         </NuxtLink>

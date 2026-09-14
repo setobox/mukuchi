@@ -6,8 +6,13 @@
   --color-heading: #eeebe8;
   --color-muted: #9b9591;
   --color-accent: #a369ff;
+  --accent-dark-text: #b689ff;
+  --accent-light-text: #774dba;
   --color-accent-surface: color-mix(in srgb, var(--color-accent) 10%, transparent);
-  --color-accent-text: #c3a0ff;
+  --color-accent-text: var(--accent-dark-text);
+  --color-title: var(--color-accent);
+  --color-on-accent: #171615;
+  --color-accent-hover: color-mix(in srgb, var(--color-accent) 90%, white);
   --color-border: #ffffff12;
   --color-border-strong: #ffffff24;
   --color-info: #7db5ff;
@@ -16,6 +21,9 @@
   --color-error: #ff9191;
   --color-acrylic: #302e2deb;
   --color-scrim: #17161599;
+  --color-code: var(--color-surface);
+  --shadow-float: 0 8px 24px #0000003d;
+  --shadow-dialog: 0 24px 80px #0005;
   --font-sans: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
   --font-mono: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
   --font-display: Georgia, "Times New Roman", serif;
@@ -27,11 +35,38 @@
   --radius-button: 10px;
   --z-header: 30;
   --z-actions: 40;
+  --text-xxxxl: 2.5rem;
   --text-xxxl: 2.5rem;
   --text-xxl: 2rem;
   --text-xl: 1.5rem;
   --text-l: 1.25rem;
-  --text-body: 1rem;
+  --text-m: 1rem;
+  --text-s: 1rem;
+  --text-xs: .875rem;
+  --text-xxs: .8125rem;
+  --text-xxxs: .75rem;
+  --text-body: var(--text-m);
+}
+
+:root.light {
+  color-scheme: light;
+  --color-canvas: #faf8f5;
+  --color-surface: #f0ece7;
+  --color-text: #45413e;
+  --color-heading: #252423;
+  --color-muted: #716963;
+  --color-accent-text: var(--accent-light-text);
+  --color-title: var(--accent-light-text);
+  --color-border: #302e2d24;
+  --color-border-strong: #302e2d48;
+  --color-info: #496994;
+  --color-success: #47715c;
+  --color-warn: #79663d;
+  --color-error: #945454;
+  --color-acrylic: #f0ece7f2;
+  --color-scrim: #25242340;
+  --shadow-float: 0 8px 24px #302e2d1f;
+  --shadow-dialog: 0 24px 80px #302e2d33;
 }
 
 *,
@@ -80,12 +115,18 @@ a {
 h1,
 h2,
 h3,
+h4,
+h5,
+h6,
 p {
   margin: 0;
 }
 h1,
 h2,
-h3 {
+h3,
+h4,
+h5,
+h6 {
   font-weight: 500;
 }
 img,
@@ -111,9 +152,13 @@ a {
 @media (min-width: 900px) {
   :root {
     --header-height: 80px;
+    --text-xxxxl: 4rem;
     --text-xxxl: 3.25rem;
     --text-xxl: 2.5rem;
     --text-xl: 1.75rem;
+    --text-m: 1.125rem;
+    --text-xxs: .75rem;
+    --text-xxxs: .625rem;
   }
 }
 html.has-article-toc {

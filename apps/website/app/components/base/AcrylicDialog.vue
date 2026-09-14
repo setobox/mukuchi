@@ -110,7 +110,7 @@ onBeforeUnmount(() => {
   <Teleport to="body">
     <dialog
       ref="dialog"
-      class="acrylic-dialog [box-shadow:0_24px_80px_#0005] mx-auto mb-auto overflow-auto border border-line-strong rounded-[20px] bg-acrylic p-6 text-ink backdrop-blur-[24px]"
+      class="acrylic-dialog mx-auto mb-auto overflow-auto border border-line-strong rounded-[20px] bg-acrylic p-6 text-ink shadow-dialog backdrop-blur-[24px]"
       :class="
         placement === 'toc'
           ? 'mt-[calc(var(--header-height)+44px)] w-[calc(100%-40px)] max-w-site max-h-[min(60dvh,28rem,calc(100dvh-var(--header-height)-60px))] md:w-[calc(100%-64px)]'

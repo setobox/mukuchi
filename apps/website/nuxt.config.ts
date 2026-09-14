@@ -1,13 +1,27 @@
 import { relative } from 'node:path'
 import { postsRoot, validateContentDirectory, validateFrontmatter } from './content/validation.ts'
 import { postPath } from './shared/content/catalog.ts'
+import { themeCookieBootstrap, themeCookieKey, themeCookieOptions } from './shared/theme/preference.ts'
 
 export default defineNuxtConfig({
   compatibilityDate: '2026-09-13',
-  modules: ['@nuxt/content', '@unocss/nuxt', '@vueuse/nuxt', '@nuxt/eslint'],
+  modules: ['@nuxt/content', '@nuxtjs/color-mode', '@unocss/nuxt', '@vueuse/nuxt', '@nuxt/eslint'],
+  colorMode: {
+    preference: 'system',
+    fallback: 'dark',
+    classSuffix: '',
+    storage: 'cookie',
+    storageKey: themeCookieKey,
+    cookieAttrs: themeCookieOptions,
+    disableTransition: true,
+  },
   content: {
     experimental: { sqliteConnector: 'native' },
-    build: { markdown: { contentHeading: false, toc: { depth: 5, searchDepth: 12 } } },
+    build: { markdown: {
+      contentHeading: false,
+      toc: { depth: 5, searchDepth: 12 },
+      highlight: { theme: { default: 'github-dark', light: 'github-light' } },
+    } },
     renderer: { anchorLinks: { h2: true, h3: true, h4: true, h5: true, h6: true } },
   },
   hooks: {
@@ -37,11 +51,13 @@ export default defineNuxtConfig({
   typescript: { strict: true },
   app: {
     head: {
-      htmlAttrs: { lang: 'zh-CN', class: 'dark' },
+      htmlAttrs: { lang: 'zh-CN' },
+      script: [{ key: 'theme-cookie-guard', innerHTML: themeCookieBootstrap, tagPriority: 'critical' }],
       title: 'mukuchi',
       meta: [
         { name: 'description', content: '个人博客，提供文章阅读、专栏分类和工具入口。' },
-        { name: 'theme-color', content: '#252423' },
+        { name: 'theme-color', content: '#252423', media: '(prefers-color-scheme: dark)', key: 'theme-color-dark' },
+        { name: 'theme-color', content: '#faf8f5', media: '(prefers-color-scheme: light)', key: 'theme-color-light' },
       ],
       link: [{ rel: 'icon', type: 'image/svg+xml', href: '/mukuchi.svg' }],
     },

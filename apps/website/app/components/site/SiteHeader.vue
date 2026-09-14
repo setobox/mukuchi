@@ -51,7 +51,7 @@ watch(desktop, (value) => {
           >{{ page.title }}</span>
         </Transition>
       </div>
-      <nav class="hidden items-center gap-1.5 lg:flex" aria-label="主导航">
+      <nav class="hidden items-center gap-1.5 text-s lg:flex" aria-label="主导航">
         <NuxtLink
           v-for="item in site.navigation"
           :key="item.to"
@@ -66,6 +66,7 @@ watch(desktop, (value) => {
         </NuxtLink>
       </nav>
       <div class="ml-auto flex items-center gap-0.5 lg:ml-0 lg:border-l lg:border-line lg:pl-4">
+        <ThemeToggle />
         <button
           type="button"
           class="icon-button"
@@ -97,7 +98,7 @@ watch(desktop, (value) => {
       </div>
     </div>
     <AcrylicDialog v-model="menuOpen" title="网站导航">
-      <nav aria-label="移动导航" class="flex flex-col gap-1">
+      <nav aria-label="移动导航" class="flex flex-col gap-1 text-s">
         <NuxtLink
           v-for="item in site.navigation"
           :key="item.to"

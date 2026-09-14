@@ -11,7 +11,7 @@ withDefaults(
 )
 
 const variantClasses: Record<ButtonVariant, string> = {
-  default: 'border-transparent bg-accent px-[17px] text-canvas font-semibold hover:bg-accent-soft',
+  default: 'border-transparent bg-accent px-[17px] text-on-accent font-semibold hover:bg-accent-hover',
   border: 'border-line-strong px-[17px] text-heading hover:bg-surface',
   ghost: 'border-transparent px-[17px] hover:bg-surface',
   link: 'border-transparent px-1 text-accent-soft underline underline-offset-5',

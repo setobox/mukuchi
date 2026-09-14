@@ -1,4 +1,7 @@
 export const icons = {
+  monitor: 'i-lucide-monitor',
+  sun: 'i-lucide-sun',
+  moon: 'i-lucide-moon',
   notebook: 'i-lucide-notebook-pen',
   layers: 'i-lucide-layers-2',
   shapes: 'i-lucide-shapes',

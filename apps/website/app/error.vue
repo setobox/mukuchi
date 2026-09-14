@@ -2,6 +2,7 @@
 import type { NuxtError } from '#app'
 
 const props = defineProps<{ error: NuxtError }>()
+useThemeHead(true)
 const notFound = computed(() => props.error.statusCode === 404)
 useHead({ title: notFound.value ? '页面不存在 - mukuchi' : '页面加载失败 - mukuchi' })
 </script>

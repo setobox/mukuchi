@@ -24,6 +24,7 @@ if (error.value)
   throw createError({ statusCode: 500, message: '文章加载失败' })
 if (!post.value)
   throw createError({ statusCode: 404, message: '文章不存在' })
+useArticleTheme(pagePath, () => post.value?.theme)
 const root = useTemplateRef<HTMLElement>('articleRoot')
 const links = computed(() => post.value?.body.toc?.links ?? [])
 const { items, activeId, currentTitle } = useArticleToc(links, root)
@@ -116,7 +117,7 @@ useActionButton({
       <article ref="articleRoot" class="min-w-0">
         <header class="border-b border-line pb-8">
           <PostMeta :post="post" detailed />
-          <h1 class="my-5 break-words text-page text-heading leading-tight">
+          <h1 class="my-5 break-words text-page text-themed leading-tight">
             {{ post.title }}
           </h1>
           <p class="mb-6 text-muted leading-8">
