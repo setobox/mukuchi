@@ -1,8 +1,10 @@
 <script setup lang="ts">
-import type { TocLink } from "~/features/toc/model";
-defineProps<{ items: TocLink[]; activeId: string }>();
-const emit = defineEmits<{ select: [id: string] }>();
+import type { TocLink } from '~/features/toc/model'
+
+defineProps<{ items: TocLink[], activeId: string }>()
+const emit = defineEmits<{ select: [id: string] }>()
 </script>
+
 <template>
   <nav aria-label="文章目录">
     <ul class="m-0 list-none border-l border-line p-0">
@@ -18,8 +20,7 @@ const emit = defineEmits<{ select: [id: string] }>();
           "
           :style="{ paddingLeft: `${12 + (item.depth - 2) * 12}px` }"
           @click.prevent="emit('select', item.id)"
-          >{{ item.text }}</a
-        >
+        >{{ item.text }}</a>
       </li>
     </ul>
   </nav>

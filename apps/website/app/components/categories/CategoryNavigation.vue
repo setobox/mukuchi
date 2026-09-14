@@ -1,71 +1,76 @@
 <script setup lang="ts">
-import { visibleCategoryCount } from "~/features/categories/overflow";
+import { visibleCategoryCount } from '~/features/categories/overflow'
+
 const props = defineProps<{
-  categories: { name: string; count: number }[];
-  selected: string;
-  tag: string;
-}>();
-const container = useTemplateRef<HTMLElement>("container");
-const measurement = useTemplateRef<HTMLElement>("measurement");
-const moreButton = useTemplateRef<HTMLButtonElement>("moreButton");
-const popup = useTemplateRef<HTMLElement>("popup");
-const popupId = useId();
-const visibleCount = ref(0);
-const open = ref(false);
-const overflow = computed(() => props.categories.slice(visibleCount.value));
+  categories: { name: string, count: number }[]
+  selected: string
+  tag: string
+}>()
+const container = useTemplateRef<HTMLElement>('container')
+const measurement = useTemplateRef<HTMLElement>('measurement')
+const moreButton = useTemplateRef<HTMLButtonElement>('moreButton')
+const popup = useTemplateRef<HTMLElement>('popup')
+const popupId = useId()
+const visibleCount = ref(0)
+const open = ref(false)
+const overflow = computed(() => props.categories.slice(visibleCount.value))
 const selectedOverflow = computed(() =>
-  overflow.value.some((category) => category.name === props.selected),
-);
-function location(category = "") {
+  overflow.value.some(category => category.name === props.selected),
+)
+function location(category = '') {
   return {
-    path: "/categories",
+    path: '/categories',
     query: { category: category || undefined, tag: props.tag || undefined },
-  };
+  }
 }
 function measure() {
-  if (!container.value || !measurement.value) return;
+  if (!container.value || !measurement.value)
+    return
   const widths = Array.from(
     measurement.value.children,
-    (element) => element.getBoundingClientRect().width,
-  );
+    element => element.getBoundingClientRect().width,
+  )
   visibleCount.value = visibleCategoryCount(
     widths.slice(2),
     container.value.clientWidth,
     widths[0] ?? 0,
     widths[1] ?? 0,
     Number.parseFloat(getComputedStyle(measurement.value).columnGap),
-  );
-  if (!overflow.value.length) open.value = false;
+  )
+  if (!overflow.value.length)
+    open.value = false
 }
 function close(focus = false) {
-  open.value = false;
-  if (focus) moreButton.value?.focus();
+  open.value = false
+  if (focus)
+    moreButton.value?.focus()
 }
-useResizeObserver(container, measure);
+useResizeObserver(container, measure)
 watch(
   () => props.categories,
   () => nextTick(measure),
   { deep: true },
-);
+)
 watch(
   () => [props.selected, props.tag],
   () => close(),
-);
+)
 watch(open, async (value) => {
   if (value) {
-    await nextTick();
-    const target =
-      popup.value?.querySelector<HTMLAnchorElement>('a[aria-current="page"]') ??
-      popup.value?.querySelector<HTMLAnchorElement>("a");
-    target?.focus();
+    await nextTick()
+    const target
+      = popup.value?.querySelector<HTMLAnchorElement>('a[aria-current="page"]')
+        ?? popup.value?.querySelector<HTMLAnchorElement>('a')
+    target?.focus()
   }
-});
+})
 onMounted(async () => {
-  await document.fonts.ready;
-  measure();
-});
-onClickOutside(container, () => close());
+  await document.fonts.ready
+  measure()
+})
+onClickOutside(container, () => close())
 </script>
+
 <template>
   <nav
     ref="container"
@@ -85,19 +90,16 @@ onClickOutside(container, () => close());
     >
       <span
         class="min-h-11 inline-flex flex-none items-center justify-center gap-2 whitespace-nowrap rounded-lg px-3.5 py-2 font-medium"
-        >全部文章</span
-      >
+      >全部文章</span>
       <span
         class="min-h-11 inline-flex flex-none items-center justify-center gap-2 whitespace-nowrap rounded-lg px-3.5 py-2 font-medium"
-        >更多<AppIcon name="down"
-      /></span>
+      >更多<AppIcon name="down" /></span>
       <span
         v-for="category in categories"
         :key="category.name"
         class="min-h-11 inline-flex flex-none items-center justify-center gap-2 whitespace-nowrap rounded-lg px-3.5 py-2 font-medium"
-        >{{ category.name
-        }}<span class="shrink-0 text-sm font-mono">{{ category.count }}</span></span
-      >
+      >{{ category.name
+      }}<span class="shrink-0 text-sm font-mono">{{ category.count }}</span></span>
     </div>
     <div class="flex gap-2">
       <NuxtLink
@@ -109,8 +111,9 @@ onClickOutside(container, () => close());
             : 'text-muted hover:bg-surface hover:text-heading'
         "
         :aria-current="!selected ? 'page' : undefined"
-        >全部文章</NuxtLink
       >
+        全部文章
+      </NuxtLink>
       <NuxtLink
         v-for="category in categories.slice(0, visibleCount)"
         :key="category.name"
@@ -122,9 +125,9 @@ onClickOutside(container, () => close());
             : 'text-muted hover:bg-surface hover:text-heading'
         "
         :aria-current="selected === category.name ? 'page' : undefined"
-        >{{ category.name
-        }}<span class="shrink-0 text-sm font-mono">{{ category.count }}</span></NuxtLink
       >
+        {{ category.name }}<span class="shrink-0 text-sm font-mono">{{ category.count }}</span>
+      </NuxtLink>
       <button
         v-if="overflow.length"
         ref="moreButton"
@@ -174,9 +177,9 @@ onClickOutside(container, () => close());
           "
           :aria-current="selected === category.name ? 'page' : undefined"
           @click="close()"
-          ><span class="min-w-0 break-words">{{ category.name }}</span
-          ><span class="shrink-0 text-sm font-mono">{{ category.count }}</span></NuxtLink
         >
+          <span class="min-w-0 break-words">{{ category.name }}</span><span class="shrink-0 text-sm font-mono">{{ category.count }}</span>
+        </NuxtLink>
       </div>
     </Transition>
   </nav>

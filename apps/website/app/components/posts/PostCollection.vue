@@ -1,25 +1,32 @@
 <script setup lang="ts">
-import { filterPosts, queryTerm } from "~~/shared/content/catalog";
-const props = withDefaults(defineProps<{ category?: string }>(), { category: "" });
-const route = useRoute();
-const { data, tags, error, status, refresh } = usePostCatalog();
-const tag = computed(() => queryTerm(route.query.tag));
+import { filterPosts, queryTerm } from '~~/shared/content/catalog'
+
+const props = withDefaults(defineProps<{ category?: string }>(), { category: '' })
+const route = useRoute()
+const { data, tags, error, status, refresh } = usePostCatalog()
+const tag = computed(() => queryTerm(route.query.tag))
 const posts = computed(() =>
   filterPosts(data.value ?? [], { tag: tag.value, category: props.category }),
-);
-const preference = useCookie<string>("mukuchi:post-view", {
-  default: () => "list",
-  sameSite: "lax",
+)
+const preference = useCookie<string>('mukuchi:post-view', {
+  default: () => 'list',
+  sameSite: 'lax',
   maxAge: 31536000,
-});
-const view = computed(() => (preference.value === "grid" ? "grid" : "list"));
-const filtered = computed(() => !!tag.value || !!props.category);
+})
+const view = computed(() => (preference.value === 'grid' ? 'grid' : 'list'))
+const filtered = computed(() => !!tag.value || !!props.category)
 </script>
+
 <template>
   <SiteColumns>
-    <template #sidebar
-      ><SiteSidebar :tags="tags" :selected-tag="tag" :filter-base="route.path" :category="category"
-    /></template>
+    <template #sidebar>
+      <SiteSidebar
+        :tags="tags"
+        :selected-tag="tag"
+        :filter-base="route.path"
+        :category="category"
+      />
+    </template>
     <div>
       <div v-if="tags.length" class="mb-6 lg:hidden">
         <TagFilter :tags="tags" :selected="tag" :base="route.path" :category="category" />
@@ -71,7 +78,9 @@ const filtered = computed(() => !!tag.value || !!props.category);
       </div> -->
       <div v-if="error" class="py-12" role="alert">
         <p>文章加载失败，请重试。</p>
-        <BaseButton class="mt-4" variant="border" @click="refresh()">重新加载</BaseButton>
+        <BaseButton class="mt-4" variant="border" @click="refresh()">
+          重新加载
+        </BaseButton>
       </div>
       <p v-else-if="status === 'pending' && !data" class="py-12 text-muted" role="status">
         正在加载文章
@@ -84,7 +93,9 @@ const filtered = computed(() => !!tag.value || !!props.category);
       <div v-else-if="view === 'grid'" class="grid gap-5 pt-6 md:grid-cols-2">
         <PostCard v-for="post in posts" :key="post.path" :post="post" />
       </div>
-      <div v-else><PostListItem v-for="post in posts" :key="post.path" :post="post" /></div>
+      <div v-else>
+        <PostListItem v-for="post in posts" :key="post.path" :post="post" />
+      </div>
     </div>
   </SiteColumns>
 </template>

@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import type { IconName } from "~/shared/icons";
-withDefaults(defineProps<{ title?: string; description?: string; icon?: IconName }>(), {
-  title: "暂无文章",
-  icon: "pen",
-});
+import type { IconName } from '~/shared/icons'
+
+withDefaults(defineProps<{ title?: string, description?: string, icon?: IconName }>(), {
+  title: '暂无文章',
+  icon: 'pen',
+})
 </script>
 
 <template>
@@ -24,7 +25,11 @@ withDefaults(defineProps<{ title?: string; description?: string; icon?: IconName
       </div>
       <div class="absolute size-[110px] border border-line rounded-full border-dashed" />
     </div>
-    <h2 class="text-title text-heading tracking-[0.3px]">{{ title }}</h2>
-    <p v-if="description" class="mt-3 text-muted leading-[1.9]">{{ description }}</p>
+    <h2 class="text-title text-heading tracking-[0.3px]">
+      {{ title }}
+    </h2>
+    <p v-if="description" class="mt-3 text-muted leading-[1.9]">
+      {{ description }}
+    </p>
   </section>
 </template>

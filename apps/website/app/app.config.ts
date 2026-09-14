@@ -1,17 +1,17 @@
 export default defineAppConfig({
   site: {
-    name: "Setobox",
-    description: "个人博客，提供文章阅读、专栏分类和工具入口。",
+    name: 'Setobox',
+    description: '个人博客，提供文章阅读、专栏分类和工具入口。',
     owner: {
-      name: "姬顶盒",
-      description: "分享技术、工具与有趣的见闻。",
+      name: '姬顶盒',
+      description: '分享技术、工具与有趣的见闻。',
     },
     navigation: [
-      { label: "文章", to: "/posts", icon: "notebook", section: "posts" },
-      { label: "专栏", to: "/categories", icon: "layers", section: "categories" },
-      { label: "工具", to: "/tools", icon: "shapes", section: "tools" },
-      { label: "关于", to: "/about", icon: "user", section: "about" },
+      { label: '文章', to: '/posts', icon: 'notebook', section: 'posts' },
+      { label: '专栏', to: '/categories', icon: 'layers', section: 'categories' },
+      { label: '工具', to: '/tools', icon: 'shapes', section: 'tools' },
+      { label: '关于', to: '/about', icon: 'user', section: 'about' },
     ],
     features: { search: false, commands: false },
   },
-});
+})

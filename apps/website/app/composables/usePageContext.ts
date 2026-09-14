@@ -1,26 +1,26 @@
-import type { PageContext, SiteSection } from "~/shared/navigation";
+import type { PageContext, SiteSection } from '~/shared/navigation'
 
-const sections: readonly SiteSection[] = ["posts", "categories", "tools", "about"];
+const sections: readonly SiteSection[] = ['posts', 'categories', 'tools', 'about']
 
 export function usePageContext() {
-  const route = useRoute();
-  const articleTitle = useState<{ path: string; title: string } | null>(
-    "page:article-title",
+  const route = useRoute()
+  const articleTitle = useState<{ path: string, title: string } | null>(
+    'page:article-title',
     () => null,
-  );
+  )
   return computed<PageContext>(() => {
-    const section = sections.find((item) => item === route.meta.section) ?? "posts";
+    const section = sections.find(item => item === route.meta.section) ?? 'posts'
     return {
-      path: route.path.replace(/\/$/, "") || "/",
+      path: route.path.replace(/\/$/, '') || '/',
       section,
       title:
         articleTitle.value?.path === route.path
           ? articleTitle.value.title
-          : typeof route.meta.pageTitle === "string"
+          : typeof route.meta.pageTitle === 'string'
             ? route.meta.pageTitle
-            : "mukuchi",
-      kind: route.meta.pageKind === "detail" ? "detail" : "index",
-      parentPath: typeof route.meta.parentPath === "string" ? route.meta.parentPath : `/${section}`,
-    };
-  });
+            : 'mukuchi',
+      kind: route.meta.pageKind === 'detail' ? 'detail' : 'index',
+      parentPath: typeof route.meta.parentPath === 'string' ? route.meta.parentPath : `/${section}`,
+    }
+  })
 }

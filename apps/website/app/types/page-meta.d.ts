@@ -1,12 +1,12 @@
-import type { PageKind, SiteSection } from "../shared/navigation.ts";
+import type { PageKind, SiteSection } from '../shared/navigation.ts'
 
-declare module "#app" {
+declare module '#app' {
   interface PageMeta {
-    section?: SiteSection;
-    pageKind?: PageKind;
-    pageTitle?: string;
-    parentPath?: string;
+    section?: SiteSection
+    pageKind?: PageKind
+    pageTitle?: string
+    parentPath?: string
   }
 }
 
-export {};
+export {}

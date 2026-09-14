@@ -1,14 +1,15 @@
 <script setup lang="ts">
 withDefaults(
   defineProps<{
-    tags: { name: string; count: number }[];
-    selected?: string;
-    base?: string;
-    category?: string;
+    tags: { name: string, count: number }[]
+    selected?: string
+    base?: string
+    category?: string
   }>(),
-  { selected: "", base: "/posts", category: "" },
-);
+  { selected: '', base: '/posts', category: '' },
+)
 </script>
+
 <template>
   <nav aria-label="标签筛选" class="flex flex-wrap gap-2">
     <NuxtLink
@@ -20,8 +21,9 @@ withDefaults(
           : 'border-line text-muted hover:text-heading'
       "
       :aria-current="!selected ? 'true' : undefined"
-      >全部标签</NuxtLink
     >
+      全部标签
+    </NuxtLink>
     <NuxtLink
       v-for="tag in tags"
       :key="tag.name"
@@ -34,8 +36,7 @@ withDefaults(
       "
       :aria-current="selected === tag.name ? 'true' : undefined"
     >
-      <span class="min-w-0 break-words">{{ tag.name }}</span
-      ><span class="shrink-0 text-muted font-mono">{{ tag.count }}</span>
+      <span class="min-w-0 break-words">{{ tag.name }}</span><span class="shrink-0 text-muted font-mono">{{ tag.count }}</span>
     </NuxtLink>
   </nav>
 </template>

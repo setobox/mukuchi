@@ -1,12 +1,18 @@
 {
   "name": "mukuchi",
-  "private": true,
   "type": "module",
+  "private": true,
+  "engines": {
+    "node": "^22.19.0 || ^24.11.0 || >=26.0.0"
+  },
   "scripts": {
-    "ready": "vp check && vp run -r test && vp run website#typecheck && vp run -r build",
+    "ready": "vp run lint:fix && vp run -r test && vp run typecheck && vp run -r build",
     "dev": "vp run website#dev",
-    "prepare": "vp config",
-    "lint": "eslint ."
+    "prepare": "vp config --no-agent",
+    "check": "vp run lint && vp run typecheck",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "typecheck": "vp run website#typecheck && vp run utils#typecheck"
   },
   "devDependencies": {
     "@antfu/eslint-config": "catalog:",
@@ -22,8 +28,5 @@
       "version": "12.3.4",
       "onFail": "download"
     }
-  },
-  "engines": {
-    "node": "^22.19.0 || ^24.11.0 || >=26.0.0"
   }
 }

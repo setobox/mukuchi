@@ -1,25 +1,25 @@
 <script setup lang="ts">
-definePageMeta({ section: "tools", pageKind: "index", pageTitle: "工具" });
-useSeoMeta({ title: "工具", description: "实用工具。" });
+definePageMeta({ section: 'tools', pageKind: 'index', pageTitle: '工具' })
+useSeoMeta({ title: '工具', description: '实用工具。' })
 
-const { isScrolled, scrollToTop } = useScrollToTop();
+const { isScrolled, scrollToTop } = useScrollToTop()
 useActionButton({
-  id: "home",
-  icon: "i-lucide-house",
-  label: "返回文章列表",
+  id: 'home',
+  icon: 'i-lucide-house',
+  label: '返回文章列表',
   order: 10,
   async onClick() {
-    await navigateTo("/posts");
+    await navigateTo('/posts')
   },
-});
+})
 useActionButton({
-  id: "top",
-  icon: "i-lucide-chevron-up",
-  label: "回到页面顶部",
+  id: 'top',
+  icon: 'i-lucide-chevron-up',
+  label: '回到页面顶部',
   order: 40,
   visible: isScrolled,
   onClick: scrollToTop,
-});
+})
 </script>
 
 <template>
@@ -37,10 +37,7 @@ useActionButton({
           <div
             class="h-[152px] w-56 flex flex-col rotate-[-6deg] justify-between border border-[color-mix(in_srgb,var(--color-accent)_28%,transparent)] rounded-[5px] bg-canvas px-6 py-[18px]"
           >
-            <span class="text-accent-soft leading-[normal] tracking-[2px] font-mono">MUKUCHI</span
-            ><strong class="text-[23px] text-heading font-medium leading-normal"
-              >文章封面<br /></strong
-            ><span class="h-0.5 w-[35px] bg-accent" />
+            <span class="text-accent-soft leading-[normal] tracking-[2px] font-mono">MUKUCHI</span><strong class="text-[23px] text-heading font-medium leading-normal">文章封面<br></strong><span class="h-0.5 w-[35px] bg-accent" />
           </div>
           <AppIcon
             name="image"
@@ -49,7 +46,9 @@ useActionButton({
         </div>
         <div class="px-[26px] py-[25px]">
           <div class="flex items-center justify-between gap-3">
-            <h2 class="text-[18px] text-heading">封面制作</h2>
+            <h2 class="text-[18px] text-heading">
+              封面制作
+            </h2>
             <BaseTag>尚未开放</BaseTag>
           </div>
         </div>

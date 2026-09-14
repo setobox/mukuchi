@@ -1,8 +1,8 @@
 <script setup lang="ts">
-const { actions } = useActionButtons();
+const { actions } = useActionButtons()
 
 async function runAction(action: (typeof actions.value)[number]): Promise<void> {
-  await action.onClick();
+  await action.onClick()
 }
 </script>
 

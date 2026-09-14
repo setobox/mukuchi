@@ -2,7 +2,7 @@ catalogMode: prefer
 
 minimumReleaseAgeExcludePrune: true
 minimumReleaseAgeExclude:
-  - "@iconify-json/lucide@1.2.132"
+  - '@iconify-json/lucide@1.2.132'
   - zod@4.6.4
 
 trustPolicy: no-downgrade
@@ -15,7 +15,7 @@ peerDependencyRules:
   allowAny:
     - vite
   allowedVersions:
-    vite: "*"
+    vite: '*'
 
 shellEmulator: true
 
@@ -25,22 +25,22 @@ packages:
   - tools/*
 
 overrides:
-  vite: "npm:@voidzero-dev/vite-plus-core@0.2.8"
+  vite: 'npm:@voidzero-dev/vite-plus-core@0.2.8'
 
 allowBuilds:
   esbuild: true
   unrs-resolver: true
 
 catalog:
-  "@antfu/eslint-config": ^9.5.1
-  "@iconify-json/lucide": 1.2.132
-  "@nuxt/content": 3.16.0
-  "@nuxt/eslint": ^1.17.0
-  "@types/node": ^26.1.1
-  "@unocss/eslint-plugin": ^66.10.2
-  "@unocss/nuxt": 66.10.2
-  "@vueuse/core": ^14.4.0
-  "@vueuse/nuxt": ^14.4.0
+  '@antfu/eslint-config': ^9.5.1
+  '@iconify-json/lucide': 1.2.132
+  '@nuxt/content': 3.16.0
+  '@nuxt/eslint': ^1.17.0
+  '@types/node': ^26.1.1
+  '@unocss/eslint-plugin': ^66.10.2
+  '@unocss/nuxt': 66.10.2
+  '@vueuse/core': ^14.4.0
+  '@vueuse/nuxt': ^14.4.0
   bumpp: ^11.1.0
   eslint: ^10.10.0
   eslint-plugin-format: ^2.0.1

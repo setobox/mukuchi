@@ -1,26 +1,26 @@
-import { fileURLToPath } from "node:url";
-import { defineCollection, defineContentConfig } from "@nuxt/content";
-import { aboutFields, postFields } from "./shared/content/schema.ts";
+import { fileURLToPath } from 'node:url'
+import { defineCollection, defineContentConfig } from '@nuxt/content'
+import { aboutFields, postFields } from './shared/content/schema.ts'
 
 export default defineContentConfig({
   collections: {
     posts: defineCollection({
-      type: "page",
+      type: 'page',
       source: {
-        cwd: fileURLToPath(new URL("../../content/posts/", import.meta.url)),
-        include: "**/*.md",
-        prefix: "/posts",
+        cwd: fileURLToPath(new URL('../../content/posts/', import.meta.url)),
+        include: '**/*.md',
+        prefix: '/posts',
       },
       schema: postFields,
     }),
     about: defineCollection({
-      type: "page",
+      type: 'page',
       source: {
-        cwd: fileURLToPath(new URL("../../content/", import.meta.url)),
-        include: "about.md",
-        prefix: "/",
+        cwd: fileURLToPath(new URL('../../content/', import.meta.url)),
+        include: 'about.md',
+        prefix: '/',
       },
       schema: aboutFields,
     }),
   },
-});
+})

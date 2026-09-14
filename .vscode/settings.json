@@ -13,11 +13,24 @@
   "[typescriptreact]": {
     "editor.defaultFormatter": "dbaeumer.vscode-eslint"
   },
-  "oxc.fmt.configPath": "./vite.config.ts",
+  "oxc.enable": false,
+  "oxc.enable.oxlint": false,
+  "oxc.enable.oxfmt": false,
+  "eslint.format.enable": true,
+  "eslint.validate": [
+    "javascript",
+    "javascriptreact",
+    "typescript",
+    "typescriptreact",
+    "vue",
+    "json",
+    "jsonc",
+    "yaml"
+  ],
   "editor.formatOnSave": true,
   "editor.formatOnSaveMode": "file",
   "editor.codeActionsOnSave": {
-    "source.fixAll.oxc": "explicit"
+    "source.fixAll.eslint": "explicit"
   },
   "[vue]": {
     "editor.defaultFormatter": "dbaeumer.vscode-eslint"

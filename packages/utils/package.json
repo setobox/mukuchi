@@ -1,25 +1,25 @@
 {
   "name": "utils",
+  "type": "module",
   "version": "0.0.0",
   "description": "A starter for creating a TypeScript package.",
-  "homepage": "https://github.com/author/library#readme",
-  "bugs": {
-    "url": "https://github.com/author/library/issues"
-  },
-  "license": "MIT",
   "author": "Author Name <author.name@mail.com>",
+  "license": "MIT",
+  "homepage": "https://github.com/author/library#readme",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/author/library.git"
   },
-  "files": [
-    "dist"
-  ],
-  "type": "module",
+  "bugs": {
+    "url": "https://github.com/author/library/issues"
+  },
   "exports": {
     ".": "./dist/index.mjs",
     "./package.json": "./package.json"
   },
+  "files": [
+    "dist"
+  ],
   "publishConfig": {
     "access": "public"
   },
@@ -27,7 +27,8 @@
     "build": "vp pack",
     "dev": "vp pack --watch",
     "test": "vp test",
-    "check": "vp check",
+    "check": "eslint . && vp run typecheck",
+    "typecheck": "tsc --noEmit",
     "prepublishOnly": "vp run build"
   },
   "devDependencies": {

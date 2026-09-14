@@ -1,1 +1,2 @@
+# Run ESLint on staged files using the root vite.config.ts configuration.
 vp staged

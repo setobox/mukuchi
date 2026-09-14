@@ -1,26 +1,28 @@
 <script setup lang="ts">
-const { site } = useAppConfig();
-const route = useRoute();
-const page = usePageContext();
-const { y } = useWindowScroll();
-const menuOpen = ref(false);
-const movingDown = ref(false);
-const desktop = useMediaQuery("(min-width: 1200px)");
-const showTitle = computed(() => page.value.kind === "detail" && y.value > 80 && movingDown.value);
+const { site } = useAppConfig()
+const route = useRoute()
+const page = usePageContext()
+const { y } = useWindowScroll()
+const menuOpen = ref(false)
+const movingDown = ref(false)
+const desktop = useMediaQuery('(min-width: 1200px)')
+const showTitle = computed(() => page.value.kind === 'detail' && y.value > 80 && movingDown.value)
 
 watch(y, (current, previous) => {
-  if (Math.abs(current - previous) >= 2) movingDown.value = current > previous;
-});
+  if (Math.abs(current - previous) >= 2)
+    movingDown.value = current > previous
+})
 watch(
   () => route.fullPath,
   () => {
-    menuOpen.value = false;
-    movingDown.value = false;
+    menuOpen.value = false
+    movingDown.value = false
   },
-);
+)
 watch(desktop, (value) => {
-  if (value) menuOpen.value = false;
-});
+  if (value)
+    menuOpen.value = false
+})
 </script>
 
 <template>
@@ -37,17 +39,17 @@ watch(desktop, (value) => {
         to="/posts"
         class="inline-flex flex-none items-center gap-3 rounded text-[19px] text-heading tracking-[-0.8px] font-mono"
         :aria-label="`${site.owner.name}，返回文章列表`"
-        ><span>{{ site.owner.name }}</span></NuxtLink
       >
+        <span>{{ site.owner.name }}</span>
+      </NuxtLink>
       <div class="relative hidden h-[26px] min-w-0 flex-1 lg:block" aria-live="polite">
-        <Transition name="header-title"
-          ><span
+        <Transition name="header-title">
+          <span
             v-if="showTitle"
             :title="page.title"
             class="absolute block max-w-full truncate text-muted"
-            >{{ page.title }}</span
-          ></Transition
-        >
+          >{{ page.title }}</span>
+        </Transition>
       </div>
       <nav class="hidden items-center gap-1.5 lg:flex" aria-label="主导航">
         <NuxtLink
@@ -59,8 +61,9 @@ watch(desktop, (value) => {
             page.section === item.section ? 'bg-surface text-heading font-semibold' : 'text-muted'
           "
           class="relative min-h-11 rounded-lg px-[15px] py-2.5 transition-colors duration-180 ease-[ease] hover:text-heading"
-          >{{ item.label }}</NuxtLink
         >
+          {{ item.label }}
+        </NuxtLink>
       </nav>
       <div class="ml-auto flex items-center gap-0.5 lg:ml-0 lg:border-l lg:border-line lg:pl-4">
         <button
@@ -107,14 +110,15 @@ watch(desktop, (value) => {
               : 'hover:bg-line'
           "
           @click="menuOpen = false"
-          ><span>{{ item.label }}</span
-          ><AppIcon name="arrow"
-        /></NuxtLink>
+        >
+          <span>{{ item.label }}</span><AppIcon name="arrow" />
+        </NuxtLink>
       </nav>
-      <template #footer
-        ><span class="text-base text-muted">{{ site.name }}</span
-        ><BaseButton variant="ghost" @click="menuOpen = false">收起<AppIcon name="up" /></BaseButton
-      ></template>
+      <template #footer>
+        <span class="text-base text-muted">{{ site.name }}</span><BaseButton variant="ghost" @click="menuOpen = false">
+          收起<AppIcon name="up" />
+        </BaseButton>
+      </template>
     </AcrylicDialog>
   </header>
 </template>

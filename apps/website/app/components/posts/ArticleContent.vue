@@ -1,7 +1,9 @@
 <script setup lang="ts">
-import type { PageCollectionItemBase } from "@nuxt/content";
-defineProps<{ value: PageCollectionItemBase }>();
+import type { PageCollectionItemBase } from '@nuxt/content'
+
+defineProps<{ value: PageCollectionItemBase }>()
 </script>
+
 <template>
   <ContentRenderer
     :value="value"

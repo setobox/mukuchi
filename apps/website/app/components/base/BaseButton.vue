@@ -1,21 +1,21 @@
 <script setup lang="ts">
-type ButtonVariant = "default" | "border" | "ghost" | "link";
+type ButtonVariant = 'default' | 'border' | 'ghost' | 'link'
 
 withDefaults(
   defineProps<{
-    variant?: ButtonVariant;
-    type?: "button" | "submit" | "reset";
-    disabled?: boolean;
+    variant?: ButtonVariant
+    type?: 'button' | 'submit' | 'reset'
+    disabled?: boolean
   }>(),
-  { variant: "default", type: "button", disabled: false },
-);
+  { variant: 'default', type: 'button', disabled: false },
+)
 
 const variantClasses: Record<ButtonVariant, string> = {
-  default: "border-transparent bg-accent px-[17px] text-canvas font-semibold hover:bg-accent-soft",
-  border: "border-line-strong px-[17px] text-heading hover:bg-surface",
-  ghost: "border-transparent px-[17px] hover:bg-surface",
-  link: "border-transparent px-1 text-accent-soft underline underline-offset-5",
-};
+  default: 'border-transparent bg-accent px-[17px] text-canvas font-semibold hover:bg-accent-soft',
+  border: 'border-line-strong px-[17px] text-heading hover:bg-surface',
+  ghost: 'border-transparent px-[17px] hover:bg-surface',
+  link: 'border-transparent px-1 text-accent-soft underline underline-offset-5',
+}
 </script>
 
 <template>

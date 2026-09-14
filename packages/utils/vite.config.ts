@@ -1,4 +1,4 @@
-import { defineConfig } from "vite-plus";
+import { defineConfig } from 'vite-plus'
 
 export default defineConfig({
   pack: {
@@ -7,11 +7,8 @@ export default defineConfig({
     },
     exports: true,
   },
-  lint: {
-    options: {
-      typeAware: true,
-      typeCheck: true,
-    },
+  check: {
+    fmt: false,
+    lint: false,
   },
-  fmt: {},
-});
+})

@@ -1,10 +1,10 @@
 <script setup lang="ts">
-useProvideActionButtons();
+useProvideActionButtons()
 
-const { site } = useAppConfig();
+const { site } = useAppConfig()
 useHead({
-  titleTemplate: (title) => (title && title !== site.name ? `${title} - ${site.name}` : site.name),
-});
+  titleTemplate: title => (title && title !== site.name ? `${title} - ${site.name}` : site.name),
+})
 </script>
 
 <template>

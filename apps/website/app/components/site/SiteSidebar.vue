@@ -1,14 +1,14 @@
 <script setup lang="ts">
 withDefaults(
   defineProps<{
-    tags?: { name: string; count: number }[];
-    selectedTag?: string;
-    filterBase?: string;
-    category?: string;
+    tags?: { name: string, count: number }[]
+    selectedTag?: string
+    filterBase?: string
+    category?: string
   }>(),
-  { selectedTag: "", filterBase: "/posts", category: "" },
-);
-const { site } = useAppConfig();
+  { selectedTag: '', filterBase: '/posts', category: '' },
+)
+const { site } = useAppConfig()
 </script>
 
 <template>
@@ -34,13 +34,16 @@ const { site } = useAppConfig();
         <NuxtLink
           to="/about"
           class="mt-1.5 min-h-6 inline-flex items-center gap-2 text-accent-soft lg:mt-[18px]"
-          >关于我<AppIcon name="arrow"
-        /></NuxtLink>
+        >
+          关于我<AppIcon name="arrow" />
+        </NuxtLink>
       </div>
     </section>
     <slot name="after-profile" />
     <section v-if="tags" class="hidden px-2 lg:block" aria-labelledby="sidebar-tags">
-      <h2 id="sidebar-tags" class="section-label">标签</h2>
+      <h2 id="sidebar-tags" class="section-label">
+        标签
+      </h2>
       <TagFilter
         v-if="tags.length"
         :tags="tags"
@@ -49,17 +52,23 @@ const { site } = useAppConfig();
         :category="category"
         class="mt-3.5"
       />
-      <p v-else class="mt-3.5 text-muted">暂无标签</p>
+      <p v-else class="mt-3.5 text-muted">
+        暂无标签
+      </p>
     </section>
     <section class="hidden px-2 lg:block" aria-labelledby="sidebar-stats">
-      <h2 id="sidebar-stats" class="section-label">网站统计</h2>
+      <h2 id="sidebar-stats" class="section-label">
+        网站统计
+      </h2>
       <dl class="grid grid-cols-3 mb-0 mt-5">
         <div
           v-for="(label, index) in ['文章', '标签', '专栏']"
           :key="label"
           :class="{ 'border-l border-line pl-4': index > 0 }"
         >
-          <dt class="text-muted">{{ label }}</dt>
+          <dt class="text-muted">
+            {{ label }}
+          </dt>
           <dd
             class="m-0 mt-1.5 text-[18px] text-ink leading-[normal] font-mono"
             aria-label="暂无数据"

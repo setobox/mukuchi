@@ -1,101 +1,109 @@
 <script setup lang="ts">
 withDefaults(
-  defineProps<{ title: string; description?: string; placement?: "default" | "toc" }>(),
-  { placement: "default" },
-);
-const emit = defineEmits<{ closed: [] }>();
-const open = defineModel<boolean>({ default: false });
-const dialog = useTemplateRef<HTMLDialogElement>("dialog");
-const titleId = useId();
-const descriptionId = useId();
-const reducedMotion = usePreferredReducedMotion();
-const body = shallowRef<HTMLElement | null>(null);
-const locked = useScrollLock(body);
-let returnFocus: HTMLElement | null = null;
-let exitAnimation: Animation | undefined;
+  defineProps<{ title: string, description?: string, placement?: 'default' | 'toc' }>(),
+  { placement: 'default' },
+)
+const emit = defineEmits<{ closed: [] }>()
+const open = defineModel<boolean>({ default: false })
+const dialog = useTemplateRef<HTMLDialogElement>('dialog')
+const titleId = useId()
+const descriptionId = useId()
+const reducedMotion = usePreferredReducedMotion()
+const body = shallowRef<HTMLElement | null>(null)
+const locked = useScrollLock(body)
+let returnFocus: HTMLElement | null = null
+let exitAnimation: Animation | undefined
 
 function keepFocusInside(event: KeyboardEvent) {
-  const element = dialog.value;
-  if (event.key !== "Tab" || !element) return;
+  const element = dialog.value
+  if (event.key !== 'Tab' || !element)
+    return
   const controls = Array.from(
     element.querySelectorAll<HTMLElement>(
       'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"]), [contenteditable="true"]',
     ),
-  ).filter((control) => control.getClientRects().length > 0 && !control.closest("[inert]"));
-  const first = controls[0];
-  const last = controls.at(-1);
+  ).filter(control => control.getClientRects().length > 0 && !control.closest('[inert]'))
+  const first = controls[0]
+  const last = controls.at(-1)
   if (!first || !last) {
-    event.preventDefault();
-    element.focus();
-  } else if (
-    event.shiftKey &&
-    (document.activeElement === first || document.activeElement === element)
+    event.preventDefault()
+    element.focus()
+  }
+  else if (
+    event.shiftKey
+    && (document.activeElement === first || document.activeElement === element)
   ) {
-    event.preventDefault();
-    last.focus();
-  } else if (!event.shiftKey && document.activeElement === last) {
-    event.preventDefault();
-    first.focus();
+    event.preventDefault()
+    last.focus()
+  }
+  else if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault()
+    first.focus()
   }
 }
 
 function closeOnBackdrop(event: MouseEvent) {
-  if (event.target !== dialog.value) return;
-  const rect = dialog.value?.getBoundingClientRect();
+  if (event.target !== dialog.value)
+    return
+  const rect = dialog.value?.getBoundingClientRect()
   if (
-    rect &&
-    (event.clientX < rect.left ||
-      event.clientX > rect.right ||
-      event.clientY < rect.top ||
-      event.clientY > rect.bottom)
-  )
-    open.value = false;
+    rect
+    && (event.clientX < rect.left
+      || event.clientX > rect.right
+      || event.clientY < rect.top
+      || event.clientY > rect.bottom)
+  ) {
+    open.value = false
+  }
 }
 
 onMounted(() => {
-  body.value = document.body;
+  body.value = document.body
   watch(
     open,
     async (value) => {
-      const element = dialog.value;
-      if (!element) return;
-      exitAnimation?.cancel();
+      const element = dialog.value
+      if (!element)
+        return
+      exitAnimation?.cancel()
       if (value) {
         if (!element.open) {
-          returnFocus =
-            document.activeElement instanceof HTMLElement ? document.activeElement : null;
-          element.showModal();
-          locked.value = true;
+          returnFocus
+            = document.activeElement instanceof HTMLElement ? document.activeElement : null
+          element.showModal()
+          locked.value = true
         }
-        return;
+        return
       }
-      if (!element.open) return;
-      if (reducedMotion.value !== "reduce") {
+      if (!element.open)
+        return
+      if (reducedMotion.value !== 'reduce') {
         exitAnimation = element.animate(
           [
-            { opacity: 1, transform: "translateY(0)" },
-            { opacity: 0, transform: "translateY(-8px)" },
+            { opacity: 1, transform: 'translateY(0)' },
+            { opacity: 0, transform: 'translateY(-8px)' },
           ],
-          { duration: 140, easing: "ease-in" },
-        );
-        await exitAnimation.finished.catch(() => undefined);
+          { duration: 140, easing: 'ease-in' },
+        )
+        await exitAnimation.finished.catch(() => undefined)
       }
       if (!open.value) {
-        element.close();
-        locked.value = false;
-        if (returnFocus?.isConnected) returnFocus.focus({ preventScroll: true });
-        emit("closed");
+        element.close()
+        locked.value = false
+        if (returnFocus?.isConnected)
+          returnFocus.focus({ preventScroll: true })
+        emit('closed')
       }
     },
     { immediate: true },
-  );
-});
+  )
+})
 
 onBeforeUnmount(() => {
-  exitAnimation?.cancel();
-  dialog.value?.close();
-  locked.value = false;
-});
+  exitAnimation?.cancel()
+  dialog.value?.close()
+  locked.value = false
+})
 </script>
 
 <template>
@@ -118,7 +126,9 @@ onBeforeUnmount(() => {
     >
       <header class="flex items-start justify-between gap-3">
         <div>
-          <h2 :id="titleId" class="mt-1 text-[22px] text-heading">{{ title }}</h2>
+          <h2 :id="titleId" class="mt-1 text-[22px] text-heading">
+            {{ title }}
+          </h2>
           <p v-if="description" :id="descriptionId" class="mt-2 text-base text-muted">
             {{ description }}
           </p>
@@ -127,7 +137,9 @@ onBeforeUnmount(() => {
           <AppIcon name="close" />
         </button>
       </header>
-      <div class="py-6"><slot /></div>
+      <div class="py-6">
+        <slot />
+      </div>
       <footer
         v-if="$slots.footer"
         class="flex items-center justify-between gap-3 border-t border-line pt-3.5"
