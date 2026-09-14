@@ -36,8 +36,8 @@
   --z-header: 30;
   --z-actions: 40;
   --text-xxxxl: 2.5rem;
-  --text-xxxl: 2.5rem;
-  --text-xxl: 2rem;
+  --text-xxxl: 2rem;
+  --text-xxl: 1.5rem;
   --text-xl: 1.5rem;
   --text-l: 1.25rem;
   --text-m: 1rem;
@@ -77,6 +77,7 @@
   border-style: solid;
 }
 html {
+  font-size: 16px;
   scrollbar-gutter: stable;
   scrollbar-width: thin;
   scrollbar-color: var(--color-border-strong) transparent;
@@ -154,10 +155,7 @@ a {
   :root {
     --header-height: 80px;
     --text-xxxxl: 4rem;
-    --text-xxxl: 3.25rem;
-    --text-xxl: 2.5rem;
     --text-xl: 1.75rem;
-    --text-m: 1.125rem;
     --text-xxs: .75rem;
     --text-xxxs: .625rem;
   }
@@ -166,6 +164,9 @@ html.has-article-toc {
   --toc-offset: 44px;
 }
 @media (min-width: 1200px) {
+  :root {
+    --text-xxxl: 2.5rem;
+  }
   html.has-article-toc {
     --toc-offset: 0px;
   }
