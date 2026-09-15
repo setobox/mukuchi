@@ -5,6 +5,9 @@
   "compatibility_flags": ["nodejs_compat"],
   "workers_dev": true,
   "preview_urls": false,
+  "routes": [
+    { "pattern": "blog.setobox.me", "custom_domain": true, "zone_name": "setobox.me" }
+  ],
   "assets": { "html_handling": "drop-trailing-slash" },
   "d1_databases": [
     {
