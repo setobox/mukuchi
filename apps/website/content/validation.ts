@@ -1,15 +1,13 @@
 import { readdir, readFile } from 'node:fs/promises'
-import { join, relative } from 'node:path'
+import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { parseDocument } from 'yaml'
-import { postPath } from '../shared/content/catalog.ts'
 import { aboutFields, postSchema } from '../shared/content/schema.ts'
 
 export const contentRoot = fileURLToPath(new URL('../../../content/', import.meta.url))
 export const postsRoot = join(contentRoot, 'posts')
 
 export async function validateContentDirectory() {
-  const paths = new Map<string, string>()
   async function walk(directory: string): Promise<void> {
     for (const entry of await readdir(directory, { withFileTypes: true })) {
       const filename = join(directory, entry.name)
@@ -18,10 +16,6 @@ export async function validateContentDirectory() {
       }
       else if (entry.isFile() && entry.name.endsWith('.md')) {
         validateFrontmatter(await readFile(filename, 'utf8'), filename, 'posts')
-        const path = postPath(relative(postsRoot, filename)).normalize('NFC').toLowerCase()
-        if (paths.has(path))
-          throw new Error(`文章路径冲突：${paths.get(path)} 与 ${filename}`)
-        paths.set(path, filename)
       }
     }
   }

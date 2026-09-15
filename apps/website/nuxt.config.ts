@@ -1,7 +1,5 @@
-import { relative } from 'node:path'
 import githubSnapshots from './content/github/module'
-import { postsRoot, validateContentDirectory, validateFrontmatter } from './content/validation.ts'
-import { postPath } from './shared/content/catalog.ts'
+import { validateContentDirectory, validateFrontmatter } from './content/validation.ts'
 import { themeCookieBootstrap, themeCookieKey, themeCookieOptions } from './shared/theme/preference.ts'
 
 export default defineNuxtConfig({
@@ -42,8 +40,6 @@ export default defineNuxtConfig({
       if (collection.name !== 'posts' && collection.name !== 'about')
         return
       Object.assign(content, validateFrontmatter(file.body, file.path, collection.name))
-      content.path
-        = collection.name === 'posts' ? postPath(relative(postsRoot, file.path)) : '/about'
     },
   },
   components: [{ path: '~/components', pathPrefix: false }],

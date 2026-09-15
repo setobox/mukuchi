@@ -12,6 +12,8 @@ export default defineContentConfig({
         prefix: '/posts',
       },
       schema: postFields,
+      // Check uniqueness after Content applies its default path normalization.
+      indexes: [{ columns: ['path'], unique: true }],
     }),
     about: defineCollection({
       type: 'page',

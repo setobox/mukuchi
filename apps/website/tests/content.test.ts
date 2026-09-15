@@ -6,7 +6,6 @@ import {
   aggregateTerms,
   filterPosts,
   formatPostDate,
-  postPath,
   sortPosts,
 } from '../shared/content/catalog.ts'
 import { postSchema } from '../shared/content/schema.ts'
@@ -83,11 +82,7 @@ test('多专栏聚合不重复计数，标签与专栏组合取交集', () => {
   expect(filterPosts(posts, { category: '教程', tag: 'Vue' })).toEqual([posts[0]])
   expect(filterPosts(posts, { tag: '不存在' })).toEqual([])
 })
-test('嵌套路径保留文件名，拒绝歧义路径并按上海日期展示', () => {
-  expect(postPath('工程/01.说明.md')).toBe('/posts/工程/01.说明')
-  expect(postPath('notes/index.md')).toBe('/posts/notes/index')
-  expect(() => postPath('../bad.md')).toThrow()
-  expect(() => postPath('bad#id.md')).toThrow()
+test('按上海日期展示', () => {
   expect(formatPostDate('2024-02-29')).toBe('2024-02-29')
 })
 test('目录复用解析锚点并保留二至六级，首章节前不选中', () => {

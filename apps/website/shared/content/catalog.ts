@@ -33,13 +33,6 @@ export function aggregateTerms(posts: readonly PostSummary[], field: 'tags' | 'c
 export function queryTerm(value: unknown): string {
   return typeof value === 'string' ? value.trim() : ''
 }
-export function postPath(relativeFile: string): string {
-  const segments = relativeFile.replace(/\\/g, '/').replace(/\.md$/, '').split('/')
-  if (segments.some(part => !part || part === '.' || part === '..' || /[%?#]/.test(part)))
-    throw new Error(`文章路径包含不支持的字符：${relativeFile}`)
-  // Explicit names avoid Nuxt Content's automatic index/number-prefix rewriting.
-  return `/posts/${segments.join('/')}`
-}
 export function formatPostDate(value: string): string {
   return new Intl.DateTimeFormat('zh-CN', {
     timeZone: 'Asia/Shanghai',
