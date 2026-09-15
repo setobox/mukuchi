@@ -98,42 +98,41 @@ watch(desktop, (value) => {
         >
           <AppIcon name="command" />
         </button>
-        <button
-          type="button"
-          class="icon-button lg:hidden"
-          aria-label="打开导航"
-          :aria-expanded="menuOpen"
-          aria-haspopup="dialog"
-          @click="menuOpen = true"
-        >
-          <AppIcon name="menu" />
-        </button>
+        <div class="size-11 lg:hidden">
+          <AcrylicDialog v-model="menuOpen" title="导航" placement="drawer">
+            <template #trigger="{ open, expanded, toggle }">
+              <button
+                type="button"
+                class="icon-button"
+                :aria-label="open ? '关闭导航' : '打开导航'"
+                :aria-expanded="open"
+                aria-haspopup="dialog"
+                @click="toggle"
+              >
+                <MenuToggleIcon :expanded="expanded" />
+              </button>
+            </template>
+            <nav aria-label="移动导航" class="flex flex-col gap-2 text-s">
+              <NuxtLink
+                v-for="item in site.navigation"
+                :key="item.to"
+                :to="item.to"
+                :aria-current="page.section === item.section ? 'page' : undefined"
+                class="min-h-14 flex items-center rounded-button px-4 py-3 transition-colors duration-180"
+                :class="
+                  page.section === item.section
+                    ? 'bg-accent-surface text-accent-soft font-medium'
+                    : 'hover:bg-line'
+                "
+                @click="menuOpen = false"
+              >
+                {{ item.label }}
+              </NuxtLink>
+            </nav>
+          </AcrylicDialog>
+        </div>
       </div>
     </div>
-    <AcrylicDialog v-model="menuOpen" title="网站导航">
-      <nav aria-label="移动导航" class="flex flex-col gap-1 text-s">
-        <NuxtLink
-          v-for="item in site.navigation"
-          :key="item.to"
-          :to="item.to"
-          :aria-current="page.section === item.section ? 'page' : undefined"
-          class="min-h-14 flex items-center justify-between rounded-button px-4 py-3"
-          :class="
-            page.section === item.section
-              ? 'bg-[color-mix(in_srgb,var(--color-accent)_10%,transparent)] text-accent-soft'
-              : 'hover:bg-line'
-          "
-          @click="menuOpen = false"
-        >
-          <span>{{ item.label }}</span><AppIcon name="arrow" />
-        </NuxtLink>
-      </nav>
-      <template #footer>
-        <span class="text-base text-muted">{{ site.name }}</span><BaseButton variant="ghost" @click="menuOpen = false">
-          收起<AppIcon name="up" />
-        </BaseButton>
-      </template>
-    </AcrylicDialog>
   </header>
 </template>
 
