@@ -4,6 +4,11 @@ import { themeCookieBootstrap, themeCookieKey, themeCookieOptions } from './shar
 
 export default defineNuxtConfig({
   compatibilityDate: '2026-09-13',
+  runtimeConfig: { public: { siteUrl: 'https://blog.setobox.me' } },
+  nitro: {
+    prerender: { crawlLinks: false, failOnError: true, routes: ['/about'] },
+    cloudflare: { deployConfig: true, nodeCompat: true },
+  },
   modules: ['@nuxt/content', '@nuxtjs/color-mode', '@unocss/nuxt', '@vueuse/nuxt', '@nuxt/eslint', githubSnapshots],
   colorMode: {
     preference: 'system',
@@ -59,7 +64,15 @@ export default defineNuxtConfig({
       link: [{ rel: 'icon', type: 'image/svg+xml', href: '/mukuchi.svg' }],
     },
   },
-  routeRules: { '/': { redirect: { to: '/posts', statusCode: 302 } } },
+  routeRules: {
+    '/': { redirect: { to: '/posts', statusCode: 302 } },
+    '/about': { prerender: true },
+    '/posts': { prerender: false, headers: { 'cache-control': 'private, no-store' } },
+    '/categories': { prerender: false, headers: { 'cache-control': 'private, no-store' } },
+    '/categories/**': { prerender: false, headers: { 'cache-control': 'private, no-store' } },
+    '/tags/**': { prerender: false, headers: { 'cache-control': 'private, no-store' } },
+    '/tools': { prerender: false },
+  },
   eslint: {
     config: {
       standalone: false,

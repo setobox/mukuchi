@@ -5,9 +5,12 @@ import { articleNotices, shanghaiDay } from '#shared/content/notices'
 const props = defineProps<{ post: PostMeta, path: string }>()
 const config = useAppConfig()
 const today = useState(`article-day:${props.path}`, () => shanghaiDay(new Date()))
-// Preserve the server day during hydration; each later client entry gets a fresh day.
+// Hydrate with the build/server day, then refresh it on every client entry.
 if (import.meta.client && !useNuxtApp().isHydrating)
   today.value = shanghaiDay(new Date())
+onMounted(() => {
+  today.value = shanghaiDay(new Date())
+})
 const notices = computed(() => articleNotices(props.post, config.site.article.notices, today.value))
 </script>
 

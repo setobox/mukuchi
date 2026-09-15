@@ -30,6 +30,7 @@ overrides:
 allowBuilds:
   esbuild: true
   unrs-resolver: true
+  workerd: true
 
 catalog:
   '@antfu/eslint-config': ^9.5.1
@@ -56,5 +57,6 @@ catalog:
   vue: ^3.5.42
   vue-router: ^5.3.1
   vue-tsc: 3.3.11
+  wrangler: 4.131.1
   yaml: ^2.9.1
   zod: 4.6.4

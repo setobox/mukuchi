@@ -11,8 +11,6 @@ definePageMeta({
 })
 const route = useRoute()
 const pagePath = route.path
-const requestUrl = useRequestURL()
-const { app } = useRuntimeConfig()
 let path: string
 try {
   path = decodeURI(route.path).replace(/\/$/, '')
@@ -26,10 +24,7 @@ if (error.value)
   throw createError({ statusCode: 500, message: '文章加载失败' })
 if (!post.value)
   throw createError({ statusCode: 404, message: '文章不存在' })
-const permalink = computed(() => new URL(
-  `${app.baseURL.replace(/\/$/, '')}${post.value?.path ?? pagePath}`,
-  requestUrl.origin,
-).href)
+const permalink = usePageUrl(() => post.value?.path ?? pagePath)
 useArticleTheme(pagePath, () => post.value?.theme)
 const root = useTemplateRef<HTMLElement>('articleRoot')
 const links = computed(() => post.value?.body.toc?.links ?? [])

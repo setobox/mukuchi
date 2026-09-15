@@ -1,0 +1,17 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "mukuchi-blog",
+  "compatibility_date": "2026-09-13",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": true,
+  "preview_urls": false,
+  "assets": { "html_handling": "drop-trailing-slash" },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "mukuchi-content",
+      "database_id": "c8f87923-1ca6-4f8c-94b6-644f621d19db"
+    }
+  ],
+  "observability": { "enabled": true }
+}

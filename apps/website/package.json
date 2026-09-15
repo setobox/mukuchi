@@ -6,10 +6,10 @@
   "license": "MIT",
   "scripts": {
     "dev": "nuxt dev",
-    "build": "nuxt build",
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare",
     "typecheck": "nuxt typecheck",
+    "check:prerender": "node scripts/check-prerender.ts",
     "test": "vp test run --config vitest.config.ts"
   },
   "dependencies": {
@@ -35,6 +35,7 @@
     "unocss": "catalog:",
     "vite": "catalog:",
     "vite-plus": "catalog:",
-    "vue-tsc": "catalog:"
+    "vue-tsc": "catalog:",
+    "wrangler": "catalog:"
   }
 }
