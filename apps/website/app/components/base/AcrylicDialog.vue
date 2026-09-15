@@ -1,6 +1,6 @@
 <script setup lang="ts">
 withDefaults(
-  defineProps<{ title: string, description?: string, placement?: 'default' | 'toc' | 'image' | 'commands' }>(),
+  defineProps<{ title: string, description?: string, placement?: 'default' | 'image' | 'commands' }>(),
   { placement: 'default' },
 )
 const emit = defineEmits<{ opened: [], closed: [], keydown: [event: KeyboardEvent] }>()
@@ -124,9 +124,7 @@ onBeforeUnmount(() => {
           ? 'mt-4 h-[calc(100dvh-32px)] w-[calc(100vw-32px)] max-w-site overflow-hidden p-3 [&[open]]:flex flex-col gap-3'
           : placement === 'commands'
             ? 'mt-[min(var(--header-height),calc(var(--dialog-viewport-height,100dvh)*0.08))] w-[min(640px,calc(100vw-32px))] max-h-[calc(var(--dialog-viewport-height,100dvh)-32px-min(var(--header-height),calc(var(--dialog-viewport-height,100dvh)*0.08)))] overflow-hidden p-4 md:p-6 [&[open]]:flex flex-col'
-            : placement === 'toc'
-              ? 'mt-[calc(var(--header-height)+44px)] w-[calc(100%-40px)] max-w-site max-h-[min(60dvh,28rem,calc(100dvh-var(--header-height)-60px))] overflow-auto [scrollbar-gutter:stable] p-6 md:w-[calc(100%-64px)]'
-              : 'mt-[calc(var(--header-height)+14px)] w-[min(480px,calc(100vw-40px))] max-h-[calc(100dvh-100px)] overflow-auto [scrollbar-gutter:stable] p-6'
+            : 'mt-[calc(var(--header-height)+14px)] w-[min(480px,calc(100vw-40px))] max-h-[calc(100dvh-100px)] overflow-auto [scrollbar-gutter:stable] p-6'
       "
       tabindex="-1"
       :aria-labelledby="titleId"

@@ -30,6 +30,7 @@ overrides:
 allowBuilds:
   esbuild: true
   unrs-resolver: true
+  vue-demi: true
   workerd: true
 
 catalog:
@@ -51,6 +52,7 @@ catalog:
   eslint-plugin-format: ^2.0.1
   happy-dom: 20.14.5
   nuxt: 4.5.2
+  reka-ui: 2.9.2
   typescript: ^6.0.3
   unocss: 66.10.2
   vite: npm:@voidzero-dev/vite-plus-core@0.2.8

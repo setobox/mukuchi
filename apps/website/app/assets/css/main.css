@@ -31,6 +31,10 @@
   --sidebar-width: 260px;
   --layout-gap: 32px;
   --header-height: 68px;
+  --toc-trigger-height: 2.75rem;
+  --toc-block-padding: 0.625rem;
+  --toc-preview-trigger-height: 2rem;
+  --toc-preview-block-padding: 0.25rem;
   --radius-panel: 16px;
   --radius-button: 10px;
   --z-header: 30;
@@ -160,8 +164,9 @@ a {
     --text-xxxs: .625rem;
   }
 }
+/* The collapsed size is available before hydration measures the sticky TOC. */
 html.has-article-toc {
-  --toc-offset: 44px;
+  --toc-offset: var(--toc-height, calc(var(--toc-preview-trigger-height) + var(--toc-preview-block-padding) * 2 + var(--toc-preview-height, 0px) + 1px));
 }
 @media (min-width: 1200px) {
   :root {

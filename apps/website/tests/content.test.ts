@@ -1,6 +1,5 @@
 import { expect, test } from 'vite-plus/test'
 import { visibleCategoryCount } from '../app/features/categories/overflow.ts'
-import { activeHeading, flattenToc } from '../app/features/toc/model.ts'
 import { validateFrontmatter } from '../content/validation.ts'
 import {
   aggregateTerms,
@@ -87,23 +86,6 @@ test('多专栏聚合不重复计数，专栏与标签各自筛选', () => {
 test('按上海日期展示', () => {
   expect(formatPostDate('2024-02-29')).toBe('2024-02-29')
 })
-test('目录复用解析锚点并保留二至六级，首章节前不选中', () => {
-  const items = flattenToc([
-    { id: '标题', text: '标题', depth: 2, children: [{ id: '标题-1', text: '标题', depth: 6 }] },
-  ])
-  expect(items.map(item => item.id)).toEqual(['标题', '标题-1'])
-  expect(flattenToc([])).toEqual([])
-  expect(activeHeading([{ id: 'a', top: 200 }], 148)).toBe('')
-  expect(
-    activeHeading(
-      [
-        { id: 'a', top: -100 },
-        { id: 'b', top: 148 },
-      ],
-      148,
-    ),
-  ).toBe('b')
-})
 test('分类导航按实际宽度预留更多按钮，临界宽度不溢出', () => {
   expect(visibleCategoryCount([100, 100], 360, 140, 80)).toBe(2)
   expect(visibleCategoryCount([100, 100], 350, 140, 80)).toBe(1)
@@ -122,16 +104,4 @@ test('分类导航处理空分类、窄容器和长名称，保留原有分类�
   expect(visibleCategoryCount([400, 80], 350, 100, 76, 8)).toBe(0)
   expect(visibleCategoryCount([100.5, 132.25], 348.75, 100, 76, 8)).toBe(2)
   expect(visibleCategoryCount([100.5, 132.25], 348.5, 100, 76, 8)).toBe(1)
-})
-test('阅读到文末时选中最后章节，即使短章节无法滚动到顶部', () => {
-  expect(
-    activeHeading(
-      [
-        { id: '前节', top: -30 },
-        { id: '末节', top: 220 },
-      ],
-      136,
-      true,
-    ),
-  ).toBe('末节')
 })

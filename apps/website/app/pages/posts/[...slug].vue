@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useArticleToc } from '~/features/toc/useArticleToc'
+import { tocPreviewHeight } from '~/features/toc/model'
 import { resolveBackTarget } from '~/shared/navigation'
 
 definePageMeta({
@@ -26,9 +26,10 @@ if (!post.value)
   throw createError({ statusCode: 404, message: '文章不存在' })
 const permalink = usePageUrl(() => post.value?.path ?? pagePath)
 useArticleTheme(pagePath, () => post.value?.theme)
-const root = useTemplateRef<HTMLElement>('articleRoot')
 const links = computed(() => post.value?.body.toc?.links ?? [])
-const { items, activeId, currentTitle } = useArticleToc(links, root)
+const collapsedRows = 3
+const mobileToc = useTemplateRef<HTMLElement>('mobileToc')
+const { height: tocHeight } = useElementSize(mobileToc, { width: 0, height: 0 }, { box: 'border-box' })
 const { tags } = usePostCatalog()
 const articleTitle = useState<{ path: string, title: string } | null>(
   'page:article-title',
@@ -45,7 +46,13 @@ watch(post, (value) => {
   if (value === null)
     showError({ statusCode: 404, message: '文章不存在' })
 })
-useHead({ htmlAttrs: { class: computed(() => (items.value.length ? 'has-article-toc' : '')) } })
+useHead({ htmlAttrs: {
+  class: computed(() => links.value.length ? 'has-article-toc' : ''),
+  style: computed(() => ({
+    '--toc-preview-height': `${tocPreviewHeight(links.value, collapsedRows)}rem`,
+    ...(tocHeight.value > 0 ? { '--toc-height': `${tocHeight.value}px` } : {}),
+  })),
+} })
 useSeoMeta({
   title: () => post.value?.title,
   description: () => post.value?.description,
@@ -105,17 +112,23 @@ useActionButton({
 </script>
 
 <template>
-  <div v-if="post" :class="{ 'pt-11 lg:pt-0': items.length }">
-    <ArticleToc mobile :items="items" :active-id="activeId" :current-title="currentTitle" />
+  <div v-if="post">
+    <div
+      v-if="links.length"
+      ref="mobileToc"
+      class="sticky top-[var(--header-height)] z-20 mb-8 bg-acrylic px-5 backdrop-blur-sm -mx-5 lg:hidden md:px-8 md:-mx-8"
+    >
+      <ContentToc :links="links" :collapsed-rows="collapsedRows" highlight highlight-variant="circuit" />
+    </div>
     <SiteColumns sticky>
       <template #sidebar>
         <SiteSidebar :tags="tags">
           <template #after-profile>
-            <ArticleToc :items="items" :active-id="activeId" :current-title="currentTitle" />
+            <ContentToc :links="links" highlight highlight-variant="circuit" class="hidden px-2 lg:block" />
           </template>
         </SiteSidebar>
       </template>
-      <article ref="articleRoot" class="min-w-0">
+      <article class="min-w-0">
         <header class="border-b border-line pb-8">
           <PostMeta :post="post" detailed />
           <h1 class="my-5 break-words text-page text-themed leading-tight">
