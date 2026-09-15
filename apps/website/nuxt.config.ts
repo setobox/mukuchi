@@ -61,7 +61,6 @@ export default defineNuxtConfig({
         { name: 'theme-color', content: '#252423', media: '(prefers-color-scheme: dark)', key: 'theme-color-dark' },
         { name: 'theme-color', content: '#faf8f5', media: '(prefers-color-scheme: light)', key: 'theme-color-light' },
       ],
-      link: [{ rel: 'icon', type: 'image/svg+xml', href: '/mukuchi.svg' }],
     },
   },
   routeRules: {

@@ -8,7 +8,10 @@ const route = useRoute()
 const canonical = usePageUrl(() => route.path)
 useHead({
   titleTemplate: title => (title && title !== site.name ? `${title} - ${site.name}` : site.name),
-  link: [{ rel: 'canonical', href: canonical }],
+  link: [
+    { rel: 'icon', href: site.owner.avatar },
+    { rel: 'canonical', href: canonical },
+  ],
 })
 useSeoMeta({ ogUrl: canonical })
 </script>
