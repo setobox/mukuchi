@@ -16,9 +16,11 @@ export function usePageContext() {
       title:
         articleTitle.value?.path === route.path
           ? articleTitle.value.title
-          : typeof route.meta.pageTitle === 'string'
-            ? route.meta.pageTitle
-            : 'mukuchi',
+          : typeof route.meta.pageTitle === 'function'
+            ? route.meta.pageTitle(route)
+            : typeof route.meta.pageTitle === 'string'
+              ? route.meta.pageTitle
+              : 'mukuchi',
       kind: route.meta.pageKind === 'detail' ? 'detail' : 'index',
       parentPath: typeof route.meta.parentPath === 'string' ? route.meta.parentPath : `/${section}`,
     }

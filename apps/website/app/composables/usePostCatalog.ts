@@ -19,6 +19,7 @@ export function usePostCatalog() {
       .all()
       .then(sortPosts))
   return {
+    ready: query,
     data: query.data,
     error: query.error,
     status: query.status,

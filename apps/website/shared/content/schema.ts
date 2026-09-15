@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { isTaxonomyName } from './taxonomy'
 
 export const themeColors = [
   '#ff4b4b',
@@ -61,8 +62,15 @@ export const postSchema = postFields
     if (data.update && data.update < data.publish)
       ctx.addIssue({ code: 'custom', path: ['update'], message: '不能早于发布日期' })
     for (const field of ['tags', 'categories'] as const) {
-      if (data[field].some(value => !value.trim()))
-        ctx.addIssue({ code: 'custom', path: [field], message: '名称不能为空' })
+      data[field].forEach((value, index) => {
+        if (!isTaxonomyName(value)) {
+          ctx.addIssue({
+            code: 'custom',
+            path: [field, index],
+            message: '名称不能为空，不能包含路径分隔符、控制字符、无效 Unicode，或仅为 .、..',
+          })
+        }
+      })
     }
     if (data.cover && !/^(?:https?:\/\/\S+|\/(?!\/)[^\s\\]*)$/.test(data.cover)) {
       ctx.addIssue({

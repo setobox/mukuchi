@@ -1,4 +1,5 @@
 import type { PostSummary } from './schema.ts'
+import type { TaxonomyFilter } from './taxonomy'
 
 export function sortPosts<T extends Pick<PostSummary, 'pin' | 'publish' | 'path'>>(
   posts: readonly T[],
@@ -13,12 +14,10 @@ function compare(a: string, b: string) {
 
 export function filterPosts<T extends Pick<PostSummary, 'tags' | 'categories'>>(
   posts: readonly T[],
-  filters: { tag?: string, category?: string },
+  filter?: TaxonomyFilter,
 ): T[] {
   return posts.filter(
-    post =>
-      (!filters.tag || post.tags.includes(filters.tag))
-      && (!filters.category || post.categories.includes(filters.category)),
+    post => !filter || post[filter.kind === 'category' ? 'categories' : 'tags'].includes(filter.name),
   )
 }
 export function aggregateTerms(posts: readonly PostSummary[], field: 'tags' | 'categories') {
@@ -29,9 +28,6 @@ export function aggregateTerms(posts: readonly PostSummary[], field: 'tags' | 'c
   return [...counts]
     .map(([name, count]) => ({ name, count }))
     .sort((a, b) => compare(a.name, b.name))
-}
-export function queryTerm(value: unknown): string {
-  return typeof value === 'string' ? value.trim() : ''
 }
 export function formatPostDate(value: string): string {
   return new Intl.DateTimeFormat('zh-CN', {

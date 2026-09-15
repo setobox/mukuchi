@@ -1,10 +1,10 @@
 <script setup lang="ts">
+import { taxonomyPath } from '#shared/content/taxonomy'
 import { visibleCategoryCount } from '~/features/categories/overflow'
 
 const props = defineProps<{
   categories: { name: string, count: number }[]
   selected: string
-  tag: string
 }>()
 const container = useTemplateRef<HTMLElement>('container')
 const measurement = useTemplateRef<HTMLElement>('measurement')
@@ -18,10 +18,7 @@ const selectedOverflow = computed(() =>
   overflow.value.some(category => category.name === props.selected),
 )
 function location(category = '') {
-  return {
-    path: '/categories',
-    query: { category: category || undefined, tag: props.tag || undefined },
-  }
+  return category ? taxonomyPath('category', category) : '/categories'
 }
 function measure() {
   if (!container.value || !measurement.value)
@@ -52,7 +49,7 @@ watch(
   { deep: true },
 )
 watch(
-  () => [props.selected, props.tag],
+  () => props.selected,
   () => close(),
 )
 watch(open, async (value) => {

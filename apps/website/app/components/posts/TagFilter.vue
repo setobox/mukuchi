@@ -1,19 +1,19 @@
 <script setup lang="ts">
+import { taxonomyPath } from '#shared/content/taxonomy'
+
 withDefaults(
   defineProps<{
     tags: { name: string, count: number }[]
     selected?: string
-    base?: string
-    category?: string
   }>(),
-  { selected: '', base: '/posts', category: '' },
+  { selected: '' },
 )
 </script>
 
 <template>
   <nav aria-label="标签筛选" class="flex flex-wrap gap-2">
     <NuxtLink
-      :to="{ path: base, query: { category: category || undefined } }"
+      to="/posts"
       class="min-h-9 inline-flex items-center border rounded-lg px-3 text-sm"
       :class="
         !selected
@@ -27,7 +27,7 @@ withDefaults(
     <NuxtLink
       v-for="tag in tags"
       :key="tag.name"
-      :to="{ path: base, query: { category: category || undefined, tag: tag.name } }"
+      :to="taxonomyPath('tag', tag.name)"
       class="max-w-full min-h-9 inline-flex items-center gap-2 border rounded-lg px-3 text-sm"
       :class="
         selected === tag.name

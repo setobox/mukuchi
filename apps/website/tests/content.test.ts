@@ -64,7 +64,7 @@ test('按置顶权重、发布日期倒序和路径升序排序，不修改输�
   ])
   expect(posts[0]?.path).toBe('/posts/b')
 })
-test('多专栏聚合不重复计数，标签与专栏组合取交集', () => {
+test('多专栏聚合不重复计数，专栏与标签各自筛选', () => {
   const posts = [
     {
       ...postSchema.parse({ ...meta, tags: ['Vue'], categories: ['前端', '教程', '教程'] }),
@@ -79,8 +79,10 @@ test('多专栏聚合不重复计数，标签与专栏组合取交集', () => {
     { name: '前端', count: 1 },
     { name: '教程', count: 2 },
   ])
-  expect(filterPosts(posts, { category: '教程', tag: 'Vue' })).toEqual([posts[0]])
-  expect(filterPosts(posts, { tag: '不存在' })).toEqual([])
+  expect(filterPosts(posts, { kind: 'category', name: '教程' })).toEqual(posts)
+  expect(filterPosts(posts, { kind: 'tag', name: 'Vue' })).toEqual([posts[0]])
+  expect(filterPosts(posts, { kind: 'tag', name: '不存在' })).toEqual([])
+  expect(filterPosts(posts)).toEqual(posts)
 })
 test('按上海日期展示', () => {
   expect(formatPostDate('2024-02-29')).toBe('2024-02-29')

@@ -12,7 +12,9 @@ const page: PageContext = {
 
 test('返回优先使用站内来源，直接访问或不安全来源回到所属列表', () => {
   const detail = { ...page, path: '/posts/example' }
-  expect(resolveBackTarget('/categories?tag=Vue', detail)).toBe('/categories?tag=Vue')
+  expect(resolveBackTarget('/categories/内容管理', detail)).toBe('/categories/内容管理')
+  expect(resolveBackTarget('/tags/Vue', detail)).toBe('/tags/Vue')
+  expect(resolveBackTarget(null, { ...page, path: '/categories/内容管理', parentPath: '/categories' })).toBe('/categories')
   for (const source of [
     null,
     'https://example.com',

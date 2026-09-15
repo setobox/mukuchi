@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import type { PostSummary } from '~~/shared/content/schema'
-import { formatPostDate } from '~~/shared/content/catalog'
+import type { PostSummary } from '#shared/content/schema'
+import { formatPostDate } from '#shared/content/catalog'
+import { taxonomyPath } from '#shared/content/taxonomy'
 
 withDefaults(defineProps<{ post: PostSummary, detailed?: boolean }>(), { detailed: false })
 </script>
@@ -13,7 +14,7 @@ withDefaults(defineProps<{ post: PostSummary, detailed?: boolean }>(), { detaile
     <NuxtLink
       v-for="category in post.categories"
       :key="category"
-      :to="{ path: '/categories', query: { category } }"
+      :to="taxonomyPath('category', category)"
       class="min-h-8 inline-flex items-center hover:text-heading"
     >
       {{ category }}

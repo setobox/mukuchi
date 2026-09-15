@@ -3,10 +3,8 @@ withDefaults(
   defineProps<{
     tags?: { name: string, count: number }[]
     selectedTag?: string
-    filterBase?: string
-    category?: string
   }>(),
-  { selectedTag: '', filterBase: '/posts', category: '' },
+  { selectedTag: '' },
 )
 const { site } = useAppConfig()
 </script>
@@ -48,8 +46,6 @@ const { site } = useAppConfig()
         v-if="tags.length"
         :tags="tags"
         :selected="selectedTag"
-        :base="filterBase"
-        :category="category"
         class="mt-3.5"
       />
       <p v-else class="mt-3.5 text-muted">

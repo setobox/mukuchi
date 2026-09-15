@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import { filterPosts, queryTerm } from '~~/shared/content/catalog'
+import type { TaxonomyFilter } from '#shared/content/taxonomy'
+import { filterPosts } from '#shared/content/catalog'
 
-const props = withDefaults(defineProps<{ category?: string }>(), { category: '' })
-const route = useRoute()
+const props = defineProps<{ filter?: TaxonomyFilter }>()
 const { data, tags, error, status, refresh } = usePostCatalog()
-const tag = computed(() => queryTerm(route.query.tag))
+const tag = computed(() => props.filter?.kind === 'tag' ? props.filter.name : '')
 const posts = computed(() =>
-  filterPosts(data.value ?? [], { tag: tag.value, category: props.category }),
+  filterPosts(data.value ?? [], props.filter),
 )
 const preference = useCookie<string>('mukuchi:post-view', {
   default: () => 'list',
@@ -14,7 +14,7 @@ const preference = useCookie<string>('mukuchi:post-view', {
   maxAge: 31536000,
 })
 const view = computed(() => (preference.value === 'grid' ? 'grid' : 'list'))
-const filtered = computed(() => !!tag.value || !!props.category)
+const filtered = computed(() => !!props.filter)
 </script>
 
 <template>
@@ -23,13 +23,11 @@ const filtered = computed(() => !!tag.value || !!props.category)
       <SiteSidebar
         :tags="tags"
         :selected-tag="tag"
-        :filter-base="route.path"
-        :category="category"
       />
     </template>
     <div>
       <div v-if="tags.length" class="mb-6 lg:hidden">
-        <TagFilter :tags="tags" :selected="tag" :base="route.path" :category="category" />
+        <TagFilter :tags="tags" :selected="tag" />
       </div>
       <div class="flex flex-wrap items-center justify-between gap-3 border-b border-line pb-4">
         <div v-if="$slots['toolbar-start']" class="min-w-0 flex-[1_1_12rem]">
@@ -68,14 +66,6 @@ const filtered = computed(() => !!tag.value || !!props.category)
           </button>
         </div>
       </div>
-      <!-- 暂不需要 -->
-      <!-- <div v-if="filtered" class="flex flex-wrap items-center gap-3 pt-4 text-sm text-muted">
-        <span v-if="category">专栏：{{ category }}</span
-        ><span v-if="tag">标签：{{ tag }}</span>
-        <NuxtLink :to="route.path" class="min-h-9 inline-flex items-center text-accent-soft"
-        >清除筛选<AppIcon name="close"
-        /></NuxtLink>
-      </div> -->
       <div v-if="error" class="py-12" role="alert">
         <p>文章加载失败，请重试。</p>
         <BaseButton class="mt-4" variant="border" @click="refresh()">
