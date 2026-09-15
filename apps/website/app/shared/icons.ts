@@ -19,6 +19,7 @@ export const icons = {
   shapes: 'i-lucide-shapes',
   user: 'i-lucide-user-round',
   search: 'i-lucide-search',
+  rss: 'i-lucide-rss',
   command: 'i-lucide-command',
   menu: 'i-lucide-menu',
   close: 'i-lucide-x',

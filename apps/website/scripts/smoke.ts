@@ -1,13 +1,17 @@
 import assert from 'node:assert/strict'
+import { Buffer } from 'node:buffer'
+import { readFile } from 'node:fs/promises'
 import process from 'node:process'
 import { DatabaseSync } from 'node:sqlite'
 import { fileURLToPath } from 'node:url'
 import { taxonomyPath } from '../shared/content/taxonomy.ts'
+import { rssCacheControl, rssContentType } from '../shared/rss/config.ts'
+import { assertRss } from './lib/rss.ts'
 
 const origin = new URL(process.env.MUKUCHI_SMOKE_URL || 'http://127.0.0.1:8787')
 assert(['http:', 'https:'].includes(origin.protocol))
 const db = new DatabaseSync(fileURLToPath(new URL('../.data/content/contents.sqlite', import.meta.url)), { readOnly: true })
-const posts = db.prepare('SELECT path, tags, categories FROM _content_posts ORDER BY path').all()
+const posts = db.prepare('SELECT path, title, description, publish, "update", tags, categories FROM _content_posts ORDER BY path').all()
 db.close()
 function terms(value: unknown): string[] {
   assert.equal(typeof value, 'string')
@@ -29,6 +33,17 @@ async function list(path: string, count: number, view = 'list') {
 const home = await request('/')
 assert.equal(home.status, 302)
 assert.equal(home.headers.get('location'), '/posts')
+const favicon = await request('/favicon.ico')
+assert.equal(favicon.status, 200, '浏览器静态图标')
+assert.match(favicon.headers.get('content-type') || '', /^image\/(?:x-icon|vnd\.microsoft\.icon)(?:;|$)/)
+const faviconBytes = Buffer.from(await favicon.arrayBuffer())
+assert.deepEqual([...faviconBytes.subarray(0, 4)], [0, 0, 1, 0], '有效 ICO 文件')
+assert.deepEqual(faviconBytes, await readFile(new URL('../public/favicon.ico', import.meta.url)), '图标静态资源内容')
+const rss = await request('/rss.xml')
+assert.equal(rss.status, 200, 'RSS')
+assert.equal(rss.headers.get('content-type'), rssContentType)
+assert.equal(rss.headers.get('cache-control'), rssCacheControl)
+assertRss(await rss.text(), posts, 'https://blog.setobox.me')
 for (const view of ['list', 'grid']) {
   await list('/posts?tag=missing&category=missing', posts.length, view)
   await list('/categories?tag=missing&category=missing', posts.length, view)
@@ -46,7 +61,9 @@ for (const path of ['/about', ...posts.map(post => String(post.path))]) {
   assert.equal(response.status, 200, path)
   const html = await response.text()
   assert(html.includes('https://blog.setobox.me'), `正式地址：${path}`)
+  assert(/<link\s[^>]*rel="icon"[^>]*href="\/favicon\.ico"/.test(html), `页面使用本地静态图标：${path}`)
+  assert(/<link\s[^>]*rel="alternate"[^>]*href="https:\/\/blog\.setobox\.me\/rss\.xml"/.test(html), `RSS 自动发现：${path}`)
   assert.equal((await request(`${path}/_payload.json`)).status, 200, `${path} payload`)
 }
 assert.equal((await request('/posts/__deployment_missing__')).status, 404)
-console.log(`HTTP 验收通过：${origin.origin}，${posts.length} 篇文章、全部专栏和标签、Cookie 与错误状态。`)
+console.log(`HTTP 验收通过：${origin.origin}，${posts.length} 篇文章、RSS、浏览器图标、全部专栏和标签、Cookie 与错误状态。`)

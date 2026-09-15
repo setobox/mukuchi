@@ -1,5 +1,9 @@
 <script setup lang="ts">
+import { rssPath } from '#shared/rss/config'
+
 const { site } = useAppConfig()
+const config = useRuntimeConfig()
+const rssHref = computed(() => `${config.app.baseURL.replace(/\/$/, '')}${rssPath}`)
 const palette = useCommandPalette()
 const route = useRoute()
 const page = usePageContext()
@@ -79,6 +83,9 @@ watch(desktop, (value) => {
         >
           <AppIcon name="search" />
         </button>
+        <a :href="rssHref" class="icon-button" aria-label="RSS 订阅" title="RSS 订阅">
+          <AppIcon name="rss" />
+        </a>
         <button
           v-if="site.features.commands"
           type="button"

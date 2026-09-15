@@ -45,6 +45,7 @@ catalog:
   '@vitejs/plugin-vue': 6.0.8
   '@vueuse/core': ^14.4.0
   '@vueuse/nuxt': ^14.4.0
+  '@xmldom/xmldom': 0.9.12
   bumpp: ^11.1.0
   eslint: ^10.10.0
   eslint-plugin-format: ^2.0.1

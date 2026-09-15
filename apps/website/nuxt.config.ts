@@ -1,12 +1,13 @@
 import githubSnapshots from './content/github/module'
 import { validateContentDirectory, validateFrontmatter } from './content/validation.ts'
+import { rssCacheControl, rssContentType, rssPath } from './shared/rss/config.ts'
 import { themeCookieBootstrap, themeCookieKey, themeCookieOptions } from './shared/theme/preference.ts'
 
 export default defineNuxtConfig({
   compatibilityDate: '2026-09-13',
   runtimeConfig: { public: { siteUrl: 'https://blog.setobox.me' } },
   nitro: {
-    prerender: { crawlLinks: false, failOnError: true, routes: ['/about'] },
+    prerender: { crawlLinks: false, failOnError: true, routes: ['/about', rssPath] },
     cloudflare: { deployConfig: true, nodeCompat: true },
   },
   modules: ['@nuxt/content', '@nuxtjs/color-mode', '@unocss/nuxt', '@vueuse/nuxt', '@nuxt/eslint', githubSnapshots],
@@ -64,6 +65,7 @@ export default defineNuxtConfig({
     },
   },
   routeRules: {
+    [rssPath]: { prerender: true, headers: { 'content-type': rssContentType, 'cache-control': rssCacheControl } },
     '/': { redirect: { to: '/posts', statusCode: 302 } },
     '/about': { prerender: true },
     '/posts': { prerender: false, headers: { 'cache-control': 'private, no-store' } },

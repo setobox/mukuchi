@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { isTaxonomyName } from './taxonomy'
+import { isTaxonomyName } from './taxonomy.ts'
 
 export const themeColors = [
   '#ff4b4b',

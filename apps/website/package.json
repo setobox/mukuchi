@@ -30,6 +30,7 @@
     "@types/node": "catalog:",
     "@unocss/nuxt": "catalog:",
     "@vitejs/plugin-vue": "catalog:",
+    "@xmldom/xmldom": "catalog:",
     "happy-dom": "catalog:",
     "typescript": "catalog:",
     "unocss": "catalog:",
