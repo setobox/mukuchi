@@ -4,6 +4,10 @@ import { defineConfig } from 'vite-plus'
 export default defineConfig({
   run: {
     tasks: {
+      'admin:smoke:production': {
+        command: 'node scripts/smoke-admin-production.ts',
+        cache: false,
+      },
       'admin:check-build': {
         command: 'node scripts/check-admin-build.ts',
         cache: false,

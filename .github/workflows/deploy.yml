@@ -53,6 +53,8 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
       - name: Verify production
         if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
-        run: vp run website#smoke
+        run: |
+          vp run website#smoke
+          vp run website#admin:smoke:production
         env:
           MUKUCHI_SMOKE_URL: ${{ vars.MUKUCHI_SMOKE_URL }}
