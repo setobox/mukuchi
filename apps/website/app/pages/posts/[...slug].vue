@@ -134,7 +134,7 @@ useActionButton({
           <h1 class="my-5 break-words text-page text-themed leading-tight">
             {{ post.title }}
           </h1>
-          <p class="mb-6 text-muted leading-8">
+          <p v-if="post.summarySource !== 'ai'" class="mb-6 text-muted leading-8">
             {{ post.description }}
           </p>
           <PostTags :tags="post.tags" />
@@ -148,6 +148,7 @@ useActionButton({
             class="mt-7 aspect-video h-auto w-full rounded-panel object-cover"
           >
         </header>
+        <ArticleSummary v-if="post.summarySource === 'ai'" :text="post.description" />
         <ArticleContent :value="post" />
         <ArticleLicense
           class="mt-10"

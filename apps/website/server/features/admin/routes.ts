@@ -3,6 +3,8 @@ import { parseMarkdown } from '@nuxtjs/mdc/runtime'
 import { z } from 'zod'
 import { listContent, readContent } from '#admin-driver'
 import { AdminError, articleTitle, createDraftSchema, imageLimit, newArticleSource, publicationInput, saveDraftSchema, sha256 } from '../../../shared/admin/model'
+import { writeSummary } from '../ai/content'
+import { currentSummary, draftSummaryRoute } from '../ai/service'
 import { requireOwner } from '../auth/session'
 import { editorSegments, validateArticle } from '../drafts/content'
 import { identifyImage } from '../media/images'
@@ -29,11 +31,15 @@ export async function adminRoute(event: H3Event) {
     if (!id)
       throw new AdminError(404, '接口不存在')
     const draft = await withAdmin(event, repo => repo.draft(id))
+    if (action === 'summary' && ['GET', 'POST'].includes(method))
+      return draftSummaryRoute(event, id)
     if (!action && method === 'GET')
       return { draft, assets: await withAdmin(event, repo => repo.assets(id)), local: import.meta.dev }
     if (!action && method === 'PUT') {
       const input = saveDraftSchema.parse(await readAdminJson(event))
-      await withAdmin(event, repo => repo.save(id, input.version, input.source))
+      const summary = await currentSummary(event, input.source)
+      const source = summary.status === 'valid' && summary.record ? writeSummary(input.source, summary.record) : input.source
+      await withAdmin(event, repo => repo.save(id, input.version, source))
       return withAdmin(event, repo => repo.draft(id))
     }
     if (!action && method === 'DELETE') {
@@ -66,6 +72,12 @@ export async function adminRoute(event: H3Event) {
     if (action === 'preview' && method === 'POST') {
       const input = z.object({ source: saveDraftSchema.shape.source }).strict().parse(await readAdminJson(event))
       const parsed = await parseMarkdown(input.source, { highlight: false, toc: { depth: 5, searchDepth: 12 } })
+      const summary = await currentSummary(event, input.source)
+      if (summary.status === 'valid' && summary.record) {
+        parsed.data.description = summary.record.text
+        parsed.data.summarySource = 'ai'
+      }
+      else { parsed.data.summarySource = 'description' }
       const assets = await withAdmin(event, repo => repo.assets(id))
       const prefix = useRuntimeConfig(event).app.baseURL.replace(/\/$/, '')
       function rewrite(node: { props?: Record<string, unknown>, children?: unknown[] }) {

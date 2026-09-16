@@ -1,4 +1,4 @@
-import { AdminError } from '../../../shared/admin/model'
+import { AdminError } from '../../../shared/admin/model.ts'
 
 export async function readBoundedStream(stream: ReadableStream<Uint8Array> | undefined, limit: number): Promise<Uint8Array> {
   if (!stream)

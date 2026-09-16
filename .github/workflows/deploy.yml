@@ -34,15 +34,25 @@ jobs:
       - run: vp install --frozen-lockfile
       - run: vp run check
       - run: vp run -r test
+      - name: Prepare AI summaries
+        run: vp run website#ai:prepare
+        env:
+          MUKUCHI_AI_REMOTE: ${{ github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && 'true' || 'false' }}
+          CLOUDFLARE_API_TOKEN: ${{ github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && secrets.CLOUDFLARE_API_TOKEN || '' }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          MUKUCHI_ADMIN_DATABASE_ID: 3453b53f-aba4-43cf-8103-f5a69fb59f87
+          NUXT_AI_ENCRYPTION_KEY: ${{ github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && secrets.NUXT_AI_ENCRYPTION_KEY || '' }}
       - run: vp run -r build
         env:
           MUKUCHI_GITHUB_TOKEN: ${{ github.token }}
+          MUKUCHI_AI_SNAPSHOT_FROZEN: 'true'
       - run: vp run website#check:prerender
       - run: vp run website#stats:check-build
       - run: vp run website#admin:check-build
       - run: vp run website#build:cloudflare
         env:
           MUKUCHI_GITHUB_TOKEN: ${{ github.token }}
+          MUKUCHI_AI_SNAPSHOT_FROZEN: 'true'
       - run: vp run website#check:prerender
       - run: vp run website#stats:check-build
       - run: vp run website#admin:check-build

@@ -10,7 +10,7 @@ function files(directory: string): string[] {
   return readdirSync(directory, { withFileTypes: true }).flatMap(entry => entry.isDirectory() ? files(join(directory, entry.name)) : [join(directory, entry.name)])
 }
 const build = z.object({ enabled: z.boolean() }).parse(JSON.parse(readFileSync('.output/admin-build.json', 'utf8')))
-const forbidden = ['NUXT_GITHUB_CLIENT_SECRET', 'NUXT_GITHUB_PUBLISH_TOKEN', 'NUXT_STATS_HASH_SECRET', 'NUXT_STATS_ADMIN_TOKEN'].map(key => process.env[key]).filter((value): value is string => !!value)
+const forbidden = ['NUXT_GITHUB_CLIENT_SECRET', 'NUXT_GITHUB_PUBLISH_TOKEN', 'NUXT_STATS_HASH_SECRET', 'NUXT_STATS_ADMIN_TOKEN', 'NUXT_AI_ENCRYPTION_KEY'].map(key => process.env[key]).filter((value): value is string => !!value)
 const filename = process.env.NUXT_ADMIN_DATABASE_PATH || '.data/admin.sqlite'
 if (existsSync(filename)) {
   const database = new DatabaseSync(filename, { readOnly: true })
@@ -19,10 +19,15 @@ if (existsSync(filename)) {
       for (const row of database.prepare(`SELECT id FROM ${table}`).all())
         forbidden.push(String(row.id))
     }
+    if (database.prepare('SELECT name FROM sqlite_master WHERE name = \'admin_ai_settings\'').get()) {
+      for (const row of database.prepare('SELECT encrypted_key FROM admin_ai_settings WHERE encrypted_key != \'\'').all())
+        forbidden.push(String(row.encrypted_key))
+    }
   }
   finally { database.close() }
 }
 assert.ok(!existsSync('.output/public/admin'), '后台页面不得预渲染')
+assert.ok(!existsSync('.output/public/ai'), '摘要准备快照不得复制到公开目录')
 for (const path of files('.output/public')) {
   assert.ok(!/admin\.sqlite|admin-assets|\.env(?:\.|$)/.test(path), '私有存储不得进入静态目录')
   if (!/\.(?:html|json|js|mjs|map|txt|xml|sql)$/.test(path))
@@ -37,6 +42,7 @@ if (existsSync('.output/server/wrangler.json')) {
   assert.equal(config.vars.NUXT_ADMIN_ENABLED, String(build.enabled))
   for (const path of files('.output/server').filter(path => path.endsWith('.mjs'))) {
     const content = readFileSync(path, 'utf8')
+    assert.ok(!forbidden.some(value => content.includes(value)), 'Workers 代码不得内嵌服务端密钥或私有数据')
     assert.ok(!content.includes('后台数据库未初始化，请先执行迁移'), 'Workers 不得包含本地后台 SQLite 适配器')
     assert.ok(!content.includes('本地文章已被修改，请对比最新版本后重新发布'), 'Workers 不得包含本地文件发布能力')
   }

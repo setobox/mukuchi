@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { summaryRecordSchema } from '../ai/model.ts'
 import { isTaxonomyName } from './taxonomy.ts'
 
 export const themeColors = [
@@ -25,6 +26,9 @@ export const themeColors = [
 export const postFields = z.object({
   title: z.string().min(1),
   description: z.string().min(1),
+  aiSummary: z.boolean().default(true),
+  summary: summaryRecordSchema.optional().catch(undefined),
+  summarySource: z.enum(['ai', 'description']).default('description'),
   publish: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   update: z
     .string()
@@ -39,7 +43,7 @@ export const postFields = z.object({
 })
 export const aboutFields = z.object({ title: z.string().min(1), description: z.string().min(1) })
 export type PostMeta = z.infer<typeof postFields>
-export type PostSummary = PostMeta & { path: string }
+export type PostSummary = Omit<PostMeta, 'aiSummary' | 'summary' | 'summarySource'> & { path: string }
 
 export function isCalendarDate(value: string): boolean {
   const [year, month, day] = value.split('-').map(Number)

@@ -18,7 +18,7 @@ if (build.enabled) {
   const wrangler = join(dirname(require.resolve('wrangler/package.json')), 'bin/wrangler.js')
   const output = execFileSync(process.execPath, [wrangler, 'secret', 'list', '--format', 'json', '--config', path], { encoding: 'utf8', windowsHide: true })
   const secrets = z.array(z.object({ name: z.string() })).parse(JSON.parse(output)).map(item => item.name)
-  for (const name of ['NUXT_GITHUB_CLIENT_ID', 'NUXT_GITHUB_CLIENT_SECRET', 'NUXT_GITHUB_PUBLISH_TOKEN']) assert.ok(secrets.includes(name), `缺少 Worker Secret：${name}`)
+  for (const name of ['NUXT_GITHUB_CLIENT_ID', 'NUXT_GITHUB_CLIENT_SECRET', 'NUXT_GITHUB_PUBLISH_TOKEN', 'NUXT_AI_ENCRYPTION_KEY']) assert.ok(secrets.includes(name), `缺少 Worker Secret：${name}`)
   execFileSync(process.execPath, [wrangler, 'd1', 'migrations', 'apply', 'mukuchi-admin', '--remote', '--config', 'wrangler.jsonc'], { stdio: 'inherit', windowsHide: true })
 }
 console.log('后台发布前置检查完成。')

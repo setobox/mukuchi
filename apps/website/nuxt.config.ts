@@ -13,6 +13,7 @@ export default defineNuxtConfig({
   compatibilityDate: '2026-09-13',
   runtimeConfig: {
     adminLocalProof: localDevProof,
+    aiEncryptionKey: '',
     adminEnabled: false,
     adminOwnerId: 83793448,
     adminDatabasePath: fileURLToPath(new URL('./.data/admin.sqlite', import.meta.url)),

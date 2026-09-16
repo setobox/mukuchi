@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { Asset, Draft, Publication } from '#shared/admin/model'
+import type { SummaryState } from '#shared/ai/model'
 import { parseDocument } from 'yaml'
 import { publicationLabels } from '#shared/admin/model'
 import { splitDocument } from '#shared/content/document'
@@ -30,6 +31,11 @@ const error = ref('')
 const notice = ref('')
 const saving = ref(false)
 const busy = ref(false)
+const summaryBusy = ref(false)
+const summaryState = ref<SummaryState | null>(null)
+const summaryText = ref('')
+const summaryEdited = ref(false)
+const summaryError = ref('')
 const dirty = computed(() => source.value !== saved.value)
 const publication = ref<Publication | null>(null)
 const remote = ref<{ source: string, hash: string } | null | undefined>()
@@ -39,6 +45,7 @@ const imageAlt = ref('')
 const { upload, progress, uploading, remove: deleteAsset } = useAssetUpload()
 let saveWork: Promise<boolean> | null = null
 let timer: ReturnType<typeof setTimeout> | undefined
+let summaryRequest = 0
 let operation: { id: string, version: number, action: 'publish' | 'unpublish' } | null = null
 
 async function load() {
@@ -50,6 +57,7 @@ async function load() {
     source.value = saved.value = result.draft.source
     assets.value = result.assets
     local.value = result.local
+    await loadSummary()
   }
   catch (cause) { error.value = adminError(cause) }
 }
@@ -64,11 +72,11 @@ function changeSource(value: string) {
     void save()
   }, 1200)
 }
-async function save(): Promise<boolean> {
+async function saveSource(): Promise<boolean> {
   clearTimeout(timer)
   if (saveWork) {
     await saveWork
-    return dirty.value ? save() : !error.value
+    return dirty.value ? saveSource() : !error.value
   }
   if (!draft.value || !dirty.value)
     return true
@@ -78,7 +86,9 @@ async function save(): Promise<boolean> {
       while (draft.value && dirty.value) {
         const snapshot = source.value
         draft.value = await request<Draft>(`drafts/${id}`, { method: 'PUT', body: { version: draft.value.version, source: snapshot } })
-        saved.value = snapshot
+        if (source.value === snapshot)
+          source.value = draft.value.source
+        saved.value = draft.value.source
       }
       error.value = ''
       return true
@@ -94,6 +104,77 @@ async function save(): Promise<boolean> {
   })()
   return saveWork
 }
+async function save(): Promise<boolean> {
+  const result = await saveSource()
+  return result && summaryEdited.value && !summaryBusy.value ? updateSummary('save') : result
+}
+function editSummary() {
+  summaryEdited.value = true
+  clearTimeout(timer)
+  timer = setTimeout(() => {
+    void save()
+  }, 1200)
+}
+async function loadSummary() {
+  const sequence = ++summaryRequest
+  const version = draft.value?.version
+  const result = await request<SummaryState>(`drafts/${id}/summary`)
+  if (sequence !== summaryRequest || version !== draft.value?.version || summaryBusy.value)
+    return
+  summaryState.value = result
+  if (!summaryEdited.value)
+    summaryText.value = summaryState.value.record?.text ?? ''
+}
+async function updateSummary(action: 'generate' | 'save'): Promise<boolean> {
+  if (summaryBusy.value)
+    return false
+  summaryBusy.value = true
+  summaryRequest++
+  summaryError.value = ''
+  try {
+    if (!await saveSource() || !draft.value)
+      return false
+    const snapshot = source.value
+    const result = await request<{ draft: Draft, summary: SummaryState }>(`drafts/${id}/summary`, { method: 'POST', body: { action, version: draft.value.version, ...(action === 'save' ? { text: summaryText.value } : {}) } })
+    if (result.draft.version < draft.value.version)
+      return false
+    draft.value = result.draft
+    saved.value = result.draft.source
+    if (source.value !== snapshot) {
+      summaryError.value = '文章已继续编辑，摘要将按最新内容重新检查。'
+      await saveSource()
+      return true
+    }
+    source.value = saved.value = result.draft.source
+    summaryState.value = result.summary
+    summaryText.value = result.summary.record?.text ?? ''
+    summaryEdited.value = false
+    return true
+  }
+  catch (cause) {
+    summaryError.value = adminError(cause)
+    return false
+  }
+  finally {
+    summaryBusy.value = false
+    await loadSummary().catch(() => {})
+    if (mode.value === 'preview')
+      await switchMode('preview')
+  }
+}
+const summaryStatus = computed(() => {
+  if (metadata.value.aiSummary === false)
+    return '已关闭'
+  if (summaryError.value)
+    return '生成或保存失败'
+  if (dirty.value)
+    return '文章已修改，保存后检查摘要'
+  return ({ disabled: '未启用', missing: '尚未生成', valid: '有效', stale: '已过期', unavailable: '暂不可用' })[summaryState.value?.status ?? 'missing']
+})
+watch(saving, (value) => {
+  if (!value && draft.value)
+    void loadSummary().catch(() => {})
+})
 async function switchMode(next: typeof mode.value) {
   busy.value = true
   error.value = ''
@@ -205,9 +286,9 @@ async function removeAsset(asset: Asset) {
   }
   catch (cause) { error.value = adminError(cause) }
 }
-onBeforeRouteLeave(async () => !dirty.value || await save())
+onBeforeRouteLeave(async () => (!dirty.value && !summaryEdited.value) || await save())
 function beforeUnload(event: BeforeUnloadEvent) {
-  if (dirty.value) {
+  if (dirty.value || summaryEdited.value) {
     event.preventDefault()
     event.returnValue = ''
   }
@@ -238,11 +319,11 @@ onBeforeUnmount(() => {
         </NuxtLink><h1 class="mt-2 break-all text-section text-heading">
           {{ draft?.path || '加载文章' }}
         </h1><p class="mt-1 text-xs text-muted" role="status">
-          {{ saving ? '正在保存草稿…' : dirty ? '有未保存修改' : draft ? '草稿已保存' : '' }}
+          {{ saving ? '正在保存草稿…' : summaryBusy ? '正在处理摘要…' : dirty || summaryEdited ? '有未保存修改' : draft ? '草稿已保存' : '' }}
         </p>
-      </div><BaseButton variant="border" :disabled="saving || busy || !draft" @click="save">
+      </div><BaseButton variant="border" :disabled="saving || summaryBusy || busy || !draft" @click="save">
         保存草稿
-      </BaseButton><BaseButton :disabled="busy || !draft || uploading" @click="publish()">
+      </BaseButton><BaseButton :disabled="busy || summaryBusy || !draft || uploading" @click="publish()">
         {{ local ? '发布到本地' : '发布到网站' }}
       </BaseButton>
     </div>
@@ -268,9 +349,9 @@ onBeforeUnmount(() => {
         <div v-else-if="preview" class="border border-line rounded-panel p-5">
           <h2 class="mb-4 text-page text-themed">
             {{ preview.data.title }}
-          </h2><p class="mb-5 text-muted">
+          </h2><p v-if="preview.data.summarySource !== 'ai'" class="mb-5 text-muted">
             {{ preview.data.description }}
-          </p><img v-if="typeof preview.data.cover === 'string'" :src="preview.data.cover" alt="文章封面预览" class="mb-6 max-w-full rounded-panel"><ArticleBody :content-key="source">
+          </p><img v-if="typeof preview.data.cover === 'string'" :src="preview.data.cover" alt="文章封面预览" class="mb-6 max-w-full rounded-panel"><ArticleSummary v-if="preview.data.summarySource === 'ai'" :text="String(preview.data.description)" /><ArticleBody :content-key="source">
             <ContentRenderer :value="{ ...preview.data, body: preview.body }" />
           </ArticleBody>
         </div>
@@ -298,9 +379,36 @@ onBeforeUnmount(() => {
       <aside class="min-w-0 space-y-6">
         <section class="border border-line rounded-panel p-5">
           <h2 class="mb-4 text-heading font-semibold">
+            AI 摘要
+          </h2>
+          <label class="min-h-11 flex items-center gap-3 text-sm"><input type="checkbox" :checked="metadata.aiSummary !== false" :disabled="summaryBusy" @change="setMeta('aiSummary', ($event.target as HTMLInputElement).checked)">此文章启用 AI 摘要</label>
+          <p class="my-3 text-xs text-muted" role="status">
+            {{ summaryStatus }}
+          </p>
+          <label class="block text-xs text-muted">摘要内容<textarea v-model="summaryText" rows="5" maxlength="300" :disabled="summaryBusy || metadata.aiSummary === false" class="mt-2 w-full border border-line-strong rounded-button bg-canvas p-3 text-ink leading-7" @input="editSummary" /></label>
+          <p v-if="summaryState?.message" class="mt-3 text-xs text-muted">
+            {{ summaryState.message }}
+          </p>
+          <p v-if="summaryError" role="alert" class="mt-3 text-xs text-error">
+            {{ summaryError }}
+          </p>
+          <div class="mt-4 flex flex-wrap gap-3">
+            <BaseButton variant="border" :disabled="summaryBusy || busy || metadata.aiSummary === false" @click="updateSummary('generate')">
+              {{ summaryBusy ? '处理中…' : summaryState?.record ? '重新生成' : '生成摘要' }}
+            </BaseButton>
+            <BaseButton variant="border" :disabled="summaryBusy || busy || !summaryEdited || !summaryText.trim() || metadata.aiSummary === false" @click="updateSummary('save')">
+              保存摘要
+            </BaseButton>
+          </div>
+          <NuxtLink to="/admin/ai" class="mt-4 inline-block text-xs text-accent-soft">
+            AI 服务设置
+          </NuxtLink>
+        </section>
+        <section class="border border-line rounded-panel p-5">
+          <h2 class="mb-4 text-heading font-semibold">
             文章信息
           </h2><div class="space-y-4">
-            <label v-for="field in [{ key: 'title', label: '标题', type: 'text' }, { key: 'description', label: '摘要', type: 'text' }, { key: 'publish', label: '发布日期', type: 'date' }, { key: 'update', label: '更新日期', type: 'date' }, { key: 'cover', label: '封面地址', type: 'text' }]" :key="field.key" class="block text-xs text-muted">{{ field.label }}<input :type="field.type" :value="metadata[field.key] ?? ''" class="mt-2 min-h-11 w-full border border-line-strong rounded-button bg-canvas px-3 text-ink" @change="setMeta(field.key, ($event.target as HTMLInputElement).value || undefined)"></label><label class="block text-xs text-muted">标签<input :value="Array.isArray(metadata.tags) ? metadata.tags.join(', ') : ''" class="mt-2 min-h-11 w-full border border-line-strong rounded-button bg-canvas px-3 text-ink" @change="setMeta('tags', ($event.target as HTMLInputElement).value.split(/[,，]/).map(v => v.trim()).filter(Boolean))"></label><label class="block text-xs text-muted">专栏<input :value="Array.isArray(metadata.categories) ? metadata.categories.join(', ') : ''" class="mt-2 min-h-11 w-full border border-line-strong rounded-button bg-canvas px-3 text-ink" @change="setMeta('categories', ($event.target as HTMLInputElement).value.split(/[,，]/).map(v => v.trim()).filter(Boolean))"></label><label class="block text-xs text-muted">置顶权重<input type="number" min="0" :value="metadata.pin ?? 0" class="mt-2 min-h-11 w-full border border-line-strong rounded-button bg-canvas px-3 text-ink" @change="setMeta('pin', Number(($event.target as HTMLInputElement).value))"></label><label class="min-h-11 flex items-center gap-3"><input type="checkbox" :checked="!!metadata.wip" @change="setMeta('wip', ($event.target as HTMLInputElement).checked)">显示施工提醒</label>
+            <label v-for="field in [{ key: 'title', label: '标题', type: 'text' }, { key: 'description', label: '原简介（必填）', type: 'text' }, { key: 'publish', label: '发布日期', type: 'date' }, { key: 'update', label: '更新日期', type: 'date' }, { key: 'cover', label: '封面地址', type: 'text' }]" :key="field.key" class="block text-xs text-muted">{{ field.label }}<input :type="field.type" :value="metadata[field.key] ?? ''" class="mt-2 min-h-11 w-full border border-line-strong rounded-button bg-canvas px-3 text-ink" @change="setMeta(field.key, ($event.target as HTMLInputElement).value || undefined)"></label><label class="block text-xs text-muted">标签<input :value="Array.isArray(metadata.tags) ? metadata.tags.join(', ') : ''" class="mt-2 min-h-11 w-full border border-line-strong rounded-button bg-canvas px-3 text-ink" @change="setMeta('tags', ($event.target as HTMLInputElement).value.split(/[,，]/).map(v => v.trim()).filter(Boolean))"></label><label class="block text-xs text-muted">专栏<input :value="Array.isArray(metadata.categories) ? metadata.categories.join(', ') : ''" class="mt-2 min-h-11 w-full border border-line-strong rounded-button bg-canvas px-3 text-ink" @change="setMeta('categories', ($event.target as HTMLInputElement).value.split(/[,，]/).map(v => v.trim()).filter(Boolean))"></label><label class="block text-xs text-muted">置顶权重<input type="number" min="0" :value="metadata.pin ?? 0" class="mt-2 min-h-11 w-full border border-line-strong rounded-button bg-canvas px-3 text-ink" @change="setMeta('pin', Number(($event.target as HTMLInputElement).value))"></label><label class="min-h-11 flex items-center gap-3"><input type="checkbox" :checked="!!metadata.wip" @change="setMeta('wip', ($event.target as HTMLInputElement).checked)">显示施工提醒</label>
           </div>
           <label class="mt-4 block text-xs text-muted">主题色<select :value="metadata.theme ?? '#a369ff'" class="mt-2 min-h-11 w-full border border-line-strong rounded-button bg-canvas px-3 text-ink" @change="setMeta('theme', ($event.target as HTMLSelectElement).value)"><option v-for="color in themeColors" :key="color" :value="color">{{ color }}</option></select></label>
         </section>

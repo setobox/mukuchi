@@ -12,7 +12,7 @@ if (build.enabled) {
   assert.equal(session.status, 200, '生产登录接口不可用')
   assert.match(session.headers.get('cache-control') ?? '', /no-store/)
   z.object({ user: z.null(), csrf: z.null(), localAvailable: z.literal(false), loginAvailable: z.literal(true) }).parse(await session.json())
-  for (const path of ['/api/admin/articles', `/api/admin/assets/${crypto.randomUUID()}`])
+  for (const path of ['/api/admin/articles', '/api/admin/ai/settings', `/api/admin/drafts/${crypto.randomUUID()}/summary`, `/api/admin/assets/${crypto.randomUUID()}`])
     assert.equal((await request(path)).status, 401, '生产后台必须验证会话')
   const page = await request('/admin')
   assert.equal(page.status, 200)

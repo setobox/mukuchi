@@ -62,7 +62,11 @@ export function articleRoute(path: string) {
   return `/posts${normalized ? `/${normalized}` : ''}`
 }
 export class AdminError extends Error {
-  constructor(public statusCode: number, message: string) { super(message) }
+  statusCode: number
+  constructor(statusCode: number, message: string) {
+    super(message)
+    this.statusCode = statusCode
+  }
 }
 export async function sha256(input: string | Uint8Array): Promise<string> {
   const bytes = typeof input === 'string' ? new TextEncoder().encode(input) : input
