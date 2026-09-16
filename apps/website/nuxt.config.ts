@@ -1,3 +1,5 @@
+import process from 'node:process'
+import { fileURLToPath } from 'node:url'
 import githubSnapshots from './content/github/module'
 import { validateContentDirectory, validateFrontmatter } from './content/validation.ts'
 import { rssCacheControl, rssContentType, rssPath } from './shared/rss/config.ts'
@@ -5,7 +7,13 @@ import { themeCookieBootstrap, themeCookieKey, themeCookieOptions } from './shar
 
 export default defineNuxtConfig({
   compatibilityDate: '2026-09-13',
-  runtimeConfig: { public: { siteUrl: 'https://blog.setobox.me' } },
+  runtimeConfig: {
+    statsHashSecret: '',
+    statsAdminToken: '',
+    statsDatabasePath: fileURLToPath(new URL('./.data/stats.sqlite', import.meta.url)),
+    public: { siteUrl: 'https://blog.setobox.me', statsEnabled: false },
+  },
+  alias: { '#stats-driver': fileURLToPath(new URL('./server/features/stats/drivers/node', import.meta.url)) },
   nitro: {
     prerender: { crawlLinks: false, failOnError: true, routes: ['/about', rssPath] },
     cloudflare: { deployConfig: true, nodeCompat: true },
@@ -30,6 +38,14 @@ export default defineNuxtConfig({
     renderer: { anchorLinks: { h2: true, h3: true, h4: true, h5: true, h6: true } },
   },
   hooks: {
+    'nitro:config': (config) => {
+      const preset = process.env.NITRO_PRESET || config.preset || ''
+      config.alias ||= {}
+      config.alias['#stats-driver'] = fileURLToPath(new URL(
+        `./server/features/stats/drivers/${preset.includes('cloudflare') ? 'cloudflare' : 'node'}.ts`,
+        import.meta.url,
+      ))
+    },
     // Nuxt Content skips parse errors by default. Preflight every start/build,
     // including cached content, so invalid frontmatter cannot pass a build.
     'modules:before': validateContentDirectory,
@@ -65,6 +81,8 @@ export default defineNuxtConfig({
     },
   },
   routeRules: {
+    '/api/stats/**': { prerender: false, headers: { 'cache-control': 'no-store' } },
+    '/api/admin/stats': { prerender: false, headers: { 'cache-control': 'no-store' } },
     [rssPath]: { prerender: true, headers: { 'content-type': rssContentType, 'cache-control': rssCacheControl } },
     '/': { redirect: { to: '/posts', statusCode: 302 } },
     '/about': { prerender: true },

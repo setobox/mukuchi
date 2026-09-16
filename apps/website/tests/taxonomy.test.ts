@@ -49,6 +49,7 @@ async function render(component: Component, props: Record<string, unknown>) {
   for (const [name, child] of Object.entries({
     NuxtLink,
     AppIcon: Container,
+    ArticleViews: Container,
     SiteColumns: Container,
     SiteSidebar: Container,
     TagFilter,

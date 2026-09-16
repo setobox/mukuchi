@@ -26,27 +26,6 @@ withDefaults(
         暂无标签
       </p>
     </section>
-    <section class="hidden px-2 lg:block" aria-labelledby="sidebar-stats">
-      <h2 id="sidebar-stats" class="section-label">
-        网站统计
-      </h2>
-      <dl class="grid grid-cols-3 mb-0 mt-5">
-        <div
-          v-for="(label, index) in ['文章', '标签', '专栏']"
-          :key="label"
-          :class="{ 'border-l border-line pl-4': index > 0 }"
-        >
-          <dt class="text-muted">
-            {{ label }}
-          </dt>
-          <dd
-            class="m-0 mt-1.5 text-[18px] text-ink leading-[normal] font-mono"
-            aria-label="暂无数据"
-          >
-            —
-          </dd>
-        </div>
-      </dl>
-    </section>
+    <SiteStats />
   </div>
 </template>

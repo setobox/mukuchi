@@ -11,6 +11,7 @@ withDefaults(defineProps<{ post: PostSummary, detailed?: boolean }>(), { detaile
     <span v-if="post.pin > 0" class="inline-flex items-center gap-1.5 text-accent-soft"><AppIcon name="pin" />置顶</span>
     <time :datetime="post.publish">发布于 {{ formatPostDate(post.publish) }}</time>
     <time v-if="detailed && post.update" :datetime="post.update">更新于 {{ formatPostDate(post.update) }}</time>
+    <ArticleViews v-if="detailed" :path="post.path" />
     <NuxtLink
       v-for="category in post.categories"
       :key="category"

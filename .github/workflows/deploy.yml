@@ -16,6 +16,8 @@ jobs:
   website:
     runs-on: ubuntu-latest
     timeout-minutes: 25
+    env:
+      NUXT_PUBLIC_STATS_ENABLED: ${{ vars.MUKUCHI_STATS_ENABLED || 'false' }}
     steps:
       - uses: actions/checkout@v4
       - uses: voidzero-dev/setup-vp@v1.15.0
@@ -31,10 +33,12 @@ jobs:
         env:
           MUKUCHI_GITHUB_TOKEN: ${{ github.token }}
       - run: vp run website#check:prerender
+      - run: vp run website#stats:check-build
       - run: vp run website#build:cloudflare
         env:
           MUKUCHI_GITHUB_TOKEN: ${{ github.token }}
       - run: vp run website#check:prerender
+      - run: vp run website#stats:check-build
       - name: Deploy production
         if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         run: vp run website#deploy:cloudflare
