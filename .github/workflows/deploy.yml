@@ -20,6 +20,7 @@ jobs:
       NUXT_PUBLIC_STATS_ENABLED: ${{ vars.MUKUCHI_STATS_ENABLED || 'false' }}
       NUXT_ADMIN_ENABLED: ${{ vars.MUKUCHI_ADMIN_ENABLED || 'false' }}
       NUXT_PUBLIC_AUTH_ENABLED: ${{ vars.MUKUCHI_ADMIN_ENABLED || 'false' }}
+      NUXT_PUBLIC_GISCUS_REPO: ${{ vars.MUKUCHI_GISCUS_REPO || 'setobox/mukuchi' }}
       NUXT_PUBLIC_GISCUS_REPO_ID: ${{ vars.MUKUCHI_GISCUS_REPO_ID }}
       NUXT_PUBLIC_GISCUS_CATEGORY_ID: ${{ vars.MUKUCHI_GISCUS_CATEGORY_ID }}
     steps:
