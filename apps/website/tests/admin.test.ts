@@ -124,6 +124,18 @@ test('发布校验遵循 frontmatter，图片收集不会把代码示例当实�
   expect([...paths]).toEqual(['/images/a.png', '/images/b.png'])
   expect(await imageReferences(`${source}\n<img src="/images/html.png">\n\n<!-- <img src="/images/comment.png"> -->`)).toEqual(new Set(['/images/html.png']))
 })
+test('GitHub 请求使用 Workers 支持的重定向策略且不向重定向地址转发凭据', async () => {
+  const request = vi.fn<typeof fetch>(async (_url, options) => {
+    if (options?.redirect === 'error')
+      throw new TypeError('Workers does not support redirect: error')
+    return Response.redirect('https://other.example/collect', 302)
+  })
+  const github = createGithub({ repository: 'test/blog', branch: 'main', token: 'test-secret' }, request)
+  await expect(github.list()).rejects.toMatchObject({ statusCode: 503, message: 'GitHub 请求失败，请稍后重试' })
+  expect(request).toHaveBeenCalledTimes(1)
+  expect(request).toHaveBeenCalledWith('https://api.github.com/repos/test/blog/git/ref/heads/main', expect.objectContaining({ redirect: 'manual' }))
+})
+
 test('GitHub 将正文图片合为单个树与提交，更新引用禁止强推', async () => {
   const sha = (char: string) => char.repeat(40)
   const calls: { url: string, body: Record<string, unknown> | undefined }[] = []

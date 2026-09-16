@@ -16,7 +16,8 @@ export function createGithub(options: { repository: string, branch: string, toke
   async function api(path: string, method = 'GET', body?: unknown): Promise<unknown> {
     if (!options.token)
       throw new AdminError(503, '仓库发布凭据尚未配置')
-    const response = await request(`${root}${path}`, { method, redirect: 'error', headers: { 'Authorization': `Bearer ${options.token}`, 'Accept': 'application/vnd.github+json', 'User-Agent': 'mukuchi-admin', 'Content-Type': 'application/json', 'X-GitHub-Api-Version': '2022-11-28' }, body: body === undefined ? undefined : JSON.stringify(body), signal: AbortSignal.timeout(15000) })
+    // Workers supports manual redirects; reject 3xx below without forwarding credentials.
+    const response = await request(`${root}${path}`, { method, redirect: 'manual', headers: { 'Authorization': `Bearer ${options.token}`, 'Accept': 'application/vnd.github+json', 'User-Agent': 'mukuchi-admin', 'Content-Type': 'application/json', 'X-GitHub-Api-Version': '2022-11-28' }, body: body === undefined ? undefined : JSON.stringify(body), signal: AbortSignal.timeout(15000) })
     if (response.status === 409 || response.status === 422)
       throw new AdminError(409, '仓库已有新修改，请重新检查后发布')
     if (!response.ok)
