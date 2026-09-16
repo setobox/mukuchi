@@ -38,7 +38,9 @@ function receive(event: MessageEvent) {
   if (event.data && typeof event.data === 'object' && 'giscus' in event.data) {
     loading.value = false
     const message: unknown = event.data.giscus
+    // giscus reports this normal empty state before the first comment creates a discussion.
     failed.value = !!message && typeof message === 'object' && 'error' in message
+      && !(typeof message.error === 'string' && message.error.includes('Discussion not found'))
     clearTimeout(timeout)
   }
 }
