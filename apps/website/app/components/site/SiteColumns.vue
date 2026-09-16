@@ -1,5 +1,11 @@
 <script setup lang="ts">
+import { useElementSize } from '@vueuse/core'
+import { useTemplateRef } from 'vue'
+
 defineProps<{ sticky?: boolean }>()
+
+const sidebar = useTemplateRef<HTMLElement>('sidebar')
+const { height: sidebarHeight } = useElementSize(sidebar, { width: 0, height: 0 }, { box: 'border-box' })
 </script>
 
 <template>
@@ -8,18 +14,18 @@ defineProps<{ sticky?: boolean }>()
       <slot />
     </div>
     <aside
+      ref="sidebar"
       class="min-w-0 lg:col-start-1 lg:row-start-1"
       aria-label="侧边栏"
+      :style="{ '--sidebar-height': `${sidebarHeight}px` }"
       :class="{
-        'lg:sticky lg:top-[calc(var(--header-height)+24px)]':
+        'lg:sticky lg:top-[min(calc(var(--header-height)+24px),calc(100dvh-var(--sidebar-height)-24px))]':
           sticky,
       }"
     >
-      <div :class="{ 'lg:max-h-[calc(100dvh-var(--header-height)-48px)] lg:overflow-y-auto lg:p-6 lg:-m-6': sticky }">
-        <slot name="sidebar">
-          <SiteSidebar />
-        </slot>
-      </div>
+      <slot name="sidebar">
+        <SiteSidebar />
+      </slot>
     </aside>
   </div>
 </template>
