@@ -11,6 +11,13 @@
   "assets": { "html_handling": "drop-trailing-slash" },
   "d1_databases": [
     {
+      "binding": "ADMIN_DB",
+      "database_name": "mukuchi-admin",
+      "database_id": "3453b53f-aba4-43cf-8103-f5a69fb59f87",
+      "migrations_dir": "migrations/admin",
+      "remote": false
+    },
+    {
       "binding": "DB",
       "database_name": "mukuchi-content",
       "database_id": "c8f87923-1ca6-4f8c-94b6-644f621d19db"
@@ -18,9 +25,13 @@
     {
       "binding": "STATS_DB",
       "database_name": "mukuchi-stats",
+      "database_id": "d9948aa8-0882-494e-a559-fe7d381a4902",
       "migrations_dir": "migrations/stats",
       "remote": false
     }
+  ],
+  "r2_buckets": [
+    { "binding": "ADMIN_ASSETS", "bucket_name": "mukuchi-draft-assets", "remote": false }
   ],
   "observability": { "enabled": true }
 }

@@ -1,19 +1,38 @@
+import { randomUUID } from 'node:crypto'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
 import githubSnapshots from './content/github/module'
 import { validateContentDirectory, validateFrontmatter } from './content/validation.ts'
+import { localRequestAllowed } from './server/features/auth/policy.ts'
 import { rssCacheControl, rssContentType, rssPath } from './shared/rss/config.ts'
 import { themeCookieBootstrap, themeCookieKey, themeCookieOptions } from './shared/theme/preference.ts'
+
+const localDevProof = randomUUID()
 
 export default defineNuxtConfig({
   compatibilityDate: '2026-09-13',
   runtimeConfig: {
+    adminLocalProof: localDevProof,
+    adminEnabled: false,
+    adminOwnerId: 83793448,
+    adminDatabasePath: fileURLToPath(new URL('./.data/admin.sqlite', import.meta.url)),
+    adminAssetsDirectory: fileURLToPath(new URL('./.data/admin-assets/', import.meta.url)),
+    adminPostsDirectory: fileURLToPath(new URL('../../content/posts/', import.meta.url)),
+    adminImagesDirectory: fileURLToPath(new URL('./public/images/', import.meta.url)),
+    githubClientId: '',
+    githubClientSecret: '',
+    githubPublishToken: '',
+    githubRepository: 'setobox/mukuchi',
+    githubBranch: 'main',
     statsHashSecret: '',
     statsAdminToken: '',
     statsDatabasePath: fileURLToPath(new URL('./.data/stats.sqlite', import.meta.url)),
-    public: { siteUrl: 'https://blog.setobox.me', statsEnabled: false },
+    public: { siteUrl: 'https://blog.setobox.me', statsEnabled: false, authEnabled: false, giscusRepo: 'setobox/mukuchi', giscusRepoId: '', giscusCategoryId: '' },
   },
-  alias: { '#stats-driver': fileURLToPath(new URL('./server/features/stats/drivers/node', import.meta.url)) },
+  alias: {
+    '#stats-driver': fileURLToPath(new URL('./server/features/stats/drivers/node', import.meta.url)),
+    '#admin-driver': fileURLToPath(new URL('./server/features/admin/drivers/node', import.meta.url)),
+  },
   nitro: {
     prerender: { crawlLinks: false, failOnError: true, routes: ['/about', rssPath] },
     cloudflare: { deployConfig: true, nodeCompat: true },
@@ -41,6 +60,10 @@ export default defineNuxtConfig({
     'nitro:config': (config) => {
       const preset = process.env.NITRO_PRESET || config.preset || ''
       config.alias ||= {}
+      config.alias['#admin-driver'] = fileURLToPath(new URL(
+        `./server/features/admin/drivers/${preset.includes('cloudflare') ? 'cloudflare' : 'node'}.ts`,
+        import.meta.url,
+      ))
       config.alias['#stats-driver'] = fileURLToPath(new URL(
         `./server/features/stats/drivers/${preset.includes('cloudflare') ? 'cloudflare' : 'node'}.ts`,
         import.meta.url,
@@ -67,6 +90,12 @@ export default defineNuxtConfig({
   components: [{ path: '~/components', pathPrefix: false }],
   css: ['~/assets/css/main.css'],
   devtools: { enabled: false },
+  devServerHandlers: [{ handler(event) {
+    // Nitro forwards dev requests over IPC. Only this outer listener has the real peer.
+    delete event.node.req.headers['x-mukuchi-local-proof']
+    if (localRequestAllowed(true, event.node.req.socket?.remoteAddress, event.node.req.headers.host ?? '', !!event.node.req.headers.forwarded || !!event.node.req.headers['x-forwarded-for']))
+      event.node.req.headers['x-mukuchi-local-proof'] = localDevProof
+  } }],
   typescript: { strict: true },
   app: {
     head: {
@@ -81,6 +110,10 @@ export default defineNuxtConfig({
     },
   },
   routeRules: {
+    '/admin': { prerender: false, headers: { 'cache-control': 'private, no-store', 'x-robots-tag': 'noindex, nofollow' } },
+    '/admin/**': { prerender: false, headers: { 'cache-control': 'private, no-store', 'x-robots-tag': 'noindex, nofollow' } },
+    '/api/auth/**': { prerender: false, headers: { 'cache-control': 'no-store' } },
+    '/api/admin/**': { prerender: false, headers: { 'cache-control': 'no-store' } },
     '/api/stats/**': { prerender: false, headers: { 'cache-control': 'no-store' } },
     '/api/admin/stats': { prerender: false, headers: { 'cache-control': 'no-store' } },
     [rssPath]: { prerender: true, headers: { 'content-type': rssContentType, 'cache-control': rssCacheControl } },

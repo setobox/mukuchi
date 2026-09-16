@@ -4,12 +4,28 @@ import { defineConfig } from 'vite-plus'
 export default defineConfig({
   run: {
     tasks: {
+      'admin:check-build': {
+        command: 'node scripts/check-admin-build.ts',
+        cache: false,
+      },
+      'admin:smoke': {
+        command: 'node scripts/smoke-admin.ts',
+        cache: false,
+      },
+      'admin:migrate': {
+        command: 'node --import ./scripts/stats-environment.ts scripts/migrate-admin.ts',
+        cache: false,
+      },
+      'admin:migrate:local': {
+        command: 'wrangler d1 migrations apply mukuchi-admin --local --config wrangler.jsonc --persist-to .wrangler/state',
+        cache: false,
+      },
       'build': {
-        command: ['nuxt build', 'node scripts/finalize-stats-build.ts'],
+        command: ['nuxt build', 'node scripts/finalize-stats-build.ts', 'node scripts/finalize-admin-build.ts'],
         cache: false,
       },
       'build:cloudflare': {
-        command: ['nuxt build --preset cloudflare_module', 'node scripts/finalize-stats-build.ts'],
+        command: ['nuxt build --preset cloudflare_module', 'node scripts/finalize-stats-build.ts', 'node scripts/finalize-admin-build.ts'],
         cache: false,
       },
       'preview:cloudflare': {
@@ -17,7 +33,7 @@ export default defineConfig({
         cache: false,
       },
       'deploy:cloudflare': {
-        command: ['node scripts/check-release.ts', 'node scripts/prepare-stats-release.ts', 'wrangler deploy --config .output/server/wrangler.json'],
+        command: ['node scripts/check-release.ts', 'node scripts/prepare-stats-release.ts', 'node scripts/prepare-admin-release.ts', 'wrangler deploy --config .output/server/wrangler.json'],
         cache: false,
       },
       'smoke': {

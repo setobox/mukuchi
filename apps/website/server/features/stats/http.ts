@@ -3,6 +3,8 @@ import { queryCollection } from '@nuxt/content/server'
 import { openStatsDatabase } from '#stats-driver'
 import { taxonomyPath } from '../../../shared/content/taxonomy'
 import { normalizeStatsPath, statsEnabled } from '../../../shared/stats/model'
+import { adminEnabled } from '../admin/http'
+import { session } from '../auth/session'
 import { createStatsRepository, StatsEventConflict } from './repository'
 
 export function requireStats(event: H3Event) {
@@ -81,6 +83,13 @@ export async function visitorDigest(id: string, secret: string): Promise<string>
 
 export async function requireStatsAdmin(event: H3Event) {
   const config = requireStats(event)
+  if (adminEnabled(event) && !getHeader(event, 'authorization')) {
+    const current = await session(event)
+    if (current?.user.owner)
+      return
+    if (current)
+      throw createError({ statusCode: 403, message: '仅站主可以查询统计数据' })
+  }
   if (!config.statsAdminToken)
     throw createError({ statusCode: 404, message: '统计查询接口未启用' })
   // Hash both values to a fixed length before comparison.

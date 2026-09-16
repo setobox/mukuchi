@@ -26,6 +26,10 @@ export default defineNuxtPlugin((nuxtApp) => {
   })
   function complete(force = false) {
     const route = nuxtApp.$router.currentRoute.value
+    if (route.path === '/admin' || route.path.startsWith('/admin/') || route.path.startsWith('/api/')) {
+      tracker.leave()
+      return
+    }
     if (mounted && !error.value && route.matched.length && route.path !== '/')
       void tracker.open(route.path, force)
   }

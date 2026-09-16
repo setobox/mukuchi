@@ -160,6 +160,7 @@ useActionButton({
             <AppIcon name="left" />返回文章列表
           </NuxtLink>
         </footer>
+        <ClientOnly><LazyArticleComments :path="post.path" /></ClientOnly>
       </article>
     </SiteColumns>
   </div>

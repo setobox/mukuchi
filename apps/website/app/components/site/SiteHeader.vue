@@ -72,6 +72,7 @@ watch(desktop, (value) => {
       </nav>
       <div class="ml-auto flex items-center gap-0.5 lg:ml-0 lg:border-l lg:border-line lg:pl-4">
         <ThemeToggle />
+        <ClientOnly><AccountMenu /></ClientOnly>
         <button
           v-if="site.features.search"
           type="button"
