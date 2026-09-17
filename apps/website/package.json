@@ -7,12 +7,14 @@
   "scripts": {
     "dev": "nuxt dev",
     "preview": "nuxt preview",
+    "cover:icons": "node scripts/update-cover-icons.ts",
     "postinstall": "nuxt prepare",
     "typecheck": "nuxt typecheck",
     "check:prerender": "node scripts/check-prerender.ts",
     "test": "vp test run --config vitest.config.ts"
   },
   "dependencies": {
+    "@iconify/utils": "catalog:",
     "@nuxt/content": "catalog:",
     "@nuxtjs/color-mode": "catalog:",
     "@tiptap/core": "catalog:",
@@ -25,6 +27,7 @@
     "@tiptap/vue-3": "catalog:",
     "@vueuse/core": "catalog:",
     "@vueuse/nuxt": "catalog:",
+    "gsap": "catalog:",
     "nuxt": "catalog:",
     "reka-ui": "catalog:",
     "slugify": "catalog:",
@@ -34,7 +37,9 @@
     "zod": "catalog:"
   },
   "devDependencies": {
+    "@iconify-json/logos": "catalog:",
     "@iconify-json/lucide": "catalog:",
+    "@iconify/types": "catalog:",
     "@nuxt/eslint": "catalog:",
     "@nuxtjs/mdc": "catalog:",
     "@types/node": "catalog:",

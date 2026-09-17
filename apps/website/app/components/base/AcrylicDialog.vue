@@ -1,14 +1,16 @@
 <script setup lang="ts">
 import { useElementBounding, usePreferredReducedMotion, useScrollLock, useWindowSize } from '@vueuse/core'
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, useId, useTemplateRef, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, provide, ref, shallowRef, useId, useTemplateRef, watch } from 'vue'
+import { overlayTargetKey } from '~/shared/overlay'
 
 const props = withDefaults(
-  defineProps<{ title: string, description?: string, placement?: 'default' | 'image' | 'commands' | 'drawer' }>(),
-  { placement: 'default' },
+  defineProps<{ title: string, description?: string, placement?: 'default' | 'image' | 'commands' | 'drawer' | 'editor', dismissible?: boolean }>(),
+  { placement: 'default', dismissible: true },
 )
 const emit = defineEmits<{ opened: [], closed: [], keydown: [event: KeyboardEvent] }>()
 const open = defineModel<boolean>({ default: false })
 const dialog = useTemplateRef<HTMLDialogElement>('dialog')
+provide(overlayTargetKey, dialog)
 const panel = useTemplateRef<HTMLElement>('panel')
 const trigger = useTemplateRef<HTMLElement>('trigger')
 const triggerPosition = useElementBounding(trigger)
@@ -45,7 +47,7 @@ function isBackdrop(event: MouseEvent) {
 
 function keepFocusInside(event: KeyboardEvent) {
   const element = dialog.value
-  if (event.key !== 'Tab' || !element)
+  if (event.defaultPrevented || event.key !== 'Tab' || !element)
     return
   const controls = Array.from(
     element.querySelectorAll<HTMLElement>(
@@ -72,7 +74,7 @@ function keepFocusInside(event: KeyboardEvent) {
 }
 
 function closeOnBackdrop(event: MouseEvent) {
-  if (backdropPressed.value && isBackdrop(event)) {
+  if (props.dismissible && backdropPressed.value && isBackdrop(event)) {
     open.value = false
   }
   backdropPressed.value = false
@@ -186,13 +188,15 @@ onBeforeUnmount(() => {
             ? 'mt-[min(var(--header-height),calc(var(--dialog-viewport-height,100dvh)*0.08))] w-[min(640px,calc(100vw-32px))] max-h-[calc(var(--dialog-viewport-height,100dvh)-32px-min(var(--header-height),calc(var(--dialog-viewport-height,100dvh)*0.08)))] overflow-hidden p-4 md:p-6 [&[open]]:flex flex-col'
             : placement === 'drawer'
               ? ''
-              : 'mt-[calc(var(--header-height)+14px)] w-[min(480px,calc(100vw-40px))] max-h-[calc(100dvh-100px)] overflow-auto [scrollbar-gutter:stable] p-6',
+              : placement === 'editor'
+                ? 'my-4 w-[min(1440px,calc(100vw-32px))] max-h-[calc(100dvh-32px)] overflow-auto [scrollbar-gutter:stable] p-4 md:p-6'
+                : 'mt-[calc(var(--header-height)+14px)] w-[min(480px,calc(100vw-40px))] max-h-[calc(100dvh-100px)] overflow-auto [scrollbar-gutter:stable] p-6',
       ]"
       tabindex="-1"
       :autofocus="placement === 'drawer' || undefined"
       :aria-labelledby="titleId"
       :aria-describedby="description ? descriptionId : undefined"
-      @cancel.prevent="open = false"
+      @cancel.prevent="dismissible && (open = false)"
       @keydown="onKeydown"
       @pointerdown="backdropPressed = isBackdrop($event)"
       @click="closeOnBackdrop"
@@ -224,7 +228,7 @@ onBeforeUnmount(() => {
           </div>
           <div class="flex shrink-0 gap-1">
             <slot name="actions" />
-            <button type="button" class="icon-button" aria-label="关闭弹窗" @click="open = false">
+            <button type="button" class="icon-button" aria-label="关闭弹窗" :disabled="!dismissible" @click="open = false">
               <AppIcon name="close" />
             </button>
           </div>

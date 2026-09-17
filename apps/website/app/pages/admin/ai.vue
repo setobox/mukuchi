@@ -59,7 +59,7 @@ async function test() {
     </p>
     <form v-if="loaded" class="space-y-6" @submit.prevent="save">
       <fieldset :disabled="busy" class="space-y-6">
-        <label class="min-h-11 flex items-center gap-3"><input v-model="form.enabled" type="checkbox">启用 AI 摘要</label>
+        <BaseSwitch v-model="form.enabled" label="启用 AI 摘要" />
         <label class="block text-sm text-muted">API 地址<input v-model="form.baseUrl" type="url" placeholder="https://服务地址/v1" autocomplete="off" class="mt-2 min-h-11 w-full border border-line-strong rounded-button bg-canvas px-3 text-ink"></label>
         <label class="block text-sm text-muted">模型<input v-model="form.model" type="text" autocomplete="off" class="mt-2 min-h-11 w-full border border-line-strong rounded-button bg-canvas px-3 text-ink"></label>
         <div>

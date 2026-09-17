@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { JSONContent } from '@tiptap/core'
+import type { Editor, JSONContent } from '@tiptap/core'
 import { Node } from '@tiptap/core'
 import Image from '@tiptap/extension-image'
 import { TableKit } from '@tiptap/extension-table'
@@ -13,6 +13,11 @@ const props = defineProps<{ segments: { source: string, raw: boolean }[], imageP
 const emit = defineEmits<{ change: [source: string] }>()
 const link = ref('')
 const showLink = ref(false)
+const headingLevel = ref<number>()
+let headingSelected = false
+function syncHeading({ editor }: { editor: Editor }) {
+  headingLevel.value = editor.isActive('heading') ? Number(editor.getAttributes('heading').level) : undefined
+}
 const RawSource = Node.create({
   name: 'rawSource',
   group: 'block',
@@ -75,7 +80,20 @@ const PreviewImage = Image.extend({
 const extensions = [StarterKit.configure({ heading: { levels: [1, 2, 3, 4, 5, 6] }, link: { openOnClick: false } }), PreviewImage, TableKit, TaskList, TaskItem.configure({ nested: true, a11y: { checkboxLabel: node => `任务：${node.textContent || '未命名'}` } }), RawSource, Markdown]
 const manager = new MarkdownManager({ extensions })
 const content: JSONContent[] = props.segments.flatMap(segment => segment.raw ? [{ type: 'rawSource', attrs: { source: segment.source } }] : manager.parse(segment.source).content ?? [])
-const editor = useEditor({ extensions, content: { type: 'doc', content: content.length ? content : [{ type: 'paragraph' }] }, editorProps: { attributes: { 'class': 'min-h-[420px] p-5 outline-none text-m leading-8', 'role': 'textbox', 'aria-label': '文章正文富文本编辑', 'aria-multiline': 'true' } }, onUpdate: ({ editor }) => emit('change', editor.getMarkdown()) })
+const editor = useEditor({ extensions, content: { type: 'doc', content: content.length ? content : [{ type: 'paragraph' }] }, editorProps: { attributes: { 'class': 'min-h-[420px] p-5 outline-none text-m leading-8', 'role': 'textbox', 'aria-label': '文章正文富文本编辑', 'aria-multiline': 'true' } }, onCreate: syncHeading, onTransaction: syncHeading, onUpdate: ({ editor }) => emit('change', editor.getMarkdown()) })
+function selectHeading(level: number | undefined) {
+  if (level && level >= 1 && level <= 6 && editor.value) {
+    headingSelected = true
+    editor.value.chain().focus().setHeading({ level: level as 1 | 2 | 3 | 4 | 5 | 6 }).run()
+  }
+}
+function restoreHeadingFocus(event: Event) {
+  if (headingSelected) {
+    event.preventDefault()
+    headingSelected = false
+    editor.value?.commands.focus()
+  }
+}
 function setLink() {
   if (!editor.value || !/^(?:https?:\/\/|\/(?!\/)|#)/.test(link.value))
     return
@@ -94,13 +112,7 @@ onBeforeUnmount(() => editor.value?.destroy())
       <button class="min-h-11 rounded px-3 hover:bg-line" :aria-pressed="editor.isActive('italic')" @click="editor.chain().focus().toggleItalic().run()">
         斜体
       </button>
-      <select aria-label="段落级别" class="min-h-11 rounded bg-surface px-2" @change="editor.chain().focus().setHeading({ level: Number(($event.target as HTMLSelectElement).value) as 1 | 2 | 3 | 4 | 5 | 6 }).run()">
-        <option value="2">
-          标题级别
-        </option><option v-for="level in 6" :key="level" :value="level">
-          H{{ level }}
-        </option>
-      </select>
+      <BaseSelect :model-value="headingLevel" aria-label="段落级别" placeholder="标题级别" :options="[1, 2, 3, 4, 5, 6].map(level => ({ value: level, label: `H${level}` }))" class="w-32" @update:model-value="selectHeading" @close-auto-focus="restoreHeadingFocus" />
       <button class="min-h-11 rounded px-3 hover:bg-line" @click="editor.chain().focus().setParagraph().run()">
         正文
       </button>

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { rssPath } from '#shared/rss/config'
+import BaseUiProvider from './components/base/BaseUiProvider.vue'
 
 useProvideActionButtons()
 useProvideCommandPalette()
@@ -22,7 +23,9 @@ useSeoMeta({ ogUrl: canonical })
 </script>
 
 <template>
-  <NuxtRouteAnnouncer />
-  <NuxtLayout><NuxtPage /></NuxtLayout>
-  <ClientOnly><CommandPalette /></ClientOnly>
+  <BaseUiProvider>
+    <NuxtRouteAnnouncer />
+    <NuxtLayout><NuxtPage /></NuxtLayout>
+    <ClientOnly><CommandPalette /></ClientOnly>
+  </BaseUiProvider>
 </template>

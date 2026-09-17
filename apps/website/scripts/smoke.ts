@@ -66,4 +66,9 @@ for (const path of ['/about', ...posts.map(post => String(post.path))]) {
   assert.equal((await request(`${path}/_payload.json`)).status, 200, `${path} payload`)
 }
 assert.equal((await request('/posts/__deployment_missing__')).status, 404)
-console.log(`HTTP 验收通过：${origin.origin}，${posts.length} 篇文章、RSS、浏览器图标、全部专栏和标签、Cookie 与错误状态。`)
+for (const [path, title] of [['/tools', '工具'], ['/tools/cover', '封面制作器']]) {
+  const response = await request(path!)
+  assert.equal(response.status, 200, path)
+  assert.match(await response.text(), new RegExp(`<h1[^>]*>\\s*${title}\\s*</h1>`), `${path} 页面标题`)
+}
+console.log(`HTTP 验收通过：${origin.origin}，${posts.length} 篇文章、RSS、浏览器图标、全部专栏和标签、封面工具、Cookie 与错误状态。`)

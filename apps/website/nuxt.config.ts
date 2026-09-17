@@ -3,6 +3,7 @@ import process from 'node:process'
 import { fileURLToPath } from 'node:url'
 import githubSnapshots from './content/github/module'
 import { validateContentDirectory, validateFrontmatter } from './content/validation.ts'
+import coverIcons from './modules/cover-icons/module'
 import { localRequestAllowed } from './server/features/auth/policy.ts'
 import { rssCacheControl, rssContentType, rssPath } from './shared/rss/config.ts'
 import { themeCookieBootstrap, themeCookieKey, themeCookieOptions } from './shared/theme/preference.ts'
@@ -38,7 +39,7 @@ export default defineNuxtConfig({
     prerender: { crawlLinks: false, failOnError: true, routes: ['/about', rssPath] },
     cloudflare: { deployConfig: true, nodeCompat: true },
   },
-  modules: ['@nuxt/content', '@nuxtjs/color-mode', '@unocss/nuxt', '@vueuse/nuxt', '@nuxt/eslint', githubSnapshots],
+  modules: ['@nuxt/content', '@nuxtjs/color-mode', '@unocss/nuxt', '@vueuse/nuxt', '@nuxt/eslint', githubSnapshots, coverIcons],
   colorMode: {
     preference: 'system',
     fallback: 'dark',

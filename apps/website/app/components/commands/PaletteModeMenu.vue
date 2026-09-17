@@ -83,27 +83,27 @@ function select(mode: PaletteMode) {
 <template>
   <div ref="root" class="relative shrink-0 text-[16px] leading-6" @focusout="focusout">
     <button
-      ref="trigger" type="button" class="h-11 min-w-11 flex items-center justify-center gap-1 rounded-lg text-muted hover:bg-surface hover:text-heading"
+      ref="trigger" type="button" class="relative h-11 min-w-16 flex items-center border border-line-strong rounded-button bg-canvas pl-3 pr-10 text-muted hover:border-muted hover:text-heading"
       :aria-label="`切换模式，当前${mode === 'search' ? '搜索文章' : '执行命令'}`"
       :disabled="options.length < 2" :aria-expanded="open" aria-haspopup="menu" :aria-controls="menuId"
       @click="open ? close(true) : show()" @keydown="triggerKeydown"
     >
       <AppIcon v-if="mode === 'search'" name="search" />
       <span v-else aria-hidden="true" class="w-[1.1em] text-center font-mono">&gt;</span>
-      <AppIcon v-if="options.length > 1" name="down" class="size-3!" />
+      <AppIcon v-if="options.length > 1" name="down" class="pointer-events-none absolute right-3 top-1/2 size-4! -translate-y-1/2" />
     </button>
     <div
       v-if="open" :id="menuId" ref="menu" role="menu" aria-label="切换面板模式"
-      class="absolute left-0 top-full z-10 mt-1 w-44 border border-line-strong rounded-lg bg-surface p-1 shadow-dialog"
+      class="absolute left-0 top-full z-10 mt-1.5 w-44 border border-line-strong rounded-button bg-surface p-1 shadow-floating"
       @keydown="menuKeydown"
     >
       <button
         v-for="option in options" :key="option.mode" type="button" role="menuitemradio" :aria-checked="mode === option.mode" tabindex="-1"
-        class="min-h-11 w-full flex items-center gap-2 rounded-md px-3 text-left focus-visible:bg-line hover:bg-line"
+        class="min-h-11 w-full flex items-center gap-2 rounded-md px-3 text-left focus-visible:bg-accent-surface hover:bg-accent-surface"
         :class="mode === option.mode ? 'text-accent-soft' : 'text-heading'"
         @click="select(option.mode)"
       >
-        <AppIcon :name="option.icon" /><span class="flex-1">{{ option.label }}</span><AppIcon v-if="mode === option.mode" name="check" />
+        <AppIcon :name="option.icon" /><span class="flex-1">{{ option.label }}</span><AppIcon v-if="mode === option.mode" name="check" class="size-4!" />
       </button>
     </div>
   </div>

@@ -1,3 +1,7 @@
+<script setup lang="ts">
+const route = useRoute()
+</script>
+
 <template>
   <div class="flex flex-col min-h-dvh">
     <a
@@ -10,7 +14,8 @@
     <main
       id="main-content"
       tabindex="-1"
-      class="site-container flex-1 pb-20 pt-[calc(var(--header-height)+48px)] lg:pt-[calc(var(--header-height)+56px)]"
+      class="site-container flex-1 pb-20"
+      :class="route.meta.section === 'tools' ? 'pt-[calc(var(--header-height)+24px)]' : 'pt-[calc(var(--header-height)+48px)] lg:pt-[calc(var(--header-height)+56px)]'"
     >
       <slot />
     </main>

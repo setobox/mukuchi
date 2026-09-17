@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import type { Asset, Draft, Publication } from '#shared/admin/model'
 import type { SummaryState } from '#shared/ai/model'
+import type { RasterCover } from '~/features/cover/model'
 import { parseDocument } from 'yaml'
 import { publicationLabels } from '#shared/admin/model'
 import { splitDocument } from '#shared/content/document'
 import { themeColors } from '#shared/content/schema'
+import { applyGeneratedCover } from '~/features/cover/apply'
 
 definePageMeta({ layout: 'admin', key: route => route.path })
 useSeoMeta({ title: '编辑文章' })
@@ -42,6 +44,8 @@ const remote = ref<{ source: string, hash: string } | null | undefined>()
 const confirmAction = ref<'delete' | 'unpublish' | 'rebase' | null>(null)
 const imageUrl = ref('')
 const imageAlt = ref('')
+const coverOpen = ref(false)
+const coverBusy = ref(false)
 const { upload, progress, uploading, remove: deleteAsset } = useAssetUpload()
 let saveWork: Promise<boolean> | null = null
 let timer: ReturnType<typeof setTimeout> | undefined
@@ -226,6 +230,31 @@ async function selectImage(event: Event) {
   catch (cause) { error.value = cause instanceof Error ? cause.message : '上传失败' }
   input.value = ''
 }
+async function applyCover(result: RasterCover) {
+  await applyGeneratedCover(result, {
+    async prepare() {
+      if (!await save() || !draft.value)
+        throw new Error(error.value || '草稿保存失败，请重试。')
+      return { source: source.value, draft: draft.value }
+    },
+    async upload(draftId, blob) {
+      const asset = await upload(draftId, blob)
+      if (!assets.value.some(item => item.id === asset.id))
+        assets.value.push(asset)
+      return asset
+    },
+    current: () => ({ source: source.value, version: draft.value?.version ?? 0 }),
+    save: (draftId, input) => request<Draft>(`drafts/${draftId}`, { method: 'PUT', body: input }),
+    commit(value) {
+      draft.value = value
+      source.value = saved.value = value.source
+      error.value = ''
+      notice.value = '封面已保存到草稿。'
+    },
+  })
+  if (mode.value === 'preview')
+    await switchMode('preview')
+}
 async function publish(action: 'publish' | 'unpublish' = 'publish') {
   confirmAction.value = null
   if (!await save() || !draft.value)
@@ -379,9 +408,17 @@ onBeforeUnmount(() => {
       <aside class="min-w-0 space-y-6">
         <section class="border border-line rounded-panel p-5">
           <h2 class="mb-4 text-heading font-semibold">
+            文章封面
+          </h2>
+          <BaseButton variant="border" class="w-full" :disabled="busy || uploading || saving || summaryBusy" @click="coverOpen = true">
+            <AppIcon name="image" />制作封面
+          </BaseButton>
+        </section>
+        <section class="border border-line rounded-panel p-5">
+          <h2 class="mb-4 text-heading font-semibold">
             AI 摘要
           </h2>
-          <label class="min-h-11 flex items-center gap-3 text-sm"><input type="checkbox" :checked="metadata.aiSummary !== false" :disabled="summaryBusy" @change="setMeta('aiSummary', ($event.target as HTMLInputElement).checked)">此文章启用 AI 摘要</label>
+          <BaseSwitch :model-value="metadata.aiSummary !== false" label="此文章启用 AI 摘要" :disabled="summaryBusy" @update:model-value="setMeta('aiSummary', $event)" />
           <p class="my-3 text-xs text-muted" role="status">
             {{ summaryStatus }}
           </p>
@@ -408,9 +445,9 @@ onBeforeUnmount(() => {
           <h2 class="mb-4 text-heading font-semibold">
             文章信息
           </h2><div class="space-y-4">
-            <label v-for="field in [{ key: 'title', label: '标题', type: 'text' }, { key: 'description', label: '原简介（必填）', type: 'text' }, { key: 'publish', label: '发布日期', type: 'date' }, { key: 'update', label: '更新日期', type: 'date' }, { key: 'cover', label: '封面地址', type: 'text' }]" :key="field.key" class="block text-xs text-muted">{{ field.label }}<input :type="field.type" :value="metadata[field.key] ?? ''" class="mt-2 min-h-11 w-full border border-line-strong rounded-button bg-canvas px-3 text-ink" @change="setMeta(field.key, ($event.target as HTMLInputElement).value || undefined)"></label><label class="block text-xs text-muted">标签<input :value="Array.isArray(metadata.tags) ? metadata.tags.join(', ') : ''" class="mt-2 min-h-11 w-full border border-line-strong rounded-button bg-canvas px-3 text-ink" @change="setMeta('tags', ($event.target as HTMLInputElement).value.split(/[,，]/).map(v => v.trim()).filter(Boolean))"></label><label class="block text-xs text-muted">专栏<input :value="Array.isArray(metadata.categories) ? metadata.categories.join(', ') : ''" class="mt-2 min-h-11 w-full border border-line-strong rounded-button bg-canvas px-3 text-ink" @change="setMeta('categories', ($event.target as HTMLInputElement).value.split(/[,，]/).map(v => v.trim()).filter(Boolean))"></label><label class="block text-xs text-muted">置顶权重<input type="number" min="0" :value="metadata.pin ?? 0" class="mt-2 min-h-11 w-full border border-line-strong rounded-button bg-canvas px-3 text-ink" @change="setMeta('pin', Number(($event.target as HTMLInputElement).value))"></label><label class="min-h-11 flex items-center gap-3"><input type="checkbox" :checked="!!metadata.wip" @change="setMeta('wip', ($event.target as HTMLInputElement).checked)">显示施工提醒</label>
+            <label v-for="field in [{ key: 'title', label: '标题', type: 'text' }, { key: 'description', label: '原简介（必填）', type: 'text' }, { key: 'publish', label: '发布日期', type: 'date' }, { key: 'update', label: '更新日期', type: 'date' }, { key: 'cover', label: '封面地址', type: 'text' }]" :key="field.key" class="block text-xs text-muted">{{ field.label }}<input :type="field.type" :value="metadata[field.key] ?? ''" class="mt-2 min-h-11 w-full border border-line-strong rounded-button bg-canvas px-3 text-ink" @change="setMeta(field.key, ($event.target as HTMLInputElement).value || undefined)"></label><label class="block text-xs text-muted">标签<input :value="Array.isArray(metadata.tags) ? metadata.tags.join(', ') : ''" class="mt-2 min-h-11 w-full border border-line-strong rounded-button bg-canvas px-3 text-ink" @change="setMeta('tags', ($event.target as HTMLInputElement).value.split(/[,，]/).map(v => v.trim()).filter(Boolean))"></label><label class="block text-xs text-muted">专栏<input :value="Array.isArray(metadata.categories) ? metadata.categories.join(', ') : ''" class="mt-2 min-h-11 w-full border border-line-strong rounded-button bg-canvas px-3 text-ink" @change="setMeta('categories', ($event.target as HTMLInputElement).value.split(/[,，]/).map(v => v.trim()).filter(Boolean))"></label><label class="block text-xs text-muted">置顶权重<input type="number" min="0" :value="metadata.pin ?? 0" class="mt-2 min-h-11 w-full border border-line-strong rounded-button bg-canvas px-3 text-ink" @change="setMeta('pin', Number(($event.target as HTMLInputElement).value))"></label><BaseSwitch :model-value="!!metadata.wip" label="显示施工提醒" @update:model-value="setMeta('wip', $event)" />
           </div>
-          <label class="mt-4 block text-xs text-muted">主题色<select :value="metadata.theme ?? '#a369ff'" class="mt-2 min-h-11 w-full border border-line-strong rounded-button bg-canvas px-3 text-ink" @change="setMeta('theme', ($event.target as HTMLSelectElement).value)"><option v-for="color in themeColors" :key="color" :value="color">{{ color }}</option></select></label>
+          <BaseSelect :model-value="String(metadata.theme ?? '#a369ff')" label="主题色" :options="themeColors.map(color => ({ value: color, label: color }))" class="mt-4" @update:model-value="setMeta('theme', $event)" />
         </section>
         <section class="border border-line rounded-panel p-5">
           <h2 class="mb-4 text-heading font-semibold">
@@ -440,6 +477,9 @@ onBeforeUnmount(() => {
         </div>
       </aside>
     </div>
+    <AcrylicDialog v-model="coverOpen" title="封面制作器" placement="editor" :dismissible="!coverBusy">
+      <LazyCoverMaker v-if="coverOpen" :initial-title="typeof metadata.title === 'string' ? metadata.title : ''" :apply-cover="applyCover" @busy="coverBusy = $event" />
+    </AcrylicDialog>
     <AcrylicDialog :model-value="!!confirmAction" title="确认操作" @update:model-value="value => { if (!value) confirmAction = null }">
       <p class="mb-5">
         {{ confirmAction === 'delete' ? '删除这个编辑草稿及其私有暂存图片？已发布文章不受影响。' : confirmAction === 'unpublish' ? '撤下已发布文章？数据库中的编辑稿会保留。' : '确认已完成差异处理？下一次发布将用当前草稿替换查看过的版本。' }}

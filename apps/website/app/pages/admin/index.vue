@@ -68,15 +68,7 @@ watch(() => current.value.user?.owner, () => {
       </p>
     </form>
     <div class="mb-5 flex flex-wrap gap-3">
-      <input v-model="query" aria-label="搜索文章" placeholder="搜索标题或文件路径" class="min-h-11 min-w-0 flex-1 border border-line-strong rounded-button bg-canvas px-4"><select v-model="filter" aria-label="文章状态" class="min-h-11 border border-line-strong rounded-button bg-canvas px-4">
-        <option value="all">
-          全部文章
-        </option><option value="drafts">
-          草稿与待发布修改
-        </option><option value="published">
-          已发布
-        </option>
-      </select><BaseButton variant="border" :disabled="busy" @click="load">
+      <input v-model="query" aria-label="搜索文章" placeholder="搜索标题或文件路径" class="min-h-11 min-w-0 flex-1 border border-line-strong rounded-button bg-canvas px-4"><BaseSelect v-model="filter" aria-label="文章状态" :options="[{ value: 'all', label: '全部文章' }, { value: 'drafts', label: '草稿与待发布修改' }, { value: 'published', label: '已发布' }]" class="w-48" /><BaseButton variant="border" :disabled="busy" @click="load">
         刷新
       </BaseButton>
     </div>

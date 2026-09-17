@@ -71,6 +71,8 @@ export default defineConfig({
   },
   extendTheme: theme => ({ ...theme, breakpoints }),
   shortcuts: {
+    'cover-field': 'flex min-w-0 flex-col gap-2 text-xs text-muted',
+    'cover-input': 'min-h-11 min-w-0 w-full border border-line-strong rounded-button bg-canvas px-3 text-sm text-ink',
     'site-container': 'mx-auto w-full max-w-site px-5 md:px-8',
     'section-label': 'text-base tracking-widest text-muted font-medium',
     'icon-button':
