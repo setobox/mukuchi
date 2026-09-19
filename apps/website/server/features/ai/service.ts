@@ -78,6 +78,10 @@ export async function draftSummaryRoute(event: H3Event, id: string) {
   const configHash = await summaryConfigHash(stored.settings)
   const text = input.action === 'save' ? input.text.replace(/\s+/g, ' ') : await generateSummary(stored.settings, await decryptApiKey(stored.encryptedKey, encryptionSecret(event)), article.input)
   const record = { text, inputHash: article.inputHash, configHash }
+  if (article.record?.text === text && article.record.inputHash === record.inputHash && article.record.configHash === configHash) {
+    await withAdmin(event, repo => repo.save(id, input.version, draft.source))
+    return { draft: await withAdmin(event, repo => repo.draft(id)), summary: await currentSummary(event, draft.source) }
+  }
   // Never put private draft results in the shared build cache.
   await withAdmin(event, repo => repo.save(id, input.version, writeSummary(draft.source, record)))
   const saved = await withAdmin(event, repo => repo.draft(id))

@@ -38,7 +38,18 @@ export const assetSchema = z.object({ id: z.uuid(), draftId: z.uuid(), path: z.s
 export type Asset = z.infer<typeof assetSchema>
 export interface Account { id: number, login: string, avatar: string, owner: boolean, local: boolean }
 export interface SessionInfo { user: Account | null, csrf: string | null, localAvailable: boolean, loginAvailable: boolean }
-export interface ArticleEntry { path: string, title: string, hash: string, draft: Draft | null }
+export interface ArticlePublicationState { published: boolean, hasPublished: boolean, hasChanges: boolean }
+export interface ArticleEntry { path: string, title: string, hash: string, draft: Draft | null, publication: ArticlePublicationState }
+export function sameArticleSource(left: string, right: string) {
+  return left.replace(/\r\n?/g, '\n') === right.replace(/\r\n?/g, '\n')
+}
+export function articlePublication(draft: Draft | null, publishedSource: string | null, source = draft?.source): ArticlePublicationState {
+  return {
+    published: publishedSource !== null,
+    hasPublished: publishedSource !== null || !!draft?.baseHash || (draft?.publishedVersion ?? 0) > 0,
+    hasChanges: publishedSource === null || (source !== undefined && !sameArticleSource(source, publishedSource)),
+  }
+}
 export const publicationLabels: Record<Publication['status'], string> = {
   preparing: '提交中',
   submitted: '已提交',

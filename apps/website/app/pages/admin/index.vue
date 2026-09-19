@@ -14,8 +14,8 @@ const busy = ref(false)
 const newPath = ref('')
 const creating = ref(false)
 const rows = computed(() => {
-  const all = [...articles.value.map(article => ({ path: article.path, title: article.draft ? articleTitle(article.draft.source, article.title) : article.title, draft: article.draft, published: true })), ...drafts.value.filter(draft => !articles.value.some(article => article.path === draft.path)).map(draft => ({ path: draft.path, title: articleTitle(draft.source, draft.path), draft, published: false }))]
-  return all.filter(row => (filter.value === 'all' || (filter.value === 'drafts' ? !!row.draft && (!row.published || row.draft.version > row.draft.publishedVersion) : row.published)) && `${row.title} ${row.path}`.toLowerCase().includes(query.value.toLowerCase()))
+  const all = [...articles.value.map(article => ({ path: article.path, title: article.draft ? articleTitle(article.draft.source, article.title) : article.title, draft: article.draft, published: true, changed: article.publication.hasChanges })), ...drafts.value.filter(draft => !articles.value.some(article => article.path === draft.path)).map(draft => ({ path: draft.path, title: articleTitle(draft.source, draft.path), draft, published: false, changed: true }))]
+  return all.filter(row => (filter.value === 'all' || (filter.value === 'drafts' ? row.changed : row.published)) && `${row.title} ${row.path}`.toLowerCase().includes(query.value.toLowerCase()))
 })
 async function load() {
   if (!current.value.user?.owner)
@@ -86,7 +86,7 @@ watch(() => current.value.user?.owner, () => {
           </button><p class="mt-1 break-all text-xs text-muted">
             {{ row.path }}
           </p>
-        </div><span class="rounded bg-surface px-3 py-1 text-xs">{{ !row.published ? '草稿' : row.draft && row.draft.version > row.draft.publishedVersion ? '有未发布修改' : '已发布' }}</span><BaseButton variant="ghost" :disabled="busy" @click="edit(row.path)">
+        </div><span class="rounded bg-surface px-3 py-1 text-xs">{{ !row.published ? '草稿' : row.changed ? '有未发布修改' : '已发布' }}</span><BaseButton variant="ghost" :disabled="busy" @click="edit(row.path)">
           编辑
         </BaseButton>
       </div>

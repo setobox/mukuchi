@@ -3,7 +3,7 @@ import type { Asset, Draft, Publication } from '#shared/admin/model'
 import type { SummaryState } from '#shared/ai/model'
 import type { RasterCover } from '~/features/cover/model'
 import { parseDocument } from 'yaml'
-import { publicationLabels } from '#shared/admin/model'
+import { articlePublication, publicationLabels, sameArticleSource } from '#shared/admin/model'
 import { splitDocument } from '#shared/content/document'
 import { themeColors } from '#shared/content/schema'
 import { applyGeneratedCover } from '~/features/cover/apply'
@@ -16,6 +16,8 @@ const { current, request, endpoint } = useAdminSession()
 const draft = ref<Draft | null>(null)
 const source = ref('')
 const saved = ref('')
+const publishedSource = ref<string | null>(null)
+const publicationState = computed(() => articlePublication(draft.value, publishedSource.value, source.value))
 const assets = ref<Asset[]>([])
 const imagePreviews = computed(() => Object.fromEntries(assets.value.map(asset => [asset.path, endpoint(`/api/admin/assets/${asset.id}`)])))
 const local = ref(false)
@@ -38,7 +40,7 @@ const summaryState = ref<SummaryState | null>(null)
 const summaryText = ref('')
 const summaryEdited = ref(false)
 const summaryError = ref('')
-const dirty = computed(() => source.value !== saved.value)
+const dirty = computed(() => !sameArticleSource(source.value, saved.value))
 const publication = ref<Publication | null>(null)
 const remote = ref<{ source: string, hash: string } | null | undefined>()
 const confirmAction = ref<'delete' | 'unpublish' | 'rebase' | null>(null)
@@ -56,11 +58,12 @@ async function load() {
   if (!current.value.user?.owner || draft.value)
     return
   try {
-    const result = await request<{ draft: Draft, assets: Asset[], local: boolean }>(`drafts/${id}`)
+    const result = await request<{ draft: Draft, assets: Asset[], local: boolean, publishedSource: string | null }>(`drafts/${id}`)
     draft.value = result.draft
     source.value = saved.value = result.draft.source
     assets.value = result.assets
     local.value = result.local
+    publishedSource.value = result.publishedSource
     await loadSummary()
   }
   catch (cause) { error.value = adminError(cause) }
@@ -69,6 +72,8 @@ watch(() => current.value.user?.owner, () => {
   void load()
 }, { immediate: true })
 function changeSource(value: string) {
+  if (sameArticleSource(source.value, value))
+    return
   source.value = value
   error.value = ''
   clearTimeout(timer)
@@ -113,7 +118,7 @@ async function save(): Promise<boolean> {
   return result && summaryEdited.value && !summaryBusy.value ? updateSummary('save') : result
 }
 function editSummary() {
-  summaryEdited.value = true
+  summaryEdited.value = summaryText.value !== (summaryState.value?.record?.text ?? '')
   clearTimeout(timer)
   timer = setTimeout(() => {
     void save()
@@ -196,6 +201,8 @@ async function switchMode(next: typeof mode.value) {
   finally { busy.value = false }
 }
 function setMeta(field: string, value: unknown) {
+  if (JSON.stringify(metadata.value[field]) === JSON.stringify(value))
+    return
   const parts = splitDocument(source.value)
   try {
     const document = parseDocument(parts.yaml || '{}')
@@ -266,9 +273,10 @@ async function publish(action: 'publish' | 'unpublish' = 'publish') {
     operation = { id: crypto.randomUUID(), version: draft.value.version, action }
   try {
     publication.value = await request<Publication>('publications', { method: 'POST', body: { draftId: id, version: operation.version, operationId: operation.id, action } })
-    const refreshed = await request<{ draft: Draft, assets: Asset[] }>(`drafts/${id}`)
+    const refreshed = await request<{ draft: Draft, assets: Asset[], publishedSource: string | null }>(`drafts/${id}`)
     draft.value = refreshed.draft
     assets.value = refreshed.assets
+    publishedSource.value = refreshed.publishedSource
     notice.value = publicationLabels[publication.value.status]
   }
   catch (cause) { error.value = adminError(cause) }
@@ -352,8 +360,8 @@ onBeforeUnmount(() => {
         </p>
       </div><BaseButton variant="border" :disabled="saving || summaryBusy || busy || !draft" @click="save">
         保存草稿
-      </BaseButton><BaseButton :disabled="busy || summaryBusy || !draft || uploading" @click="publish()">
-        {{ local ? '发布到本地' : '发布到网站' }}
+      </BaseButton><BaseButton :disabled="busy || summaryBusy || !draft || uploading || (!publicationState.hasChanges && !summaryEdited)" :title="!publicationState.hasChanges && !summaryEdited ? '没有需要更新的内容' : undefined" @click="publish()">
+        {{ publicationState.published ? '更新' : publicationState.hasPublished ? '重新上线' : '发布' }}{{ local ? '到本地' : '到网站' }}
       </BaseButton>
     </div>
     <p v-if="error" role="alert" class="mb-5 border border-error rounded-button p-4 text-error">

@@ -18,15 +18,18 @@ export function createAdminRepository(db: AdminDatabase) {
     },
     async create(path: string, source: string, baseHash: string | null) {
       const id = crypto.randomUUID()
-      await query('INSERT INTO admin_drafts (id,path,source,base_hash,updated_at) VALUES (?,?,?,?,?) ON CONFLICT(path) DO NOTHING', [id, path, source, baseHash, new Date().toISOString()])
+      await query('INSERT INTO admin_drafts (id,path,source,base_hash,published_version,updated_at) VALUES (?,?,?,?,?,?) ON CONFLICT(path) DO NOTHING', [id, path, source, baseHash, baseHash ? 1 : 0, new Date().toISOString()])
       const row = (await query(`${draftSelect} WHERE path = ?`, [path]))[0]
       if (!row)
         throw new AdminError(503, '无法创建草稿')
       return draftSchema.parse(row)
     },
     async save(id: string, version: number, source: string) {
-      const rows = await query('UPDATE admin_drafts SET source = ?, version = version + 1, updated_at = ? WHERE id = ? AND version = ? RETURNING id', [source, new Date().toISOString(), id, version])
-      if (!rows.length)
+      const [rows, current] = await db.batch([
+        { sql: 'UPDATE admin_drafts SET source = ?, version = version + 1, updated_at = ? WHERE id = ? AND version = ? AND source <> ? RETURNING id', params: [source, new Date().toISOString(), id, version, source] },
+        { sql: 'SELECT version, source FROM admin_drafts WHERE id = ?', params: [id] },
+      ])
+      if (!rows?.length && !(current?.[0]?.version === version && current[0].source === source))
         throw new AdminError(409, '草稿已在其他窗口修改，请保留当前内容并重新加载')
     },
     async remove(id: string, version: number) {

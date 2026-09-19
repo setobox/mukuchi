@@ -14,7 +14,7 @@ import { editorSegments, imageReferences, validateArticle } from '../server/feat
 import { identifyImage } from '../server/features/media/images'
 import { executePublication } from '../server/features/publishing/engine'
 import { createGithub } from '../server/features/publishing/github'
-import { articleRoute, filePathSchema, sha256 } from '../shared/admin/model'
+import { articlePublication, articleRoute, filePathSchema, sha256 } from '../shared/admin/model'
 import { splitDocument } from '../shared/content/document'
 
 const cleanups: (() => void)[] = []
@@ -37,6 +37,28 @@ function fixture() {
   return { options, repo: createAdminRepository(db), directory }
 }
 const source = '---\ntitle: 测试\ndescription: 说明\npublish: \'2026-09-16\'\n---\n\n正文\n'
+
+test('打开已发布文章与无变化保存不产生修改，历史误标和还原原文按内容判断', async () => {
+  const { repo } = fixture()
+  const draft = await repo.create('published.md', source, 'published-hash')
+  expect(draft.publishedVersion).toBe(1)
+  await repo.save(draft.id, draft.version, source)
+  expect(await repo.draft(draft.id)).toEqual(draft)
+  expect(articlePublication({ ...draft, publishedVersion: 0 }, source)).toEqual({ published: true, hasPublished: true, hasChanges: false })
+  await repo.save(draft.id, 1, `${source}修改`)
+  expect(articlePublication(await repo.draft(draft.id), source).hasChanges).toBe(true)
+  await expect(repo.save(draft.id, 1, `${source}修改`)).rejects.toMatchObject({ statusCode: 409 })
+  await repo.save(draft.id, 2, source)
+  expect(articlePublication(await repo.draft(draft.id), source).hasChanges).toBe(false)
+  expect(articlePublication(draft, source, source.replace(/\n/g, '\r\n')).hasChanges).toBe(false)
+})
+
+test('首次发布与撤下后重新上线的状态不同', async () => {
+  const { repo } = fixture()
+  const draft = await repo.create('new.md', source, null)
+  expect(articlePublication(draft, null)).toEqual({ published: false, hasPublished: false, hasChanges: true })
+  expect(articlePublication({ ...draft, publishedVersion: 1 }, null)).toEqual({ published: false, hasPublished: true, hasChanges: true })
+})
 
 test('Workers Web Stream 请求体按字节合并，超限立即取消读取', async () => {
   const cancelled = vi.fn()

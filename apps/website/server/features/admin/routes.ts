@@ -2,7 +2,7 @@ import type { H3Event } from 'h3'
 import { parseMarkdown } from '@nuxtjs/mdc/runtime'
 import { z } from 'zod'
 import { listContent, readContent } from '#admin-driver'
-import { AdminError, articleTitle, createDraftSchema, imageLimit, newArticleSource, publicationInput, saveDraftSchema, sha256 } from '../../../shared/admin/model'
+import { AdminError, articlePublication, articleTitle, createDraftSchema, imageLimit, newArticleSource, publicationInput, sameArticleSource, saveDraftSchema, sha256 } from '../../../shared/admin/model'
 import { writeSummary } from '../ai/content'
 import { currentSummary, draftSummaryRoute } from '../ai/service'
 import { requireOwner } from '../auth/session'
@@ -20,7 +20,10 @@ export async function adminRoute(event: H3Event) {
   if (resource === 'articles' && method === 'GET') {
     const files = import.meta.dev ? await listContent(adminOptions(event)) : await githubClient(event).list()
     const drafts = await withAdmin(event, repo => repo.drafts())
-    return { articles: files.map(file => ({ path: file.path, title: articleTitle(file.source, file.path), hash: file.hash, draft: drafts.find(draft => draft.path === file.path) ?? null })), drafts, local: import.meta.dev }
+    return { articles: files.map((file) => {
+      const draft = drafts.find(draft => draft.path === file.path) ?? null
+      return { path: file.path, title: articleTitle(file.source, file.path), hash: file.hash, draft, publication: articlePublication(draft, file.source) }
+    }), drafts, local: import.meta.dev }
   }
   if (resource === 'drafts') {
     if (!id && method === 'POST') {
@@ -33,10 +36,16 @@ export async function adminRoute(event: H3Event) {
     const draft = await withAdmin(event, repo => repo.draft(id))
     if (action === 'summary' && ['GET', 'POST'].includes(method))
       return draftSummaryRoute(event, id)
-    if (!action && method === 'GET')
-      return { draft, assets: await withAdmin(event, repo => repo.assets(id)), local: import.meta.dev }
+    if (!action && method === 'GET') {
+      const file = import.meta.dev ? await readContent(adminOptions(event), draft.path) : await githubClient(event).read(draft.path)
+      return { draft, assets: await withAdmin(event, repo => repo.assets(id)), local: import.meta.dev, publishedSource: file?.source ?? null }
+    }
     if (!action && method === 'PUT') {
       const input = saveDraftSchema.parse(await readAdminJson(event))
+      if (sameArticleSource(input.source, draft.source)) {
+        await withAdmin(event, repo => repo.save(id, input.version, draft.source))
+        return withAdmin(event, repo => repo.draft(id))
+      }
       const summary = await currentSummary(event, input.source)
       const source = summary.status === 'valid' && summary.record ? writeSummary(input.source, summary.record) : input.source
       await withAdmin(event, repo => repo.save(id, input.version, source))
