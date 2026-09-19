@@ -38,7 +38,7 @@ async function signOut() {
         </BaseButton>
       </template>
       <template v-else>
-        <a v-if="current.loginAvailable" :href="endpoint('/api/auth/github')" class="min-h-11 rounded-button bg-accent px-5 py-3 text-center text-on-accent">使用 GitHub 登录</a>
+        <a v-if="current.loginAvailable" :href="endpoint('/api/auth/github')" class="button-primary px-5 py-3 text-center">使用 GitHub 登录</a>
         <p v-else class="text-muted">
           GitHub 登录尚未配置。
         </p>

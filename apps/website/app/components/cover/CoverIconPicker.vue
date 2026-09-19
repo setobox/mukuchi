@@ -97,7 +97,7 @@ onBeforeUnmount(() => {
       <span v-else>{{ collection?.license?.name }}</span>
     </div>
     <div v-if="error" role="alert" class="text-sm text-error">
-      {{ error }}<button type="button" class="ml-2 min-h-11 underline" @click="catalog.clear(); refresh()">
+      {{ error }}<button type="button" class="control-base ml-2 text-error underline-offset-4 active:underline hover:underline" @click="catalog.clear(); refresh()">
         重试
       </button>
     </div>
@@ -105,7 +105,7 @@ onBeforeUnmount(() => {
       {{ source === 'online' && !prefix && !query ? '选择图标集或输入名称搜索在线图标。' : '没有匹配的图标。' }}
     </p>
     <div v-if="choices.length" class="grid grid-cols-6 max-h-72 gap-1 overflow-y-auto p-1" :aria-busy="loading">
-      <button v-for="choice in choices" :key="choice.id" type="button" :disabled="disabled || loading" :title="choice.error ? `${choice.id}：${choice.error}` : choice.id" :aria-label="choice.id" :aria-pressed="selected === choice.id" class="min-h-11 min-w-0 flex items-center justify-center border rounded-button p-2 transition-colors hover:bg-canvas focus-visible:outline-accent" :class="selected === choice.id ? 'border-accent bg-accent-surface' : 'border-transparent'" @click="select(choice)">
+      <button v-for="choice in choices" :key="choice.id" type="button" :disabled="disabled || loading" :title="choice.error ? `${choice.id}：${choice.error}` : choice.id" :aria-label="choice.id" :aria-pressed="selected === choice.id" class="control-base control-quiet min-w-0 border p-2" :class="selected === choice.id ? 'control-selected border-accent' : 'border-transparent'" @click="select(choice)">
         <img v-if="choice.icon" :src="svgDataUrl(choice.icon.svg.replaceAll('currentColor', color))" alt="" class="size-6 object-contain">
         <span v-else class="text-xs text-muted">不可用</span>
       </button>
@@ -114,11 +114,11 @@ onBeforeUnmount(() => {
       {{ selectedInfo }}
     </p>
     <div v-if="choices.length || page" class="flex items-center justify-between text-xs">
-      <button type="button" class="min-h-11 px-2 disabled:opacity-40" :disabled="loading || !page" @click="paginate(-1)">
+      <button type="button" class="control-base control-quiet px-2" :disabled="loading || !page" @click="paginate(-1)">
         上一页
       </button>
       <span class="text-muted">第 {{ page + 1 }} 页<span v-if="total !== null"> / 共 {{ Math.max(1, Math.ceil(total / iconPageSize)) }} 页</span></span>
-      <button type="button" class="min-h-11 px-2 disabled:opacity-40" :disabled="loading || !hasMore" @click="paginate(1)">
+      <button type="button" class="control-base control-quiet px-2" :disabled="loading || !hasMore" @click="paginate(1)">
         下一页
       </button>
     </div>

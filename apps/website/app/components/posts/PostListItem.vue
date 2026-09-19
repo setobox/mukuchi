@@ -7,12 +7,12 @@ defineProps<{ post: PostSummary }>()
 <template>
   <article class="flex gap-5 border-b border-line py-7 md:gap-7">
     <div class="min-w-0 flex-1">
-      <PostMeta :post="post" />
-      <h2 class="mt-2 text-title text-themed font-bold">
-        <NuxtLink :to="post.path" class="break-words transition-colors hover:text-accent-soft">
+      <h2 class="text-title text-themed font-bold">
+        <NuxtLink :to="post.path" class="ui-link inline-block max-w-full min-h-11 break-words md:min-h-0">
           {{ post.title }}
         </NuxtLink>
       </h2>
+      <PostMeta :post="post" class="mt-2" />
       <p class="mt-2 break-words text-ink">
         {{ post.description }}
       </p>
@@ -23,7 +23,7 @@ defineProps<{ post: PostSummary }>()
       :to="post.path"
       tabindex="-1"
       aria-hidden="true"
-      class="hidden w-36 shrink-0 self-start overflow-hidden rounded-xl md:block"
+      class="card-link hidden w-36 shrink-0 self-start overflow-hidden border border-transparent rounded-panel md:block"
     >
       <img
         :src="post.cover"

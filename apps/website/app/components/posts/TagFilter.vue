@@ -14,11 +14,11 @@ withDefaults(
   <nav aria-label="标签筛选" class="flex flex-wrap gap-2">
     <NuxtLink
       to="/posts"
-      class="min-h-9 inline-flex items-center border rounded-lg px-3 text-sm"
+      class="chip-link"
       :class="
         !selected
-          ? 'border-accent bg-accent-surface text-accent-soft'
-          : 'border-line text-muted hover:text-heading'
+          ? 'control-selected border-accent'
+          : 'border-line text-muted'
       "
       :aria-current="!selected ? 'true' : undefined"
     >
@@ -28,15 +28,15 @@ withDefaults(
       v-for="tag in tags"
       :key="tag.name"
       :to="taxonomyPath('tag', tag.name)"
-      class="max-w-full min-h-9 inline-flex items-center gap-2 border rounded-lg px-3 text-sm"
+      class="chip-link"
       :class="
         selected === tag.name
-          ? 'border-accent bg-accent-surface text-accent-soft'
-          : 'border-line text-muted hover:text-heading'
+          ? 'control-selected border-accent'
+          : 'border-line text-muted'
       "
       :aria-current="selected === tag.name ? 'true' : undefined"
     >
-      <span class="min-w-0 break-words">{{ tag.name }}</span><span class="shrink-0 text-muted font-mono">{{ tag.count }}</span>
+      <span class="min-w-0 break-all"><span aria-hidden="true">#</span>{{ tag.name }}</span><span class="shrink-0 text-muted font-mono">{{ tag.count }}</span>
     </NuxtLink>
   </nav>
 </template>

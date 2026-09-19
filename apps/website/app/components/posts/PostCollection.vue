@@ -47,7 +47,7 @@ const filtered = computed(() => !!props.filter)
           <button
             type="button"
             class="icon-button"
-            :class="{ 'bg-surface text-heading': view === 'list' }"
+            :class="{ 'control-selected': view === 'list' }"
             aria-label="列表显示"
             :aria-pressed="view === 'list'"
             @click="preference = 'list'"
@@ -57,7 +57,7 @@ const filtered = computed(() => !!props.filter)
           <button
             type="button"
             class="icon-button"
-            :class="{ 'bg-surface text-heading': view === 'grid' }"
+            :class="{ 'control-selected': view === 'grid' }"
             aria-label="卡片显示"
             :aria-pressed="view === 'grid'"
             @click="preference = 'grid'"

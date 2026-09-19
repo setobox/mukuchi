@@ -191,7 +191,7 @@ onBeforeUnmount(() => {
     </section>
     <fieldset :disabled="busy" class="min-w-0 overflow-hidden border border-line rounded-panel bg-surface" aria-label="封面参数">
       <div role="tablist" aria-label="参数分类" class="grid grid-cols-4 border-b border-line p-1">
-        <button v-for="(tab, index) in tabs" :id="`${id}-${tab.id}`" :key="tab.id" type="button" role="tab" :data-cover-tab="tab.id" :aria-selected="activeTab === tab.id" :aria-controls="`${id}-panel`" :tabindex="activeTab === tab.id ? 0 : -1" class="min-h-11 rounded-button text-sm focus-visible:outline-accent" :class="activeTab === tab.id ? 'bg-accent-surface text-accent-soft font-medium' : 'text-muted hover:text-heading'" @click="activeTab = tab.id" @keydown="moveTab($event, index)">
+        <button v-for="(tab, index) in tabs" :id="`${id}-${tab.id}`" :key="tab.id" type="button" role="tab" :data-cover-tab="tab.id" :aria-selected="activeTab === tab.id" :aria-controls="`${id}-panel`" :tabindex="activeTab === tab.id ? 0 : -1" class="control-base control-quiet text-sm" :class="activeTab === tab.id ? 'control-selected font-medium' : 'text-muted'" @click="activeTab = tab.id" @keydown="moveTab($event, index)">
           {{ tab.name }}
         </button>
       </div>
@@ -231,7 +231,7 @@ onBeforeUnmount(() => {
           </div>
           <CoverShadowControls v-model="settings.iconShadow" label="图标阴影" />
           <details>
-            <summary class="min-h-11 cursor-pointer content-center text-sm text-heading">
+            <summary class="control-quiet min-h-11 cursor-pointer content-center text-sm text-heading">
               上传图标
             </summary><CoverAssetInput label="选择图标文件" accept="image/svg+xml,image/png,image/webp" :disabled="busy" @file="upload($event, 'icon')" /><p class="mt-2 text-xs text-muted">
               SVG、PNG、WebP；静态 SVG 最多 128 KiB。
@@ -249,7 +249,7 @@ onBeforeUnmount(() => {
           <div v-if="backgroundImage" class="flex items-center gap-3">
             <img :src="backgroundImage.dataUrl" alt="已上传背景" class="h-12 w-18 rounded-button object-cover"><p class="min-w-0 flex-1 break-all text-xs text-muted">
               {{ backgroundImage.name }}<br>{{ backgroundImage.width }} × {{ backgroundImage.height }}
-            </p><button type="button" class="min-h-11 text-xs text-error" @click="backgroundImage = undefined">
+            </p><button type="button" class="control-base text-xs text-error underline-offset-4 active:underline hover:underline" @click="backgroundImage = undefined">
               移除
             </button>
           </div>

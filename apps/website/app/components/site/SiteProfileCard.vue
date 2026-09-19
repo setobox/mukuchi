@@ -64,7 +64,7 @@ function onFocusOut(event: FocusEvent) {
           </div>
         </div>
         <footer class="grid grid-cols-[minmax(0,1fr)_44px] items-end gap-x-3">
-          <NuxtLink to="/about" class="col-span-2 min-h-11 flex items-center rounded text-[18px] text-heading font-semibold leading-7">
+          <NuxtLink to="/about" class="ui-link col-span-2 min-h-11 flex items-center rounded-button text-[18px] text-heading font-semibold leading-7">
             {{ site.owner.name }} · {{ site.name }}
           </NuxtLink>
           <code class="min-w-0 whitespace-pre-wrap text-xs text-muted leading-5 font-mono">{{ site.owner.signature }}</code>
@@ -73,7 +73,7 @@ function onFocusOut(event: FocusEvent) {
             target="_blank"
             rel="noopener noreferrer"
             :aria-label="`${site.name} 的 GitHub（在新标签页打开）`"
-            class="size-11 flex items-center justify-center rounded-full bg-accent-surface text-xl text-accent-soft transition-colors hover:bg-line-strong hover:text-heading"
+            class="control-base control-quiet size-11 bg-accent-surface text-xl text-accent-soft"
           >
             <AppIcon name="github" />
           </a>

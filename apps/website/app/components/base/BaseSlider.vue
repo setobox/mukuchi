@@ -70,7 +70,7 @@ function input(event: Event) {
     </div>
     <div class="flex items-start gap-3">
       <div class="min-w-0 flex-1">
-        <SliderRoot :model-value="[value]" :min="min" :max="max" :step="step" :disabled="disabled" class="relative mx-2 min-h-11 flex touch-none select-none items-center data-[disabled]:opacity-45" @pointerdown.capture="down" @pointermove="move" @pointerup="release" @pointercancel="release" @lostpointercapture="release" @update:model-value="next => update(next?.[0] ?? value)">
+        <SliderRoot :model-value="[value]" :min="min" :max="max" :step="step" :disabled="disabled" class="control-disabled relative mx-2 min-h-11 flex touch-none select-none items-center" @pointerdown.capture="down" @pointermove="move" @pointerup="release" @pointercancel="release" @lostpointercapture="release" @update:model-value="next => update(next?.[0] ?? value)">
           <SliderTrack class="relative h-1.5 grow">
             <div ref="track" class="slider-track absolute inset-0 rounded-full bg-line-strong">
               <span data-slider-fill class="absolute h-full rounded-full bg-accent" :style="fillStyle" />
@@ -78,7 +78,7 @@ function input(event: Event) {
             <span v-if="origin !== undefined" aria-hidden="true" class="pointer-events-none absolute top-1/2 h-3 w-0.5 bg-heading -translate-x-1/2 -translate-y-1/2" :style="{ left: `${originPercent}%` }" />
             <span v-for="mark in marks" :key="mark.value" aria-hidden="true" class="pointer-events-none absolute top-1/2 h-3 w-0.5 rounded bg-muted -translate-x-1/2 -translate-y-1/2" :style="{ left: `${percent(mark.value)}%` }" />
           </SliderTrack>
-          <SliderThumb :id="id" :aria-labelledby="`${id}-label`" :aria-valuetext="`${value}${unit ?? ''}${currentLabel ? ` ${currentLabel}` : ''}`" class="slider-thumb block size-5 border-2 border-accent rounded-full bg-canvas shadow-sm outline-none focus-visible:ring-3 focus-visible:ring-offset-2 focus-visible:ring-accent-soft focus-visible:ring-offset-canvas" />
+          <SliderThumb :id="id" :aria-labelledby="`${id}-label`" :aria-valuetext="`${value}${unit ?? ''}${currentLabel ? ` ${currentLabel}` : ''}`" class="slider-thumb block size-5 border-2 border-accent rounded-full bg-canvas shadow-sm" />
         </SliderRoot>
         <div v-if="marks" aria-hidden="true" class="flex justify-between text-xs text-muted">
           <span v-for="mark in marks" :key="mark.value">{{ mark.value }}</span>
@@ -88,7 +88,7 @@ function input(event: Event) {
         </div>
       </div>
       <div v-if="editable" class="flex shrink-0 items-center gap-1 text-xs text-ink">
-        <input :id="`${id}-input`" type="number" :value="value" :min="min" :max="max" :step="step" :disabled="disabled" :aria-label="`${label}数值`" class="min-h-11 w-20 border border-line-strong rounded-button bg-canvas px-2 text-right tabular-nums disabled:opacity-45" @input="input" @change="commit" @blur="commit">
+        <input :id="`${id}-input`" type="number" :value="value" :min="min" :max="max" :step="step" :disabled="disabled" :aria-label="`${label}数值`" class="field-control w-20 px-2 text-right tabular-nums" @input="input" @change="commit" @blur="commit">
         <span v-if="unit" class="w-4 text-muted">{{ unit }}</span>
       </div>
     </div>

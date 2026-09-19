@@ -13,7 +13,7 @@ const { site } = useAppConfig()
           href="https://icp.gov.moe/?keyword=20232190"
           target="_blank"
           rel="noreferrer"
-          class="min-h-11 inline-flex items-center transition-colors hover:text-heading"
+          class="ui-link min-h-11 inline-flex items-center"
         >
           萌ICP备20232190号
         </a>

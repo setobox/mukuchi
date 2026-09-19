@@ -9,7 +9,7 @@ useSeoMeta({ title: '封面制作器', description: '调整文字、图标和画
       <h1 class="text-xl text-heading font-semibold">
         封面制作器
       </h1>
-      <NuxtLink to="/tools" class="min-h-11 text-link inline-flex items-center text-sm">
+      <NuxtLink to="/tools" class="text-link min-h-11 inline-flex items-center text-sm">
         <AppIcon name="left" />返回工具
       </NuxtLink>
     </div>

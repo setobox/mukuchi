@@ -26,7 +26,7 @@ watch(() => route.path, () => {
         <button class="icon-button lg:hidden" aria-label="管理导航" :aria-expanded="open" @click="open = !open">
           <span class="i-lucide-menu" />
         </button>
-        <NuxtLink to="/admin" class="whitespace-nowrap text-heading font-semibold">
+        <NuxtLink to="/admin" class="text-link whitespace-nowrap font-semibold">
           mukuchi <span class="ml-2 hidden text-xs text-muted font-normal md:inline">管理后台</span>
         </NuxtLink>
         <span v-if="current.user?.local" class="hidden rounded bg-surface px-3 py-1 text-xs text-muted md:inline">本地开发</span>
@@ -39,7 +39,7 @@ watch(() => route.path, () => {
     </header>
     <div class="mx-auto max-w-[1600px] lg:grid lg:grid-cols-[210px_minmax(0,1fr)]">
       <nav v-if="current.user?.owner" :class="open ? 'block' : 'hidden lg:block'" class="border-b border-line p-5 lg:min-h-[calc(100dvh-68px)] lg:border-b-0 lg:border-r" aria-label="管理导航">
-        <NuxtLink v-for="item in navigation" :key="item.to" :to="item.to" class="mb-2 min-h-11 flex items-center gap-3 rounded-button px-4 py-3" :class="(item.to === '/admin' ? route.path === '/admin' || route.path.startsWith('/admin/editor/') : route.path === item.to) ? 'bg-accent-surface text-accent-soft' : 'text-muted hover:bg-surface'">
+        <NuxtLink v-for="item in navigation" :key="item.to" :to="item.to" class="control-quiet mb-2 min-h-11 flex items-center gap-3 px-4 py-3" :class="(item.to === '/admin' ? route.path === '/admin' || route.path.startsWith('/admin/editor/') : route.path === item.to) ? 'control-selected' : 'text-muted'">
           <span :class="item.icon" />{{ item.label }}
         </NuxtLink>
       </nav>

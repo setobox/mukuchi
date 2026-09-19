@@ -19,6 +19,8 @@ export default defineConfig({
       'themed': 'var(--color-title)',
       'on-accent': 'var(--color-on-accent)',
       'accent-hover': 'var(--color-accent-hover)',
+      'accent-pressed': 'var(--color-accent-pressed)',
+      'accent-pressed-solid': 'var(--color-accent-pressed-solid)',
       'code': 'var(--color-code)',
       'line': 'var(--color-border)',
       'line-strong': 'var(--color-border-strong)',
@@ -55,6 +57,7 @@ export default defineConfig({
     borderRadius: {
       panel: 'var(--radius-panel)',
       button: 'var(--radius-button)',
+      chip: 'var(--radius-chip)',
     },
     boxShadow: {
       floating: 'var(--shadow-float)',
@@ -71,13 +74,23 @@ export default defineConfig({
   },
   extendTheme: theme => ({ ...theme, breakpoints }),
   shortcuts: {
+    'ui-feedback': '[transition-property:color,background-color,border-color,text-decoration-color,box-shadow,opacity] duration-[var(--duration-interaction)] ease-[var(--ease-interaction)] motion-reduce:transition-none',
+    'control-disabled': 'disabled:pointer-events-none disabled:opacity-45 aria-disabled:pointer-events-none aria-disabled:opacity-45 data-[disabled]:pointer-events-none data-[disabled]:opacity-45',
+    'control-base': 'ui-feedback control-disabled min-h-11 inline-flex items-center justify-center gap-2 rounded-button',
+    'control-quiet': 'ui-feedback control-disabled rounded-button hover:bg-accent-surface hover:text-accent-soft active:bg-accent-pressed',
+    'control-selected': 'bg-accent-surface text-accent-soft',
+    'button-primary': 'control-base border border-transparent bg-accent px-[17px] py-[9px] text-base text-on-accent font-semibold hover:bg-accent-hover active:bg-accent-pressed-solid',
+    'ui-link': 'ui-feedback underline-offset-4 hover:text-accent-soft hover:underline hover:decoration-current active:text-accent-soft',
+    'field-control': 'ui-feedback control-disabled min-h-11 min-w-0 border border-line-strong rounded-button bg-canvas text-ink hover:border-accent focus-visible:border-accent',
+    'card-link': 'ui-feedback hover:border-accent focus-visible:border-accent active:border-accent',
+    'chip-link': 'ui-feedback max-w-full min-h-11 inline-flex items-center gap-1.5 break-words border rounded-chip px-2.5 text-sm md:min-h-8 hover:border-accent hover:bg-accent-surface hover:text-accent-soft active:bg-accent-pressed',
     'cover-field': 'flex min-w-0 flex-col gap-2 text-xs text-muted',
-    'cover-input': 'min-h-11 min-w-0 w-full border border-line-strong rounded-button bg-canvas px-3 text-sm text-ink',
+    'cover-input': 'field-control w-full px-3 text-sm',
     'site-container': 'mx-auto w-full max-w-site px-5 md:px-8',
     'section-label': 'text-base tracking-widest text-muted font-medium',
     'icon-button':
-      'inline-flex items-center justify-center h-11 w-11 shrink-0 rounded-xl text-muted transition-colors hover:bg-surface hover:text-ink disabled:opacity-45 disabled:hover:bg-transparent disabled:hover:text-muted',
-    'text-link': 'inline-flex items-center gap-2 min-h-11 text-heading hover:text-accent-soft',
+      'control-base control-quiet h-11 w-11 shrink-0 text-muted',
+    'text-link': 'ui-link inline-flex items-center gap-2 min-h-11 text-heading',
   },
   safelist: Object.values(icons),
 })

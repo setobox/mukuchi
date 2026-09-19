@@ -7,7 +7,7 @@ provide(imageLinkKey, true)
 </script>
 
 <template>
-  <NuxtLink :href="href" :target="target">
+  <NuxtLink :href="href" :target="target" class="ui-link">
     <slot />
   </NuxtLink>
 </template>

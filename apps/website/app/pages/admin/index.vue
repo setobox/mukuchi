@@ -60,7 +60,7 @@ watch(() => current.value.user?.owner, () => {
     </div>
     <form v-if="creating" class="mb-6 border border-line rounded-panel bg-surface p-5" @submit.prevent="edit(newPath)">
       <label for="new-path" class="mb-2 block text-heading">文件路径</label><div class="flex flex-wrap gap-3">
-        <input id="new-path" v-model="newPath" required placeholder="notes/example.md" class="min-h-11 min-w-0 flex-1 border border-line-strong rounded-button bg-canvas px-3"><BaseButton type="submit" :disabled="busy">
+        <input id="new-path" v-model="newPath" required placeholder="notes/example.md" class="field-control flex-1 px-3"><BaseButton type="submit" :disabled="busy">
           创建草稿
         </BaseButton>
       </div><p class="mt-2 text-xs text-muted">
@@ -68,7 +68,7 @@ watch(() => current.value.user?.owner, () => {
       </p>
     </form>
     <div class="mb-5 flex flex-wrap gap-3">
-      <input v-model="query" aria-label="搜索文章" placeholder="搜索标题或文件路径" class="min-h-11 min-w-0 flex-1 border border-line-strong rounded-button bg-canvas px-4"><BaseSelect v-model="filter" aria-label="文章状态" :options="[{ value: 'all', label: '全部文章' }, { value: 'drafts', label: '草稿与待发布修改' }, { value: 'published', label: '已发布' }]" class="w-48" /><BaseButton variant="border" :disabled="busy" @click="load">
+      <input v-model="query" aria-label="搜索文章" placeholder="搜索标题或文件路径" class="field-control flex-1 px-4"><BaseSelect v-model="filter" aria-label="文章状态" :options="[{ value: 'all', label: '全部文章' }, { value: 'drafts', label: '草稿与待发布修改' }, { value: 'published', label: '已发布' }]" class="w-48" /><BaseButton variant="border" :disabled="busy" @click="load">
         刷新
       </BaseButton>
     </div>
@@ -81,7 +81,7 @@ watch(() => current.value.user?.owner, () => {
     <div class="overflow-hidden border border-line rounded-panel">
       <div v-for="row in rows" :key="row.path" class="flex flex-wrap items-center gap-4 border-b border-line px-5 py-5 last:border-b-0">
         <div class="min-w-0 flex-1">
-          <button class="max-w-full break-words text-left text-heading font-semibold hover:text-accent-soft" @click="edit(row.path)">
+          <button class="control-base ui-link max-w-full break-words text-left text-heading font-semibold" @click="edit(row.path)">
             {{ row.title }}
           </button><p class="mt-1 break-all text-xs text-muted">
             {{ row.path }}

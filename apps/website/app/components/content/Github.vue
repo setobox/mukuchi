@@ -29,13 +29,13 @@ watch(() => card.value.avatar, async () => {
   <a
     v-if="valid" :href="`https://github.com/${card.repo}`" target="_blank" rel="noopener noreferrer"
     data-prose-card="github"
-    class="group my-6 block min-w-0 border border-line rounded-[var(--radius-panel)] bg-surface p-5 transition-colors duration-200 focus-visible:border-accent hover:border-accent text-ink! no-underline! motion-reduce:transition-none"
+    class="group card-link my-6 block min-w-0 border border-line rounded-panel bg-surface p-5 text-ink! no-underline!"
   >
     <span class="flex items-start justify-between gap-3">
       <span class="min-w-0 flex items-start gap-2.5 text-l leading-8">
         <img v-if="card.avatar && !failedAvatar" ref="avatar" :src="card.avatar" alt="" width="32" height="32" loading="lazy" decoding="async" class="size-8 shrink-0 rounded-full object-cover" @error="failedAvatar = true">
         <span v-else class="size-8 flex shrink-0 items-center justify-center rounded-full bg-canvas text-muted" aria-hidden="true"><AppIcon name="user" /></span>
-        <span class="min-w-0 break-all"><span class="text-muted">{{ owner }}</span><span class="mx-1.5 text-muted">/</span><span class="text-heading font-bold transition-colors group-focus-visible:text-accent-soft group-hover:text-accent-soft">{{ name }}</span></span>
+        <span class="min-w-0 break-all"><span class="text-muted">{{ owner }}</span><span class="mx-1.5 text-muted">/</span><span class="ui-feedback text-heading font-bold group-focus-visible:text-accent-soft group-hover:text-accent-soft">{{ name }}</span></span>
       </span>
       <AppIcon name="github" class="mt-1 shrink-0 text-2xl text-heading" />
     </span>

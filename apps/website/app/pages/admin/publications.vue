@@ -59,7 +59,7 @@ onBeforeUnmount(pause)
     </p><div class="space-y-4">
       <article v-for="record in publications" :key="record.id" class="border border-line rounded-panel p-5">
         <div class="flex flex-wrap items-center justify-between gap-3">
-          <NuxtLink :to="`/admin/editor/${record.draftId}`" class="text-heading">
+          <NuxtLink :to="`/admin/editor/${record.draftId}`" class="text-link">
             {{ record.action === 'publish' ? '发布文章' : '撤下文章' }} · 版本 {{ record.version }}
           </NuxtLink><span class="rounded bg-surface px-3 py-1 text-xs">{{ publicationLabels[record.status] }}</span>
         </div><p class="mt-3 text-xs text-muted">

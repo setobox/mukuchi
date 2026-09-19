@@ -343,7 +343,7 @@ onBeforeUnmount(() => {
   <div>
     <div class="mb-6 flex flex-wrap items-center gap-3">
       <div class="min-w-0 w-full md:w-auto md:flex-1">
-        <NuxtLink to="/admin" class="text-xs text-muted hover:text-heading">
+        <NuxtLink to="/admin" class="ui-link min-h-11 inline-flex items-center text-xs text-muted">
           返回文章
         </NuxtLink><h1 class="mt-2 break-all text-section text-heading">
           {{ draft?.path || '加载文章' }}
@@ -357,23 +357,23 @@ onBeforeUnmount(() => {
       </BaseButton>
     </div>
     <p v-if="error" role="alert" class="mb-5 border border-error rounded-button p-4 text-error">
-      {{ error }} <button class="ml-3 underline" @click="showRemote">
+      {{ error }} <button class="control-base ml-3 text-error underline-offset-4 active:underline hover:underline" @click="showRemote">
         查看已发布版本
       </button>
     </p>
     <p v-if="notice" role="status" class="mb-5 text-success">
-      {{ notice }} <NuxtLink v-if="publication" to="/admin/publications" class="underline">
+      {{ notice }} <NuxtLink v-if="publication" to="/admin/publications" class="ui-link underline">
         查看发布记录
       </NuxtLink>
     </p>
     <div v-if="draft" class="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1fr)_280px]">
       <section class="min-w-0">
         <div class="mb-4 flex gap-2" role="group" aria-label="编辑模式">
-          <button v-for="tab in (['rich', 'source', 'preview'] as const)" :key="tab" class="min-h-11 rounded-button px-5" :class="mode === tab ? 'bg-accent-surface text-accent-soft' : 'hover:bg-surface'" :aria-pressed="mode === tab" :disabled="busy" @click="switchMode(tab)">
+          <button v-for="tab in (['rich', 'source', 'preview'] as const)" :key="tab" class="control-base control-quiet px-5" :class="{ 'control-selected': mode === tab }" :aria-pressed="mode === tab" :disabled="busy" @click="switchMode(tab)">
             {{ { rich: '富文本', source: '源码', preview: '预览' }[tab] }}
           </button>
         </div>
-        <textarea v-if="mode === 'source'" :value="source" aria-label="完整 Markdown 与 MDC 源码" spellcheck="false" class="min-h-[65dvh] w-full resize-y border border-line-strong rounded-panel bg-canvas p-5 text-xs leading-7 font-mono" @input="changeSource(($event.target as HTMLTextAreaElement).value)" />
+        <textarea v-if="mode === 'source'" :value="source" aria-label="完整 Markdown 与 MDC 源码" spellcheck="false" class="field-control min-h-[65dvh] w-full resize-y p-5 text-xs leading-7 font-mono" @input="changeSource(($event.target as HTMLTextAreaElement).value)" />
         <LazyRichEditor v-else-if="mode === 'rich'" :key="richKey" :segments="segments" :image-previews="imagePreviews" @change="changeSource(splitDocument(source).header + $event)" />
         <div v-else-if="preview" class="border border-line rounded-panel p-5">
           <h2 class="mb-4 text-page text-themed">
@@ -422,7 +422,7 @@ onBeforeUnmount(() => {
           <p class="my-3 text-xs text-muted" role="status">
             {{ summaryStatus }}
           </p>
-          <label class="block text-xs text-muted">摘要内容<textarea v-model="summaryText" rows="5" maxlength="300" :disabled="summaryBusy || metadata.aiSummary === false" class="mt-2 w-full border border-line-strong rounded-button bg-canvas p-3 text-ink leading-7" @input="editSummary" /></label>
+          <label class="block text-xs text-muted">摘要内容<textarea v-model="summaryText" rows="5" maxlength="300" :disabled="summaryBusy || metadata.aiSummary === false" class="field-control mt-2 w-full p-3 leading-7" @input="editSummary" /></label>
           <p v-if="summaryState?.message" class="mt-3 text-xs text-muted">
             {{ summaryState.message }}
           </p>
@@ -437,7 +437,7 @@ onBeforeUnmount(() => {
               保存摘要
             </BaseButton>
           </div>
-          <NuxtLink to="/admin/ai" class="mt-4 inline-block text-xs text-accent-soft">
+          <NuxtLink to="/admin/ai" class="ui-link mt-4 min-h-11 inline-flex items-center text-xs text-accent-soft">
             AI 服务设置
           </NuxtLink>
         </section>
@@ -445,33 +445,33 @@ onBeforeUnmount(() => {
           <h2 class="mb-4 text-heading font-semibold">
             文章信息
           </h2><div class="space-y-4">
-            <label v-for="field in [{ key: 'title', label: '标题', type: 'text' }, { key: 'description', label: '原简介（必填）', type: 'text' }, { key: 'publish', label: '发布日期', type: 'date' }, { key: 'update', label: '更新日期', type: 'date' }, { key: 'cover', label: '封面地址', type: 'text' }]" :key="field.key" class="block text-xs text-muted">{{ field.label }}<input :type="field.type" :value="metadata[field.key] ?? ''" class="mt-2 min-h-11 w-full border border-line-strong rounded-button bg-canvas px-3 text-ink" @change="setMeta(field.key, ($event.target as HTMLInputElement).value || undefined)"></label><label class="block text-xs text-muted">标签<input :value="Array.isArray(metadata.tags) ? metadata.tags.join(', ') : ''" class="mt-2 min-h-11 w-full border border-line-strong rounded-button bg-canvas px-3 text-ink" @change="setMeta('tags', ($event.target as HTMLInputElement).value.split(/[,，]/).map(v => v.trim()).filter(Boolean))"></label><label class="block text-xs text-muted">专栏<input :value="Array.isArray(metadata.categories) ? metadata.categories.join(', ') : ''" class="mt-2 min-h-11 w-full border border-line-strong rounded-button bg-canvas px-3 text-ink" @change="setMeta('categories', ($event.target as HTMLInputElement).value.split(/[,，]/).map(v => v.trim()).filter(Boolean))"></label><label class="block text-xs text-muted">置顶权重<input type="number" min="0" :value="metadata.pin ?? 0" class="mt-2 min-h-11 w-full border border-line-strong rounded-button bg-canvas px-3 text-ink" @change="setMeta('pin', Number(($event.target as HTMLInputElement).value))"></label><BaseSwitch :model-value="!!metadata.wip" label="显示施工提醒" @update:model-value="setMeta('wip', $event)" />
+            <label v-for="field in [{ key: 'title', label: '标题', type: 'text' }, { key: 'description', label: '原简介（必填）', type: 'text' }, { key: 'publish', label: '发布日期', type: 'date' }, { key: 'update', label: '更新日期', type: 'date' }, { key: 'cover', label: '封面地址', type: 'text' }]" :key="field.key" class="block text-xs text-muted">{{ field.label }}<input :type="field.type" :value="metadata[field.key] ?? ''" class="field-control mt-2 w-full px-3" @change="setMeta(field.key, ($event.target as HTMLInputElement).value || undefined)"></label><label class="block text-xs text-muted">标签<input :value="Array.isArray(metadata.tags) ? metadata.tags.join(', ') : ''" class="field-control mt-2 w-full px-3" @change="setMeta('tags', ($event.target as HTMLInputElement).value.split(/[,，]/).map(v => v.trim()).filter(Boolean))"></label><label class="block text-xs text-muted">专栏<input :value="Array.isArray(metadata.categories) ? metadata.categories.join(', ') : ''" class="field-control mt-2 w-full px-3" @change="setMeta('categories', ($event.target as HTMLInputElement).value.split(/[,，]/).map(v => v.trim()).filter(Boolean))"></label><label class="block text-xs text-muted">置顶权重<input type="number" min="0" :value="metadata.pin ?? 0" class="field-control mt-2 w-full px-3" @change="setMeta('pin', Number(($event.target as HTMLInputElement).value))"></label><BaseSwitch :model-value="!!metadata.wip" label="显示施工提醒" @update:model-value="setMeta('wip', $event)" />
           </div>
           <BaseSelect :model-value="String(metadata.theme ?? '#a369ff')" label="主题色" :options="themeColors.map(color => ({ value: color, label: color }))" class="mt-4" @update:model-value="setMeta('theme', $event)" />
         </section>
         <section class="border border-line rounded-panel p-5">
           <h2 class="mb-4 text-heading font-semibold">
             图片
-          </h2><label class="block text-xs text-muted">图片说明<input v-model="imageAlt" class="mt-2 min-h-11 w-full border border-line-strong rounded-button bg-canvas px-3 text-ink"></label><label class="mt-4 block text-xs text-muted">上传图片<input type="file" accept="image/png,image/jpeg,image/webp,image/gif" :disabled="uploading" class="mt-2 block w-full text-xs" @change="selectImage"></label><progress v-if="uploading" :value="progress" max="100" class="mt-3 w-full" aria-label="图片上传进度" /><p class="mt-2 text-xs text-muted">
+          </h2><label class="block text-xs text-muted">图片说明<input v-model="imageAlt" class="field-control mt-2 w-full px-3"></label><label class="mt-4 block text-xs text-muted">上传图片<input type="file" accept="image/png,image/jpeg,image/webp,image/gif" :disabled="uploading" class="field-control mt-2 block w-full text-xs file:ui-feedback file:mr-3 file:min-h-11 file:cursor-pointer file:border-0 file:rounded-button file:bg-transparent file:px-3 file:text-ink active:file:bg-accent-pressed hover:file:bg-accent-surface hover:file:text-accent-soft" @change="selectImage"></label><progress v-if="uploading" :value="progress" max="100" class="mt-3 w-full" aria-label="图片上传进度" /><p class="mt-2 text-xs text-muted">
             单张最多 5 MiB。发布前仅站主可见。
           </p><div v-for="asset in assets" :key="asset.id" class="mt-4 border-t border-line pt-4">
             <img :src="endpoint(`/api/admin/assets/${asset.id}`)" alt="暂存图片预览" class="max-h-36 w-full rounded object-contain"><div class="mt-2 flex flex-wrap gap-2">
-              <button class="min-h-11 text-xs text-accent-soft" @click="addImage(asset.path)">
+              <button class="control-base control-quiet text-xs text-accent-soft" @click="addImage(asset.path)">
                 插入正文
-              </button><button class="min-h-11 text-xs text-accent-soft" @click="setMeta('cover', asset.path)">
+              </button><button class="control-base control-quiet text-xs text-accent-soft" @click="setMeta('cover', asset.path)">
                 设为封面
-              </button><button class="min-h-11 text-xs text-muted" @click="removeAsset(asset)">
+              </button><button class="control-base text-xs text-error underline-offset-4 active:underline hover:underline" @click="removeAsset(asset)">
                 删除暂存
               </button>
             </div>
-          </div><label class="mt-4 block text-xs text-muted">图片地址<input v-model="imageUrl" placeholder="https:// 或 /images/..." class="mt-2 min-h-11 w-full border border-line-strong rounded-button bg-canvas px-3 text-ink"></label><BaseButton class="mt-2 w-full" variant="border" :disabled="!/^(https?:\/\/\S+|\/(?!\/)[^\s)]+)$/.test(imageUrl)" @click="addImage(imageUrl)">
+          </div><label class="mt-4 block text-xs text-muted">图片地址<input v-model="imageUrl" placeholder="https:// 或 /images/..." class="field-control mt-2 w-full px-3"></label><BaseButton class="mt-2 w-full" variant="border" :disabled="!/^(https?:\/\/\S+|\/(?!\/)[^\s)]+)$/.test(imageUrl)" @click="addImage(imageUrl)">
             插入地址
           </BaseButton>
         </section>
         <div class="flex flex-wrap gap-3">
-          <BaseButton v-if="draft.baseHash" variant="ghost" :disabled="busy" @click="confirmAction = 'unpublish'">
+          <BaseButton v-if="draft.baseHash" variant="ghost" class="underline-offset-4 text-error! hover:underline active:bg-transparent! hover:bg-transparent!" :disabled="busy" @click="confirmAction = 'unpublish'">
             撤下文章
-          </BaseButton><BaseButton variant="ghost" :disabled="busy" @click="confirmAction = 'delete'">
+          </BaseButton><BaseButton variant="ghost" class="underline-offset-4 text-error! hover:underline active:bg-transparent! hover:bg-transparent!" :disabled="busy" @click="confirmAction = 'delete'">
             删除编辑草稿
           </BaseButton>
         </div>

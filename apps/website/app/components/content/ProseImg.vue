@@ -45,16 +45,16 @@ onMounted(inspectImage)
       :aria-label="interactive ? `预览图片：${alt || '正文图片'}` : undefined"
       :aria-haspopup="interactive ? 'dialog' : undefined"
       :disabled="interactive && !loaded ? true : undefined"
-      class="block max-w-full rounded-xl p-0 text-left"
-      :class="{ 'cursor-zoom-in': interactive && loaded }"
+      class="block max-w-full rounded-panel p-0 text-left"
+      :class="{ 'control-disabled ui-feedback': interactive, 'cursor-zoom-in hover:opacity-85 active:opacity-75': interactive && loaded }"
       @click="open"
     >
       <img
         v-if="!failed" ref="image" :src="source" :alt="alt" :width="width" :height="height"
-        loading="lazy" decoding="async" class="h-auto max-w-full rounded-xl"
+        loading="lazy" decoding="async" class="h-auto max-w-full rounded-panel"
         @load="inspectImage" @error="failed = true"
       >
-      <span v-else class="block border border-line rounded-xl bg-surface p-5 text-s text-muted">
+      <span v-else class="block border border-line rounded-panel bg-surface p-5 text-s text-muted">
         {{ alt ? `${alt}：` : '' }}图片加载失败
       </span>
     </component>

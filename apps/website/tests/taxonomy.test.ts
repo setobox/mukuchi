@@ -4,7 +4,9 @@ import type { TaxonomyFilter } from '../shared/content/taxonomy'
 import { afterEach, expect, test, vi } from 'vite-plus/test'
 import { computed, createSSRApp, defineComponent, h, ref } from 'vue'
 import { renderToString } from 'vue/server-renderer'
+import PostCard from '../app/components/posts/PostCard.vue'
 import PostCollection from '../app/components/posts/PostCollection.vue'
+import PostListItem from '../app/components/posts/PostListItem.vue'
 import PostMeta from '../app/components/posts/PostMeta.vue'
 import PostTags from '../app/components/posts/PostTags.vue'
 import TagFilter from '../app/components/posts/TagFilter.vue'
@@ -53,6 +55,8 @@ async function render(component: Component, props: Record<string, unknown>) {
     SiteColumns: Container,
     SiteSidebar: Container,
     TagFilter,
+    PostMeta,
+    PostTags,
     PostListItem: Item,
     PostCard: Item,
     BaseButton: Container,
@@ -128,6 +132,35 @@ test('标签入口始终进入全站标签路径，全部标签回到文章列�
   expect(tags).toContain('href="/tags/C%2B%2B"')
   const meta = await render(PostMeta, { post: posts[0] })
   expect(meta).toContain(`href="${taxonomyPath('category', '内容管理')}"`)
+})
+
+test('井号仅作为显示前缀，标签原名和路径编码保持不变', async () => {
+  const names = ['C#', 'C++', 'Vue Router', '中文标签', '%23']
+  const filter = await render(TagFilter, { tags: names.map(name => ({ name, count: 1 })), selected: 'C#' })
+  const tags = await render(PostTags, { tags: names })
+  for (const html of [filter, tags]) {
+    const text = html.replace(/<[^>]*>/g, '')
+    for (const name of names) {
+      expect(text).toContain(`#${name}`)
+      expect(html).toContain(`href="${taxonomyPath('tag', name)}"`)
+    }
+  }
+  expect(filter.replace(/<[^>]*>/g, '')).not.toContain('#全部标签')
+  expect(filter).toMatch(/<a\s[^>]*href="\/tags\/C%23"[^>]*aria-current="true"/)
+  const cleared = await render(TagFilter, { tags: [{ name: 'C#', count: 1 }] })
+  expect(cleared).toMatch(/<a\s[^>]*href="\/posts"[^>]*aria-current="true"/)
+  expect(await render(PostTags, { tags: [] })).not.toContain('<ul')
+})
+
+test.each([PostListItem, PostCard])('文章两种视图均先显示标题，再显示元信息、摘要和标签', async (component) => {
+  const post = { ...posts[0]!, title: '较长的文章标题'.repeat(12), description: '文章摘要内容', pin: 1, categories: ['内容管理', '第二分类'], tags: ['很长的标签名称'.repeat(12), 'C#'] }
+  const html = await render(component, { post })
+  const text = html.replace(/<[^>]*>/g, '')
+  const ordered = [post.title, '置顶', '发布于', '内容管理', '第二分类', post.description, `#${post.tags[0]}`, '#C#']
+  for (let index = 1; index < ordered.length; index++)
+    expect(text.indexOf(ordered[index]!)).toBeGreaterThan(text.indexOf(ordered[index - 1]!))
+  expect(html).toContain(`href="${taxonomyPath('category', '第二分类')}"`)
+  expect(text).not.toContain('#内容管理')
 })
 
 test('文章集合仅使用显式筛选条件，旧查询参数不影响默认与独立筛选结果', async () => {

@@ -229,11 +229,11 @@ onScopeDispose(() => {
 <template>
   <AcrylicDialog v-model="dialogOpen" :title="mode === 'search' ? '站内搜索' : '命令面板'" placement="commands" @opened="focusInput" @closed="closed">
     <label :for="inputId" class="sr-only">{{ mode === 'search' ? '文章关键词' : '命令关键词' }}</label>
-    <div class="relative z-1 flex shrink-0 items-center gap-2 border border-line-strong rounded-lg bg-canvas pl-1 pr-3 focus-within:border-accent">
+    <div class="ui-feedback relative z-1 flex shrink-0 items-center gap-2 border border-line-strong rounded-button bg-canvas pl-1 pr-3 focus-within:border-accent">
       <PaletteModeMenu :mode="mode" :features="site.features" :active="isOpen" @select="palette.open" @open-change="modeMenuOpen = $event" />
       <input
         :id="inputId" ref="input" v-model="inputQuery" autofocus type="text" autocomplete="off" autocapitalize="off" :spellcheck="false"
-        class="min-h-11 min-w-0 w-full border-0 bg-transparent py-2 text-[16px] leading-6 outline-none"
+        class="min-h-11 min-w-0 w-full border-0 rounded-button bg-transparent py-2 text-[16px] leading-6 focus-visible:outline-offset--2"
         :placeholder="mode === 'search' ? '输入关键词搜索文章' : '输入命令名称'"
         role="combobox" aria-autocomplete="list" :aria-expanded="isOpen" :aria-controls="listId" :aria-activedescendant="activeId"
         @keydown="onInputKeydown" @compositionstart="composing = true" @compositionend="composing = false"
@@ -253,8 +253,8 @@ onScopeDispose(() => {
         <div
           v-for="(result, index) in matches.results" :id="`${listId}-${index}`" :key="result.id"
           role="option" :aria-selected="selected === index"
-          class="mb-1 cursor-pointer rounded-lg px-3 py-2 text-[16px] leading-6"
-          :class="selected === index ? 'bg-surface ring-1 ring-inset ring-line-strong' : 'hover:bg-surface'"
+          class="control-quiet mb-1 cursor-pointer px-3 py-2 text-[16px] leading-6"
+          :class="selected === index ? 'control-selected ring-1 ring-inset ring-accent-soft' : ''"
           @pointermove="selected = index" @mousedown.prevent @click="activate(index)"
         >
           <p class="flex items-start gap-2 text-heading font-semibold">
@@ -274,8 +274,8 @@ onScopeDispose(() => {
           <div
             v-for="command in group.items" :id="`${listId}-${command.index}`" :key="command.id"
             role="option" :aria-selected="selected === command.index" :aria-disabled="!command.available"
-            class="mb-0.5 min-h-11 flex items-center justify-between gap-3 rounded-lg px-3 py-1.5 text-[16px] leading-6 md:min-h-10"
-            :class="[command.available ? 'cursor-pointer hover:bg-surface' : 'text-muted', selected === command.index ? 'bg-surface ring-1 ring-inset ring-line-strong' : '']"
+            class="control-quiet mb-0.5 min-h-11 flex items-center justify-between gap-3 px-3 py-1.5 text-[16px] leading-6"
+            :class="[command.available ? 'cursor-pointer' : 'text-muted', selected === command.index ? 'control-selected ring-1 ring-inset ring-accent-soft' : '']"
             @pointermove="command.available && (selected = command.index)" @mousedown.prevent @click="activate(command.index)"
           >
             <span class="min-w-0 flex items-center gap-3">

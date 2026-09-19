@@ -83,7 +83,7 @@ function select(mode: PaletteMode) {
 <template>
   <div ref="root" class="relative shrink-0 text-[16px] leading-6" @focusout="focusout">
     <button
-      ref="trigger" type="button" class="relative h-11 min-w-16 flex items-center border border-line-strong rounded-button bg-canvas pl-3 pr-10 text-muted hover:border-muted hover:text-heading"
+      ref="trigger" type="button" class="control-base control-quiet relative h-11 min-w-16 border border-line-strong bg-canvas pl-3 pr-10 text-muted hover:border-accent"
       :aria-label="`切换模式，当前${mode === 'search' ? '搜索文章' : '执行命令'}`"
       :disabled="options.length < 2" :aria-expanded="open" aria-haspopup="menu" :aria-controls="menuId"
       @click="open ? close(true) : show()" @keydown="triggerKeydown"
@@ -99,8 +99,8 @@ function select(mode: PaletteMode) {
     >
       <button
         v-for="option in options" :key="option.mode" type="button" role="menuitemradio" :aria-checked="mode === option.mode" tabindex="-1"
-        class="min-h-11 w-full flex items-center gap-2 rounded-md px-3 text-left focus-visible:bg-accent-surface hover:bg-accent-surface"
-        :class="mode === option.mode ? 'text-accent-soft' : 'text-heading'"
+        class="control-quiet min-h-11 w-full flex items-center gap-2 px-3 text-left focus-visible:outline-offset--2"
+        :class="mode === option.mode ? 'control-selected' : 'text-heading'"
         @click="select(option.mode)"
       >
         <AppIcon :name="option.icon" /><span class="flex-1">{{ option.label }}</span><AppIcon v-if="mode === option.mode" name="check" class="size-4!" />

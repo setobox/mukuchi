@@ -32,7 +32,7 @@ watch(desktop, (value) => {
 
 <template>
   <header
-    class="[transition-property:background,border-color] fixed inset-x-0 top-0 z-header h-[var(--header-height)] border-b duration-180 ease-[ease]"
+    class="ui-feedback fixed inset-x-0 top-0 z-header h-[var(--header-height)] border-b"
     :class="
       y > 8
         ? 'border-line bg-[color-mix(in_srgb,var(--color-canvas)_90%,transparent)] backdrop-blur-[18px]'
@@ -42,7 +42,7 @@ watch(desktop, (value) => {
     <div class="site-container h-full flex items-center gap-4 lg:gap-7">
       <NuxtLink
         to="/posts"
-        class="inline-flex flex-none items-center gap-3 rounded text-[19px] text-heading tracking-[-0.8px] font-mono"
+        class="ui-link min-h-11 inline-flex flex-none items-center gap-3 rounded-button text-[19px] text-heading tracking-[-0.8px] font-mono"
         :aria-label="`${site.owner.name}，返回文章列表`"
       >
         <span>{{ site.name }}</span>
@@ -63,9 +63,9 @@ watch(desktop, (value) => {
           :to="item.to"
           :aria-current="page.section === item.section ? 'page' : undefined"
           :class="
-            page.section === item.section ? 'bg-surface text-heading font-semibold' : 'text-muted'
+            page.section === item.section ? 'control-selected font-semibold' : 'text-muted'
           "
-          class="relative min-h-11 rounded-lg px-[15px] py-2.5 transition-colors duration-180 ease-[ease] hover:text-heading"
+          class="control-base control-quiet relative px-[15px] py-2.5"
         >
           {{ item.label }}
         </NuxtLink>
@@ -119,11 +119,11 @@ watch(desktop, (value) => {
                 :key="item.to"
                 :to="item.to"
                 :aria-current="page.section === item.section ? 'page' : undefined"
-                class="min-h-14 flex items-center rounded-button px-4 py-3 transition-colors duration-180"
+                class="control-quiet min-h-14 flex items-center px-4 py-3"
                 :class="
                   page.section === item.section
-                    ? 'bg-accent-surface text-accent-soft font-medium'
-                    : 'hover:bg-line'
+                    ? 'control-selected font-medium'
+                    : 'text-muted'
                 "
                 @click="menuOpen = false"
               >

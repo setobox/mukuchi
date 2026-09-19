@@ -16,9 +16,9 @@ withDefaults(defineProps<{ post: PostSummary, detailed?: boolean }>(), { detaile
       v-for="category in post.categories"
       :key="category"
       :to="taxonomyPath('category', category)"
-      class="min-h-8 inline-flex items-center hover:text-heading"
+      class="chip-link min-w-0 break-all border-line text-muted"
     >
-      {{ category }}
+      <span class="min-w-0 break-all">{{ category }}</span>
     </NuxtLink>
   </div>
 </template>

@@ -60,16 +60,16 @@ async function test() {
     <form v-if="loaded" class="space-y-6" @submit.prevent="save">
       <fieldset :disabled="busy" class="space-y-6">
         <BaseSwitch v-model="form.enabled" label="启用 AI 摘要" />
-        <label class="block text-sm text-muted">API 地址<input v-model="form.baseUrl" type="url" placeholder="https://服务地址/v1" autocomplete="off" class="mt-2 min-h-11 w-full border border-line-strong rounded-button bg-canvas px-3 text-ink"></label>
-        <label class="block text-sm text-muted">模型<input v-model="form.model" type="text" autocomplete="off" class="mt-2 min-h-11 w-full border border-line-strong rounded-button bg-canvas px-3 text-ink"></label>
+        <label class="block text-sm text-muted">API 地址<input v-model="form.baseUrl" type="url" placeholder="https://服务地址/v1" autocomplete="off" class="field-control mt-2 w-full px-3"></label>
+        <label class="block text-sm text-muted">模型<input v-model="form.model" type="text" autocomplete="off" class="field-control mt-2 w-full px-3"></label>
         <div>
-          <label class="block text-sm text-muted">API 密钥<input v-model="apiKey" type="password" autocomplete="new-password" :disabled="!form.encryptionReady" :placeholder="form.keyConfigured ? '已配置；留空保留现有密钥' : '请输入 API 密钥'" class="mt-2 min-h-11 w-full border border-line-strong rounded-button bg-canvas px-3 text-ink"></label>
+          <label class="block text-sm text-muted">API 密钥<input v-model="apiKey" type="password" autocomplete="new-password" :disabled="!form.encryptionReady" :placeholder="form.keyConfigured ? '已配置；留空保留现有密钥' : '请输入 API 密钥'" class="field-control mt-2 w-full px-3"></label>
           <p v-if="!form.encryptionReady" class="mt-2 text-xs text-warn">
             服务端加密密钥尚未配置，暂时不能保存 API 密钥。
           </p>
-          <label v-if="form.keyConfigured" class="mt-2 min-h-11 flex items-center gap-3 text-xs text-muted"><input v-model="clearKey" type="checkbox">删除已保存的密钥</label>
+          <label v-if="form.keyConfigured" class="ui-feedback mt-2 min-h-11 flex items-center gap-3 rounded-button text-xs text-error underline-offset-4 has-[:disabled]:pointer-events-none active:underline hover:underline has-[:disabled]:opacity-45"><input v-model="clearKey" type="checkbox" class="ui-feedback accent-error">删除已保存的密钥</label>
         </div>
-        <label class="block text-sm text-muted">摘要提示词<textarea v-model="form.prompt" rows="6" required maxlength="6000" class="mt-2 w-full border border-line-strong rounded-button bg-canvas p-3 text-ink leading-7" /></label>
+        <label class="block text-sm text-muted">摘要提示词<textarea v-model="form.prompt" rows="6" required maxlength="6000" class="field-control mt-2 w-full p-3 leading-7" /></label>
         <p class="text-xs text-muted leading-6">
           默认输出 80–140 字的中文摘要。修改服务地址、模型或提示词后，下次构建会更新摘要。连接测试使用已保存的设置，会发送一次测试请求。
         </p>

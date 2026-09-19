@@ -24,7 +24,7 @@ async function runAction(action: (typeof actions.value)[number]): Promise<void> 
       v-for="action in actions"
       :key="action.id"
       type="button"
-      class="h-12 w-12 inline-flex items-center justify-center border border-line-strong rounded-lg bg-acrylic p-0 text-xl text-heading shadow-floating backdrop-blur-md transition-[color,border-color,background-color,transform] duration-240 active:translate-0 hover:border-accent hover:bg-surface hover:text-accent-soft motion-reduce:transition-none hover:-translate-x-0.5 hover:-translate-y-0.5"
+      class="control-base control-quiet h-12 w-12 border border-line-strong bg-acrylic p-0 text-xl text-heading shadow-floating backdrop-blur-md hover:border-accent"
       :aria-label="action.label"
       :title="action.label"
       @click="runAction(action)"

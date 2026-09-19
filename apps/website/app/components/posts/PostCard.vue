@@ -8,7 +8,7 @@ defineProps<{ post: PostSummary }>()
   <article
     class="min-w-0 flex flex-col overflow-hidden border border-line rounded-panel bg-surface"
   >
-    <NuxtLink v-if="post.cover" :to="post.path" tabindex="-1" aria-hidden="true">
+    <NuxtLink v-if="post.cover" :to="post.path" tabindex="-1" aria-hidden="true" class="ui-feedback active:opacity-75 hover:opacity-85">
       <img
         :src="post.cover"
         alt=""
@@ -19,12 +19,12 @@ defineProps<{ post: PostSummary }>()
       >
     </NuxtLink>
     <div class="flex flex-1 flex-col p-5 md:p-6">
-      <PostMeta :post="post" />
-      <h2 class="mt-3 text-title text-themed font-bold">
-        <NuxtLink :to="post.path" class="break-words transition-colors hover:text-accent-soft">
+      <h2 class="text-title text-themed font-bold">
+        <NuxtLink :to="post.path" class="ui-link inline-block max-w-full min-h-11 break-words md:min-h-0">
           {{ post.title }}
         </NuxtLink>
       </h2>
+      <PostMeta :post="post" class="mt-2" />
       <p class="mb-5 mt-3 break-words">
         {{ post.description }}
       </p>

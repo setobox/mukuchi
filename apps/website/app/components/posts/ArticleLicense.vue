@@ -31,7 +31,7 @@ const { site } = useAppConfig()
       <a
         :href="permalink"
         rel="bookmark"
-        class="mt-1 block break-all text-sm text-accent-soft underline decoration-line-strong underline-offset-4 transition-colors hover:decoration-current"
+        class="ui-link mt-1 inline-block max-w-full min-h-11 break-all text-sm text-accent-soft underline decoration-line-strong md:min-h-0"
       >
         {{ permalink }}
       </a>
@@ -61,7 +61,7 @@ const { site } = useAppConfig()
               :href="articleLicense.url"
               target="_blank"
               rel="license noopener noreferrer"
-              class="break-words text-accent-soft underline decoration-line-strong underline-offset-4 transition-colors hover:decoration-current"
+              class="ui-link inline-block max-w-full min-h-11 break-words text-accent-soft underline decoration-line-strong md:min-h-0"
             >
               {{ articleLicense.name }}
             </a>

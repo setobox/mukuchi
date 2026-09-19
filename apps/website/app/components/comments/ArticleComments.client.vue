@@ -67,7 +67,7 @@ onBeforeUnmount(() => {
     </p><p v-if="loading" class="mb-4 text-xs text-muted" role="status">
       正在加载评论…
     </p><p v-if="failed" class="mb-4 text-xs text-muted">
-      评论暂时无法加载。<button class="ml-2 min-h-11 text-accent-soft" @click="mount">
+      评论暂时无法加载。<button class="control-base ui-link ml-2 text-accent-soft" @click="mount">
         重试
       </button>
     </p><div ref="container" />

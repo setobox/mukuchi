@@ -139,7 +139,9 @@ test('真实 Markdown 图片保留图注和尺寸，链接及显式关闭的图�
   expect(html.match(/aria-haspopup="dialog"/g)).toHaveLength(1)
   expect(html).toContain('width="1200" height="675"')
   expect(html).toContain('图注')
-  expect(html).toMatch(/<a href="\/about">(?!.*?<button)[\s\S]*?链接图片/)
+  const linkedImage = html.match(/<a\s[^>]*href="\/about"[^>]*>([\s\S]*?)<\/a>/)?.[1]
+  expect(linkedImage).toContain('链接图片')
+  expect(linkedImage).not.toContain('<button')
 })
 
 test('关于页传入的布局属性只应用于正文，不落入图片浮层', async () => {

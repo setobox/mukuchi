@@ -59,7 +59,7 @@ export default defineComponent({
             'aria-controls': `${id}-panel-${index}`,
             'aria-selected': selected === index,
             'tabindex': selected === index ? 0 : -1,
-            'class': ['min-h-11 shrink-0 whitespace-nowrap rounded-lg px-3 text-s', selected === index ? 'bg-accent-surface text-accent-soft' : 'text-muted hover:text-heading'],
+            'class': ['control-base control-quiet shrink-0 whitespace-nowrap px-3 text-s', selected === index ? 'control-selected' : 'text-muted'],
             'onClick': () => {
               active.value = index
               reveal(index)

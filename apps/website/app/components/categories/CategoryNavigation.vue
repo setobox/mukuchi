@@ -86,26 +86,26 @@ onClickOutside(container, () => close())
       aria-hidden="true"
     >
       <span
-        class="min-h-11 inline-flex flex-none items-center justify-center gap-2 whitespace-nowrap rounded-lg px-3.5 py-2 font-medium"
+        class="min-h-11 inline-flex flex-none items-center justify-center gap-2 whitespace-nowrap rounded-button px-3.5 py-2 font-medium"
       >全部文章</span>
       <span
-        class="min-h-11 inline-flex flex-none items-center justify-center gap-2 whitespace-nowrap rounded-lg px-3.5 py-2 font-medium"
+        class="min-h-11 inline-flex flex-none items-center justify-center gap-2 whitespace-nowrap rounded-button px-3.5 py-2 font-medium"
       >更多<AppIcon name="down" /></span>
       <span
         v-for="category in categories"
         :key="category.name"
-        class="min-h-11 inline-flex flex-none items-center justify-center gap-2 whitespace-nowrap rounded-lg px-3.5 py-2 font-medium"
+        class="min-h-11 inline-flex flex-none items-center justify-center gap-2 whitespace-nowrap rounded-button px-3.5 py-2 font-medium"
       >{{ category.name
       }}<span class="shrink-0 text-sm font-mono">{{ category.count }}</span></span>
     </div>
     <div class="flex gap-2">
       <NuxtLink
         :to="location()"
-        class="min-h-11 inline-flex flex-none items-center justify-center gap-2 whitespace-nowrap rounded-lg px-3.5 py-2 font-medium transition-colors duration-180"
+        class="control-quiet min-h-11 inline-flex flex-none items-center justify-center gap-2 whitespace-nowrap rounded-button px-3.5 py-2 font-medium"
         :class="
           !selected
-            ? 'bg-accent-surface text-accent-soft'
-            : 'text-muted hover:bg-surface hover:text-heading'
+            ? 'control-selected'
+            : 'text-muted'
         "
         :aria-current="!selected ? 'page' : undefined"
       >
@@ -115,11 +115,11 @@ onClickOutside(container, () => close())
         v-for="category in categories.slice(0, visibleCount)"
         :key="category.name"
         :to="location(category.name)"
-        class="min-h-11 inline-flex flex-none items-center justify-center gap-2 whitespace-nowrap rounded-lg px-3.5 py-2 font-medium transition-colors duration-180"
+        class="control-quiet min-h-11 inline-flex flex-none items-center justify-center gap-2 whitespace-nowrap rounded-button px-3.5 py-2 font-medium"
         :class="
           selected === category.name
-            ? 'bg-accent-surface text-accent-soft'
-            : 'text-muted hover:bg-surface hover:text-heading'
+            ? 'control-selected'
+            : 'text-muted'
         "
         :aria-current="selected === category.name ? 'page' : undefined"
       >
@@ -129,13 +129,13 @@ onClickOutside(container, () => close())
         v-if="overflow.length"
         ref="moreButton"
         type="button"
-        class="min-h-11 inline-flex flex-none items-center justify-center gap-2 whitespace-nowrap rounded-lg px-3.5 py-2 font-medium transition-colors duration-180"
+        class="control-quiet min-h-11 inline-flex flex-none items-center justify-center gap-2 whitespace-nowrap rounded-button px-3.5 py-2 font-medium"
         :class="
           selectedOverflow
-            ? 'bg-accent-surface text-accent-soft'
+            ? 'control-selected'
             : open
-              ? 'bg-surface text-heading'
-              : 'text-muted hover:bg-surface hover:text-heading'
+              ? 'control-selected'
+              : 'text-muted'
         "
         :aria-expanded="open"
         :aria-controls="popupId"
@@ -166,11 +166,11 @@ onClickOutside(container, () => close())
           v-for="category in overflow"
           :key="category.name"
           :to="location(category.name)"
-          class="min-h-11 flex items-center justify-between gap-4 rounded-lg px-3.5 py-2 font-medium transition-colors duration-180"
+          class="control-quiet min-h-11 flex items-center justify-between gap-4 rounded-button px-3.5 py-2 font-medium"
           :class="
             selected === category.name
-              ? 'bg-accent-surface text-accent-soft'
-              : 'text-muted hover:bg-surface hover:text-heading'
+              ? 'control-selected'
+              : 'text-muted'
           "
           :aria-current="selected === category.name ? 'page' : undefined"
           @click="close()"

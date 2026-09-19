@@ -46,7 +46,7 @@ async function changePage(change: number) {
       访问统计尚未启用。
     </p><template v-else>
       <form class="mb-6 flex flex-wrap items-end gap-4" @submit.prevent="load(true)">
-        <label class="text-xs text-muted">开始日期<input v-model="from" type="date" required :max="to" class="mt-2 block min-h-11 border border-line-strong rounded-button bg-canvas px-3 text-ink"></label><label class="text-xs text-muted">结束日期<input v-model="to" type="date" required :min="from" :max="shanghaiDay(Date.now())" class="mt-2 block min-h-11 border border-line-strong rounded-button bg-canvas px-3 text-ink"></label><BaseButton type="submit" :disabled="busy">
+        <label class="text-xs text-muted">开始日期<input v-model="from" type="date" required :max="to" class="field-control mt-2 block px-3"></label><label class="text-xs text-muted">结束日期<input v-model="to" type="date" required :min="from" :max="shanghaiDay(Date.now())" class="field-control mt-2 block px-3"></label><BaseButton type="submit" :disabled="busy">
           查询
         </BaseButton>
       </form><p v-if="error" role="alert" class="mb-5 text-error">
@@ -68,7 +68,7 @@ async function changePage(change: number) {
           </h2><p class="mt-2 text-xs text-muted">
             实线：浏览量；虚线：访客数。日期按北京时间统计。
           </p><svg viewBox="0 0 800 200" class="mt-5 w-full" role="img" aria-label="每日浏览量与访客趋势，下方可展开详细数据"><polyline :points="points('pageViews')" fill="none" stroke="var(--color-accent-text)" stroke-width="3" /><polyline :points="points('visitors')" fill="none" stroke="var(--color-info)" stroke-width="2" stroke-dasharray="6 4" /></svg><details class="mt-3">
-            <summary class="min-h-11 cursor-pointer py-3 text-accent-soft">
+            <summary class="control-quiet min-h-11 cursor-pointer py-3 text-accent-soft">
               查看每日数据
             </summary><div class="max-h-96 overflow-auto">
               <table class="w-full text-left text-xs">

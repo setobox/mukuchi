@@ -28,11 +28,11 @@ function addStop() {
       <div v-for="(stop, index) in value.fill.stops" :key="index" class="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_44px] items-end gap-2">
         <label class="cover-field">色标 {{ index + 1 }}<input v-model="stop.color" type="color" class="cover-input w-full p-1"></label>
         <CoverNumber v-model="stop.position" :label="`色标 ${index + 1} 位置`" :min="0" :max="100" unit="%" />
-        <button type="button" :aria-label="`删除色标 ${index + 1}`" :disabled="value.fill.stops.length <= 2" class="min-h-11 rounded-button text-muted disabled:cursor-not-allowed hover:text-error disabled:opacity-35" @click="value.fill.stops.splice(index, 1)">
+        <button type="button" :aria-label="`删除色标 ${index + 1}`" :disabled="value.fill.stops.length <= 2" class="control-base border-b border-transparent text-error active:border-error hover:border-error" @click="value.fill.stops.splice(index, 1)">
           <span class="i-lucide-trash-2 mx-auto block size-4" aria-hidden="true" />
         </button>
       </div>
-      <button type="button" :disabled="value.fill.stops.length >= 5" class="min-h-11 w-full border border-line-strong rounded-button text-xs text-ink disabled:opacity-45" @click="addStop">
+      <button type="button" :disabled="value.fill.stops.length >= 5" class="control-base control-quiet w-full border border-line-strong text-xs text-ink" @click="addStop">
         添加色标
       </button>
       <CoverNumber v-if="value.fill.mode === 'linear'" v-model="value.fill.angle" label="渐变角度" :min="0" :max="360" unit="°" />

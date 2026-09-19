@@ -13,6 +13,8 @@
   --color-title: var(--color-accent);
   --color-on-accent: #171615;
   --color-accent-hover: color-mix(in srgb, var(--color-accent) 90%, white);
+  --color-accent-pressed: color-mix(in srgb, var(--color-accent) 18%, transparent);
+  --color-accent-pressed-solid: color-mix(in srgb, var(--color-accent) 82%, black);
   --color-border: #ffffff12;
   --color-border-strong: #ffffff24;
   --color-info: #7db5ff;
@@ -37,6 +39,9 @@
   --toc-preview-block-padding: 0.25rem;
   --radius-panel: 16px;
   --radius-button: 10px;
+  --radius-chip: 6px;
+  --duration-interaction: 180ms;
+  --ease-interaction: ease-out;
   --z-header: 30;
   --z-actions: 40;
   --text-xxxxl: 2.5rem;
