@@ -37,6 +37,7 @@
     "zod": "catalog:"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "catalog:",
     "@iconify-json/logos": "catalog:",
     "@iconify-json/lucide": "catalog:",
     "@iconify/types": "catalog:",

@@ -27,6 +27,7 @@ export const postFields = z.object({
   title: z.string().min(1),
   description: z.string().min(1),
   aiSummary: z.boolean().default(true),
+  audio: z.object({ narration: z.boolean().optional(), podcast: z.boolean().optional() }).optional(),
   summary: summaryRecordSchema.optional().catch(undefined),
   summarySource: z.enum(['ai', 'description']).default('description'),
   publish: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),

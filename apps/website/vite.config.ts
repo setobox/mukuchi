@@ -4,6 +4,14 @@ import { defineConfig } from 'vite-plus'
 export default defineConfig({
   run: {
     tasks: {
+      'audio:check-build': {
+        command: 'node scripts/check-audio-build.ts',
+        cache: false,
+      },
+      'audio:sync': {
+        command: 'node scripts/sync-audio.ts',
+        cache: false,
+      },
       'ai:smoke': {
         command: 'node --import ./scripts/stats-environment.ts scripts/smoke-ai.ts',
         cache: false,
@@ -33,11 +41,11 @@ export default defineConfig({
         cache: false,
       },
       'build': {
-        command: ['node --import ./scripts/stats-environment.ts scripts/prepare-ai.ts', 'nuxt build', 'node scripts/finalize-stats-build.ts', 'node scripts/finalize-admin-build.ts'],
+        command: ['node --import ./scripts/stats-environment.ts scripts/prepare-ai.ts', 'nuxt build', 'node scripts/finalize-stats-build.ts', 'node scripts/finalize-admin-build.ts', 'node scripts/finalize-audio-build.ts'],
         cache: false,
       },
       'build:cloudflare': {
-        command: ['node --import ./scripts/stats-environment.ts scripts/prepare-ai.ts', 'nuxt build --preset cloudflare_module', 'node scripts/finalize-stats-build.ts', 'node scripts/finalize-admin-build.ts'],
+        command: ['node --import ./scripts/stats-environment.ts scripts/prepare-ai.ts', 'nuxt build --preset cloudflare_module', 'node scripts/finalize-stats-build.ts', 'node scripts/finalize-admin-build.ts', 'node scripts/finalize-audio-build.ts'],
         cache: false,
       },
       'preview:cloudflare': {

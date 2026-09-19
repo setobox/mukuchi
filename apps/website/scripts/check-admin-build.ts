@@ -10,7 +10,7 @@ function files(directory: string): string[] {
   return readdirSync(directory, { withFileTypes: true }).flatMap(entry => entry.isDirectory() ? files(join(directory, entry.name)) : [join(directory, entry.name)])
 }
 const build = z.object({ enabled: z.boolean() }).parse(JSON.parse(readFileSync('.output/admin-build.json', 'utf8')))
-const forbidden = ['NUXT_GITHUB_CLIENT_SECRET', 'NUXT_GITHUB_PUBLISH_TOKEN', 'NUXT_STATS_HASH_SECRET', 'NUXT_STATS_ADMIN_TOKEN', 'NUXT_AI_ENCRYPTION_KEY'].map(key => process.env[key]).filter((value): value is string => !!value)
+const forbidden = ['NUXT_GITHUB_CLIENT_SECRET', 'NUXT_GITHUB_PUBLISH_TOKEN', 'NUXT_STATS_HASH_SECRET', 'NUXT_STATS_ADMIN_TOKEN', 'NUXT_AI_ENCRYPTION_KEY', 'NUXT_AUDIO_SYNC_TOKEN'].map(key => process.env[key]).filter((value): value is string => !!value)
 const filename = process.env.NUXT_ADMIN_DATABASE_PATH || '.data/admin.sqlite'
 if (existsSync(filename)) {
   const database = new DatabaseSync(filename, { readOnly: true })
@@ -21,6 +21,10 @@ if (existsSync(filename)) {
     }
     if (database.prepare('SELECT name FROM sqlite_master WHERE name = \'admin_ai_settings\'').get()) {
       for (const row of database.prepare('SELECT encrypted_key FROM admin_ai_settings WHERE encrypted_key != \'\'').all())
+        forbidden.push(String(row.encrypted_key))
+    }
+    if (database.prepare('SELECT name FROM sqlite_master WHERE name = \'audio_settings\'').get()) {
+      for (const row of database.prepare('SELECT encrypted_key FROM audio_settings WHERE encrypted_key != \'\'').all())
         forbidden.push(String(row.encrypted_key))
     }
   }

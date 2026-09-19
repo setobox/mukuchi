@@ -3,7 +3,7 @@ const { current, loaded, refresh, localLogin, endpoint } = useAdminSession()
 const error = ref('')
 const open = ref(false)
 const route = useRoute()
-const navigation = [{ to: '/admin', label: '文章', icon: 'i-lucide-files' }, { to: '/admin/stats', label: '访问统计', icon: 'i-lucide-chart-no-axes-combined' }, { to: '/admin/publications', label: '发布记录', icon: 'i-lucide-history' }, { to: '/admin/ai', label: 'AI 摘要', icon: 'i-lucide-text-search' }]
+const navigation = [{ to: '/admin', label: '文章', icon: 'i-lucide-files' }, { to: '/admin/stats', label: '访问统计', icon: 'i-lucide-chart-no-axes-combined' }, { to: '/admin/publications', label: '发布记录', icon: 'i-lucide-history' }, { to: '/admin/ai', label: 'AI 设置', icon: 'i-lucide-text-search' }]
 useSeoMeta({ robots: 'noindex, nofollow' })
 onMounted(async () => {
   await refresh()

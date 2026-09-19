@@ -3,7 +3,7 @@ import type { AiSettingsView } from '#shared/ai/model'
 import { defaultAiSettings } from '#shared/ai/model'
 
 definePageMeta({ layout: 'admin' })
-useSeoMeta({ title: 'AI 摘要设置' })
+useSeoMeta({ title: 'AI 设置' })
 const { current, request } = useAdminSession()
 const form = ref<AiSettingsView>({ ...defaultAiSettings, version: 0, keyConfigured: false, encryptionReady: false })
 const apiKey = ref('')
@@ -49,8 +49,11 @@ async function test() {
 <template>
   <div class="max-w-3xl">
     <h1 class="mb-6 text-section text-heading font-semibold">
-      AI 摘要
+      AI 设置
     </h1>
+    <h2 class="mb-4 text-title text-heading font-semibold">
+      AI 摘要
+    </h2>
     <p v-if="error" role="alert" class="mb-5 text-error">
       {{ error }}
     </p>
@@ -83,5 +86,6 @@ async function test() {
         </div>
       </fieldset>
     </form>
+    <AudioSettings />
   </div>
 </template>

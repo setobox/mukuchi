@@ -3,6 +3,7 @@ import process from 'node:process'
 import { fileURLToPath } from 'node:url'
 import githubSnapshots from './content/github/module'
 import { validateContentDirectory, validateFrontmatter } from './content/validation.ts'
+import audio from './modules/audio/module'
 import coverIcons from './modules/cover-icons/module'
 import { localRequestAllowed } from './server/features/auth/policy.ts'
 import { rssCacheControl, rssContentType, rssPath } from './shared/rss/config.ts'
@@ -15,6 +16,8 @@ export default defineNuxtConfig({
   runtimeConfig: {
     adminLocalProof: localDevProof,
     aiEncryptionKey: '',
+    audioEnabled: false,
+    audioSyncToken: '',
     adminEnabled: false,
     adminOwnerId: 83793448,
     adminDatabasePath: fileURLToPath(new URL('./.data/admin.sqlite', import.meta.url)),
@@ -29,7 +32,7 @@ export default defineNuxtConfig({
     statsHashSecret: '',
     statsAdminToken: '',
     statsDatabasePath: fileURLToPath(new URL('./.data/stats.sqlite', import.meta.url)),
-    public: { siteUrl: 'https://blog.setobox.me', statsEnabled: false, authEnabled: false, giscusRepo: 'setobox/mukuchi', giscusRepoId: '', giscusCategoryId: '' },
+    public: { siteUrl: 'https://blog.setobox.me', statsEnabled: false, authEnabled: false, audioEnabled: false, giscusRepo: 'setobox/mukuchi', giscusRepoId: '', giscusCategoryId: '' },
   },
   alias: {
     '#stats-driver': fileURLToPath(new URL('./server/features/stats/drivers/node', import.meta.url)),
@@ -39,7 +42,7 @@ export default defineNuxtConfig({
     prerender: { crawlLinks: false, failOnError: true, routes: ['/about', rssPath] },
     cloudflare: { deployConfig: true, nodeCompat: true },
   },
-  modules: ['@nuxt/content', '@nuxtjs/color-mode', '@unocss/nuxt', '@vueuse/nuxt', '@nuxt/eslint', githubSnapshots, coverIcons],
+  modules: ['@nuxt/content', '@nuxtjs/color-mode', '@unocss/nuxt', '@vueuse/nuxt', '@nuxt/eslint', githubSnapshots, coverIcons, audio],
   colorMode: {
     preference: 'system',
     fallback: 'dark',
@@ -116,6 +119,8 @@ export default defineNuxtConfig({
     '/admin/**': { prerender: false, headers: { 'cache-control': 'private, no-store', 'x-robots-tag': 'noindex, nofollow' } },
     '/api/auth/**': { prerender: false, headers: { 'cache-control': 'no-store' } },
     '/api/admin/**': { prerender: false, headers: { 'cache-control': 'no-store' } },
+    '/api/internal/audio/**': { prerender: false, headers: { 'cache-control': 'no-store' } },
+    '/api/audio/**': { prerender: false },
     '/api/stats/**': { prerender: false, headers: { 'cache-control': 'no-store' } },
     '/api/admin/stats': { prerender: false, headers: { 'cache-control': 'no-store' } },
     [rssPath]: { prerender: true, headers: { 'content-type': rssContentType, 'cache-control': rssCacheControl } },

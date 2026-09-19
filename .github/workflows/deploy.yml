@@ -20,6 +20,8 @@ jobs:
       NUXT_PUBLIC_STATS_ENABLED: ${{ vars.MUKUCHI_STATS_ENABLED || 'false' }}
       NUXT_ADMIN_ENABLED: ${{ vars.MUKUCHI_ADMIN_ENABLED || 'false' }}
       NUXT_PUBLIC_AUTH_ENABLED: ${{ vars.MUKUCHI_ADMIN_ENABLED || 'false' }}
+      NUXT_AUDIO_ENABLED: ${{ vars.MUKUCHI_AUDIO_ENABLED || 'false' }}
+      NUXT_PUBLIC_AUDIO_ENABLED: ${{ vars.MUKUCHI_AUDIO_ENABLED || 'false' }}
       NUXT_PUBLIC_GISCUS_REPO: ${{ vars.MUKUCHI_GISCUS_REPO || 'setobox/mukuchi' }}
       NUXT_PUBLIC_GISCUS_REPO_ID: ${{ vars.MUKUCHI_GISCUS_REPO_ID }}
       NUXT_PUBLIC_GISCUS_CATEGORY_ID: ${{ vars.MUKUCHI_GISCUS_CATEGORY_ID }}
@@ -49,6 +51,7 @@ jobs:
       - run: vp run website#check:prerender
       - run: vp run website#stats:check-build
       - run: vp run website#admin:check-build
+      - run: vp run website#audio:check-build
       - run: vp run website#build:cloudflare
         env:
           MUKUCHI_GITHUB_TOKEN: ${{ github.token }}
@@ -56,6 +59,7 @@ jobs:
       - run: vp run website#check:prerender
       - run: vp run website#stats:check-build
       - run: vp run website#admin:check-build
+      - run: vp run website#audio:check-build
       - name: Deploy production
         if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         run: vp run website#deploy:cloudflare
@@ -69,3 +73,10 @@ jobs:
           vp run website#admin:smoke:production
         env:
           MUKUCHI_SMOKE_URL: ${{ vars.MUKUCHI_SMOKE_URL }}
+      - name: Sync published audio manifest
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && vars.MUKUCHI_AUDIO_ENABLED == 'true'
+        continue-on-error: true
+        run: vp run website#audio:sync
+        env:
+          MUKUCHI_SMOKE_URL: ${{ vars.MUKUCHI_SMOKE_URL }}
+          NUXT_AUDIO_SYNC_TOKEN: ${{ secrets.NUXT_AUDIO_SYNC_TOKEN }}

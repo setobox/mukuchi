@@ -10,6 +10,8 @@ export default defineConfig({
     '~': fileURLToPath(new URL('./app', import.meta.url)),
     '#app': fileURLToPath(new URL('./tests/fixtures/nuxt-runtime.ts', import.meta.url)),
     '#github-snapshots': fileURLToPath(new URL('./tests/fixtures/github-snapshots.ts', import.meta.url)),
+    '#audio-manifest': fileURLToPath(new URL('./tests/fixtures/audio-manifest.ts', import.meta.url)),
+    '#admin-driver': fileURLToPath(new URL('./server/features/admin/drivers/node.ts', import.meta.url)),
   } },
   test: { include: ['tests/**/*.test.ts'], environment: 'node' },
 })

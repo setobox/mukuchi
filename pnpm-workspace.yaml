@@ -35,6 +35,7 @@ allowBuilds:
 
 catalog:
   '@antfu/eslint-config': ^9.5.1
+  '@cloudflare/workers-types': ^5.20260917.1
   '@iconify-json/logos': ^1.2.14
   '@iconify-json/lucide': 1.2.132
   '@iconify/types': ^2.0.0
