@@ -25,6 +25,9 @@ export function createAiRepository(query: AiQuery) {
       const [row] = await query('SELECT text, input_hash AS inputHash, config_hash AS configHash FROM admin_ai_cache WHERE input_hash = ? AND config_hash = ?', [inputHash, configHash])
       return row ? summaryRecordSchema.parse(row) : null
     },
+    async cacheForConfig(configHash: string) {
+      return (await query('SELECT text, input_hash AS inputHash, config_hash AS configHash FROM admin_ai_cache WHERE config_hash = ?', [configHash])).map(row => summaryRecordSchema.parse(row))
+    },
     async cache(record: SummaryRecord) {
       const value = summaryRecordSchema.parse(record)
       await query('INSERT INTO admin_ai_cache (input_hash,config_hash,text,created_at) VALUES (?,?,?,?) ON CONFLICT(input_hash,config_hash) DO NOTHING', [value.inputHash, value.configHash, value.text, new Date().toISOString()])

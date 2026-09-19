@@ -39,6 +39,17 @@ export function createAudioRepository(db: AdminDatabase) {
     async jobs() {
       return (await query(`${selectJob} ORDER BY created_at DESC LIMIT 500`)).map(row => audioJobSchema.parse(row))
     },
+    async statusJobs(hashes: Record<AudioKind, string>) {
+      // One relevant job per article/kind, independent of the recent-history limit.
+      return (await query(`${selectJob} WHERE id IN (
+        SELECT id FROM (
+          SELECT j.id, ROW_NUMBER() OVER (PARTITION BY j.path,j.kind ORDER BY
+            (j.input_hash = a.input_hash AND j.config_hash = CASE j.kind WHEN 'narration' THEN ? ELSE ? END) DESC,
+            j.created_at DESC,j.id DESC) AS position
+          FROM audio_jobs j LEFT JOIN audio_articles a ON a.path = j.path
+        ) WHERE position = 1
+      )`, [hashes.narration, hashes.podcast])).map(row => audioJobSchema.parse(row))
+    },
     async enqueue(article: AudioArticle, kind: AudioKind, settings: AudioSettings) {
       if (!kindEnabled(settings, kind) || !article[`${kind}Enabled`])
         return null

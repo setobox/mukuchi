@@ -9,6 +9,7 @@ import { requireOwner } from '../auth/session'
 import { editorSegments, validateArticle } from '../drafts/content'
 import { identifyImage } from '../media/images'
 import { githubClient, publicationStatus, publishDraft } from '../publishing/service'
+import { listArticleRows } from './article-list'
 import { adminOptions, adminStorage, readAdminJson, readLimitedBody, withAdmin } from './http'
 
 export async function adminRoute(event: H3Event) {
@@ -23,7 +24,7 @@ export async function adminRoute(event: H3Event) {
     return { articles: files.map((file) => {
       const draft = drafts.find(draft => draft.path === file.path) ?? null
       return { path: file.path, title: articleTitle(file.source, file.path), hash: file.hash, draft, publication: articlePublication(draft, file.source) }
-    }), drafts, local: import.meta.dev }
+    }), drafts, rows: await listArticleRows(event, files, drafts), local: import.meta.dev }
   }
   if (resource === 'drafts') {
     if (!id && method === 'POST') {
