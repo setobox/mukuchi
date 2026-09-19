@@ -65,5 +65,6 @@ watch(() => route.path, () => {
         <slot v-else />
       </main>
     </div>
+    <AdminToasts />
   </div>
 </template>

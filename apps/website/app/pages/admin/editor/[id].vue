@@ -32,7 +32,11 @@ const metadata = computed(() => {
   catch { return {} }
 })
 const error = ref('')
+const saveError = ref('')
+const loading = ref(false)
+const { notify } = useAdminFeedback()
 const notice = ref('')
+watch(notice, message => message && notify(message))
 const saving = ref(false)
 const busy = ref(false)
 const summaryBusy = ref(false)
@@ -55,8 +59,10 @@ let summaryRequest = 0
 let operation: { id: string, version: number, action: 'publish' | 'unpublish' } | null = null
 
 async function load() {
-  if (!current.value.user?.owner || draft.value)
+  if (!current.value.user?.owner || draft.value || loading.value)
     return
+  loading.value = true
+  error.value = ''
   try {
     const result = await request<{ draft: Draft, assets: Asset[], local: boolean, publishedSource: string | null }>(`drafts/${id}`)
     draft.value = result.draft
@@ -67,6 +73,7 @@ async function load() {
     await loadSummary()
   }
   catch (cause) { error.value = adminError(cause) }
+  finally { loading.value = false }
 }
 watch(() => current.value.user?.owner, () => {
   void load()
@@ -99,11 +106,11 @@ async function saveSource(): Promise<boolean> {
           source.value = draft.value.source
         saved.value = draft.value.source
       }
-      error.value = ''
+      error.value = saveError.value = ''
       return true
     }
     catch (cause) {
-      error.value = adminError(cause)
+      error.value = saveError.value = adminError(cause)
       return false
     }
     finally {
@@ -113,9 +120,12 @@ async function saveSource(): Promise<boolean> {
   })()
   return saveWork
 }
-async function save(): Promise<boolean> {
+async function save(manual = false): Promise<boolean> {
   const result = await saveSource()
-  return result && summaryEdited.value && !summaryBusy.value ? updateSummary('save') : result
+  const complete = result && summaryEdited.value && !summaryBusy.value ? await updateSummary('save') : result
+  if (complete && manual)
+    notify('草稿已保存。')
+  return complete
 }
 function editSummary() {
   summaryEdited.value = summaryText.value !== (summaryState.value?.record?.text ?? '')
@@ -134,7 +144,7 @@ async function loadSummary() {
   if (!summaryEdited.value)
     summaryText.value = summaryState.value.record?.text ?? ''
 }
-async function updateSummary(action: 'generate' | 'save'): Promise<boolean> {
+async function updateSummary(action: 'generate' | 'save', announce = false): Promise<boolean> {
   if (summaryBusy.value)
     return false
   summaryBusy.value = true
@@ -158,6 +168,8 @@ async function updateSummary(action: 'generate' | 'save'): Promise<boolean> {
     summaryState.value = result.summary
     summaryText.value = result.summary.record?.text ?? ''
     summaryEdited.value = false
+    if (announce)
+      notify(action === 'generate' ? '摘要已生成并保存到草稿。' : '摘要已保存到草稿。')
     return true
   }
   catch (cause) {
@@ -333,7 +345,7 @@ function beforeUnload(event: BeforeUnloadEvent) {
 function shortcut(event: KeyboardEvent) {
   if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's') {
     event.preventDefault()
-    void save()
+    void save(true)
   }
 }
 onMounted(() => {
@@ -356,13 +368,15 @@ onBeforeUnmount(() => {
         </NuxtLink><h1 class="mt-2 break-all text-section text-heading">
           {{ draft?.path || '加载文章' }}
         </h1><p class="mt-1 text-xs text-muted" role="status">
-          {{ saving ? '正在保存草稿…' : summaryBusy ? '正在处理摘要…' : dirty || summaryEdited ? '有未保存修改' : draft ? '草稿已保存' : '' }}
+          {{ saveError ? '保存失败，请重试' : saving ? '正在保存草稿…' : summaryBusy ? '正在处理摘要…' : dirty || summaryEdited ? '有未保存修改' : draft ? '草稿已保存' : '' }}
         </p>
-      </div><BaseButton variant="border" :disabled="saving || summaryBusy || busy || !draft" @click="save">
+      </div><BaseButton variant="border" :loading="saving" :disabled="summaryBusy || busy || !draft" @click="save(true)">
         保存草稿
-      </BaseButton><BaseButton :disabled="busy || summaryBusy || !draft || uploading || (!publicationState.hasChanges && !summaryEdited)" :title="!publicationState.hasChanges && !summaryEdited ? '没有需要更新的内容' : undefined" @click="publish()">
-        {{ publicationState.published ? '更新' : publicationState.hasPublished ? '重新上线' : '发布' }}{{ local ? '到本地' : '到网站' }}
-      </BaseButton>
+      </BaseButton><BaseTooltip :text="!publicationState.hasChanges && !summaryEdited ? '没有需要更新的内容' : '保存当前内容并提交到网站'">
+        <span tabindex="0"><BaseButton :loading="busy" :disabled="summaryBusy || !draft || uploading || (!publicationState.hasChanges && !summaryEdited)" :title="!publicationState.hasChanges && !summaryEdited ? '没有需要更新的内容' : undefined" @click="publish()">
+          {{ publicationState.published ? '更新' : publicationState.hasPublished ? '重新上线' : '发布' }}{{ local ? '到本地' : '到网站' }}
+        </BaseButton></span>
+      </BaseTooltip>
     </div>
     <p v-if="error" role="alert" class="mb-5 border border-error rounded-button p-4 text-error">
       {{ error }} <button class="control-base ml-3 text-error underline-offset-4 active:underline hover:underline" @click="showRemote">
@@ -374,6 +388,9 @@ onBeforeUnmount(() => {
         查看发布记录
       </NuxtLink>
     </p>
+    <AdminSkeleton v-if="loading" label="正在读取文章…" /><BaseButton v-else-if="!draft && error" variant="border" @click="load">
+      重新加载文章
+    </BaseButton>
     <div v-if="draft" class="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1fr)_280px]">
       <section class="min-w-0">
         <div class="mb-4 flex gap-2" role="group" aria-label="编辑模式">
@@ -438,10 +455,10 @@ onBeforeUnmount(() => {
             {{ summaryError }}
           </p>
           <div class="mt-4 flex flex-wrap gap-3">
-            <BaseButton variant="border" :disabled="summaryBusy || busy || metadata.aiSummary === false" @click="updateSummary('generate')">
+            <BaseButton variant="border" :disabled="summaryBusy || busy || metadata.aiSummary === false" :loading="summaryBusy" @click="updateSummary('generate', true)">
               {{ summaryBusy ? '处理中…' : summaryState?.record ? '重新生成' : '生成摘要' }}
             </BaseButton>
-            <BaseButton variant="border" :disabled="summaryBusy || busy || !summaryEdited || !summaryText.trim() || metadata.aiSummary === false" @click="updateSummary('save')">
+            <BaseButton variant="border" :disabled="summaryBusy || busy || !summaryEdited || !summaryText.trim() || metadata.aiSummary === false" @click="updateSummary('save', true)">
               保存摘要
             </BaseButton>
           </div>

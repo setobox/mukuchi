@@ -12,6 +12,8 @@ const loaded = ref(false)
 const busy = ref(false)
 const message = ref('')
 const error = ref('')
+const { notify } = useAdminFeedback()
+watch(message, value => value && notify(value))
 async function load() {
   if (!current.value.user?.owner || loaded.value)
     return
@@ -60,6 +62,9 @@ async function test() {
     <p v-if="message" role="status" class="mb-5 text-muted">
       {{ message }}
     </p>
+    <AdminSkeleton v-if="!loaded && !error" /><BaseButton v-if="!loaded && error" variant="border" @click="load">
+      重试
+    </BaseButton>
     <form v-if="loaded" class="space-y-6" @submit.prevent="save">
       <fieldset :disabled="busy" class="space-y-6">
         <BaseSwitch v-model="form.enabled" label="启用 AI 摘要" />
@@ -77,7 +82,7 @@ async function test() {
           默认输出 80–140 字的中文摘要。修改服务地址、模型或提示词后，下次构建会更新摘要。连接测试使用已保存的设置，会发送一次测试请求。
         </p>
         <div class="flex flex-wrap gap-3">
-          <BaseButton type="submit" :disabled="busy">
+          <BaseButton type="submit" :loading="busy">
             {{ busy ? '处理中…' : '保存设置' }}
           </BaseButton>
           <BaseButton type="button" variant="border" :disabled="busy || !form.keyConfigured" @click="test">

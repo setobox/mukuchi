@@ -11,19 +11,29 @@ const page = ref(1)
 const report = ref<Report | null>(null)
 const error = ref('')
 const busy = ref(false)
+let loadSequence = 0
 const enabled = statsEnabled(useRuntimeConfig().public.statsEnabled)
 async function load(reset = false) {
   if (!enabled || !current.value.user?.owner)
     return
   if (reset)
     page.value = 1
+  const sequence = ++loadSequence
   busy.value = true
   error.value = ''
   try {
-    report.value = await request<Report>(`stats?${new URLSearchParams({ from: from.value, to: to.value, page: String(page.value), pageSize: '20' })}`)
+    const result = await request<Report>(`stats?${new URLSearchParams({ from: from.value, to: to.value, page: String(page.value), pageSize: '20' })}`)
+    if (sequence === loadSequence)
+      report.value = result
   }
-  catch (cause) { error.value = adminError(cause) }
-  finally { busy.value = false }
+  catch (cause) {
+    if (sequence === loadSequence)
+      error.value = adminError(cause)
+  }
+  finally {
+    if (sequence === loadSequence)
+      busy.value = false
+  }
 }
 const maximum = computed(() => Math.max(1, ...report.value?.daily.flatMap(day => [day.pageViews, day.visitors]) ?? []))
 function points(field: 'pageViews' | 'visitors') {
@@ -46,12 +56,12 @@ async function changePage(change: number) {
       访问统计尚未启用。
     </p><template v-else>
       <form class="mb-6 flex flex-wrap items-end gap-4" @submit.prevent="load(true)">
-        <label class="text-xs text-muted">开始日期<input v-model="from" type="date" required :max="to" class="field-control mt-2 block px-3"></label><label class="text-xs text-muted">结束日期<input v-model="to" type="date" required :min="from" :max="shanghaiDay(Date.now())" class="field-control mt-2 block px-3"></label><BaseButton type="submit" :disabled="busy">
+        <label class="text-xs text-muted">开始日期<input v-model="from" type="date" required :max="to" class="field-control mt-2 block px-3"></label><label class="text-xs text-muted">结束日期<input v-model="to" type="date" required :min="from" :max="shanghaiDay(Date.now())" class="field-control mt-2 block px-3"></label><BaseButton type="submit" :loading="busy">
           查询
         </BaseButton>
       </form><p v-if="error" role="alert" class="mb-5 text-error">
         {{ error }}
-      </p><p v-if="busy" role="status" class="mb-5 text-muted">
+      </p><AdminSkeleton v-if="busy && !report" label="正在读取统计…" /><p v-if="busy && report" role="status" class="mb-5 text-muted">
         正在读取统计…
       </p><template v-if="report">
         <div class="grid grid-cols-2 mb-6 gap-4 lg:grid-cols-4">

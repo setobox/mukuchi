@@ -8,6 +8,8 @@ const { current, request } = useAdminSession()
 const publications = ref<Publication[]>([])
 const error = ref('')
 const busy = ref(false)
+const retrying = ref<string[]>([])
+const { notify } = useAdminFeedback()
 async function load() {
   if (!current.value.user?.owner || busy.value)
     return
@@ -25,11 +27,16 @@ async function load() {
   finally { busy.value = false }
 }
 async function retry(record: Publication) {
+  if (retrying.value.includes(record.id))
+    return
+  retrying.value.push(record.id)
   try {
     await request('publications', { method: 'POST', body: { operationId: record.id, draftId: record.draftId, version: record.version, action: record.action } })
     await load()
+    notify('已核实并重试本次发布。')
   }
   catch (cause) { error.value = adminError(cause) }
+  finally { retrying.value = retrying.value.filter(id => id !== record.id) }
 }
 watch(() => current.value.user?.owner, () => {
   void load()
@@ -51,12 +58,12 @@ onBeforeUnmount(pause)
         </h1><p class="mt-2 text-muted">
           提交成功后，构建与部署仍可能失败。
         </p>
-      </div><BaseButton variant="border" :disabled="busy" @click="load">
+      </div><BaseButton variant="border" :loading="busy" @click="load">
         刷新状态
       </BaseButton>
     </div><p v-if="error" role="alert" class="mb-5 text-error">
       {{ error }}
-    </p><div class="space-y-4">
+    </p><AdminSkeleton v-if="busy && !publications.length" label="正在读取发布记录…" /><div class="space-y-4">
       <article v-for="record in publications" :key="record.id" class="border border-line rounded-panel p-5">
         <div class="flex flex-wrap items-center justify-between gap-3">
           <NuxtLink :to="`/admin/editor/${record.draftId}`" class="text-link">
@@ -69,7 +76,7 @@ onBeforeUnmount(pause)
         </p><p v-if="record.message" class="mt-3 text-warn">
           {{ record.message }}
         </p><div class="mt-3 flex flex-wrap gap-4">
-          <a v-if="record.url" :href="record.url" target="_blank" rel="noopener noreferrer" class="text-link">查看构建与部署</a><BaseButton v-if="record.status === 'preparing' || record.status === 'failed' && !record.commit" variant="border" @click="retry(record)">
+          <a v-if="record.url" :href="record.url" target="_blank" rel="noopener noreferrer" class="text-link">查看构建与部署</a><BaseButton v-if="record.status === 'preparing' || record.status === 'failed' && !record.commit" variant="border" :loading="retrying.includes(record.id)" @click="retry(record)">
             核实并重试本次发布
           </BaseButton>
         </div>

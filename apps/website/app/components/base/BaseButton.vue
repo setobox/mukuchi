@@ -6,8 +6,9 @@ withDefaults(
     variant?: ButtonVariant
     type?: 'button' | 'submit' | 'reset'
     disabled?: boolean
+    loading?: boolean
   }>(),
-  { variant: 'default', type: 'button', disabled: false },
+  { variant: 'default', type: 'button', disabled: false, loading: false },
 )
 
 const variantClasses: Record<ButtonVariant, string> = {
@@ -21,11 +22,13 @@ const variantClasses: Record<ButtonVariant, string> = {
 <template>
   <button
     :type="type"
-    :disabled="disabled"
+    :disabled="disabled || loading"
+    :aria-busy="loading || undefined"
     :data-variant="variant"
     :class="variantClasses[variant]"
     class="control-base border py-[9px] text-base"
   >
+    <span v-if="loading" class="i-lucide-loader-circle mr-2 shrink-0 animate-spin motion-reduce:animate-none" aria-hidden="true" />
     <slot />
   </button>
 </template>
