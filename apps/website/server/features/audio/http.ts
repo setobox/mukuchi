@@ -67,11 +67,13 @@ export async function audioJobsRoute(event: H3Event) {
     return withAudio(event, async (repo) => {
       const stored = await repo.settings()
       const hashes = { narration: await audioConfigHash(stored.settings, 'narration'), podcast: await audioConfigHash(stored.settings, 'podcast') }
-      const jobs: AudioJobView[] = (await repo.jobs()).map((job) => {
+      const current = await repo.statusJobs(hashes)
+      const recent = await repo.jobs()
+      const jobs: AudioJobView[] = [...new Map([...current, ...recent].map(job => [job.id, job])).values()].map((job) => {
         const { config: _config, input: _input, resultUrl: _result, objectKey: _object, ...view } = job
         return { ...view, current: !!articleFor(job) && job.configHash === hashes[job.kind], resumable: canResumeAudio(job) }
       })
-      return { jobs, articles: manifest.articles.map(({ path, title }) => ({ path, title })), usage: await repo.usage(), revision: manifest.revision }
+      return { jobs, articles: manifest.articles.map(({ path, title, narrationEnabled, podcastEnabled }) => ({ path, title, narrationEnabled, podcastEnabled })), usage: await repo.usage(), revision: manifest.revision }
     })
   }
   const input = z.object({ paths: z.array(z.string()).min(1).max(50), kinds: z.array(audioKindSchema).min(1).max(2) }).strict().parse(await readAdminJson(event))
