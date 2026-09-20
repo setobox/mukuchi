@@ -3,6 +3,7 @@ import type { Asset, Draft, Publication } from '#shared/admin/model'
 import type { SummaryState } from '#shared/ai/model'
 import type { RasterCover } from '~/features/cover/model'
 import { parseDocument } from 'yaml'
+import { formatFileSize } from '#shared/admin/media'
 import { articlePublication, publicationLabels, sameArticleSource } from '#shared/admin/model'
 import { splitDocument } from '#shared/content/document'
 import { themeColors } from '#shared/content/schema'
@@ -214,21 +215,25 @@ async function switchMode(next: typeof mode.value) {
 }
 function setMeta(field: string, value: unknown) {
   if (JSON.stringify(metadata.value[field]) === JSON.stringify(value))
-    return
+    return true
   const parts = splitDocument(source.value)
   try {
     const document = parseDocument(parts.yaml || '{}')
     if (document.errors.length) {
       error.value = '请先在源码模式修正 YAML 格式'
-      return
+      return false
     }
     if (value === undefined)
       document.delete(field)
     else
       document.set(field, value)
     changeSource(`---\n${document.toString()}---\n${parts.body}`)
+    return true
   }
-  catch { error.value = '元数据格式无效，请在源码模式修正' }
+  catch {
+    error.value = '元数据格式无效，请在源码模式修正'
+    return false
+  }
 }
 function addImage(path: string) {
   const alt = imageAlt.value.replace(/[[\]\\\r\n]/g, '')
@@ -248,6 +253,20 @@ async function selectImage(event: Event) {
   }
   catch (cause) { error.value = cause instanceof Error ? cause.message : '上传失败' }
   input.value = ''
+}
+async function applyCoverAddress(address: string | undefined) {
+  if (!setMeta('cover', address) || !await save())
+    throw new Error(error.value || '封面保存失败，请重试。')
+  notice.value = address ? '封面已保存到编辑稿。' : '已移除封面引用，图片资产仍保留。'
+}
+async function uploadCover(file: File) {
+  const previous = metadata.value.cover
+  const asset = await upload(id, file)
+  if (!assets.value.some(item => item.id === asset.id))
+    assets.value.push(asset)
+  if (metadata.value.cover !== previous)
+    throw new Error('上传期间封面已变化，图片已保留在暂存区，请重新选择封面。')
+  await applyCoverAddress(asset.path)
 }
 async function applyCover(result: RasterCover) {
   await applyGeneratedCover(result, {
@@ -431,14 +450,7 @@ onBeforeUnmount(() => {
         </section>
       </section>
       <aside class="min-w-0 space-y-6">
-        <section class="border border-line rounded-panel p-5">
-          <h2 class="mb-4 text-heading font-semibold">
-            文章封面
-          </h2>
-          <BaseButton variant="border" class="w-full" :disabled="busy || uploading || saving || summaryBusy" @click="coverOpen = true">
-            <AppIcon name="image" />制作封面
-          </BaseButton>
-        </section>
+        <AdminCover :cover="typeof metadata.cover === 'string' ? metadata.cover : ''" :assets="assets" :disabled="busy || uploading || saving || summaryBusy" :progress="progress" :upload-file="uploadCover" :apply-address="applyCoverAddress" @make="coverOpen = true" />
         <section class="border border-line rounded-panel p-5">
           <h2 class="mb-4 text-heading font-semibold">
             AI 摘要
@@ -470,7 +482,7 @@ onBeforeUnmount(() => {
           <h2 class="mb-4 text-heading font-semibold">
             文章信息
           </h2><div class="space-y-4">
-            <label v-for="field in [{ key: 'title', label: '标题', type: 'text' }, { key: 'description', label: '原简介（必填）', type: 'text' }, { key: 'publish', label: '发布日期', type: 'date' }, { key: 'update', label: '更新日期', type: 'date' }, { key: 'cover', label: '封面地址', type: 'text' }]" :key="field.key" class="block text-xs text-muted">{{ field.label }}<input :type="field.type" :value="metadata[field.key] ?? ''" class="field-control mt-2 w-full px-3" @change="setMeta(field.key, ($event.target as HTMLInputElement).value || undefined)"></label><label class="block text-xs text-muted">标签<input :value="Array.isArray(metadata.tags) ? metadata.tags.join(', ') : ''" class="field-control mt-2 w-full px-3" @change="setMeta('tags', ($event.target as HTMLInputElement).value.split(/[,，]/).map(v => v.trim()).filter(Boolean))"></label><label class="block text-xs text-muted">专栏<input :value="Array.isArray(metadata.categories) ? metadata.categories.join(', ') : ''" class="field-control mt-2 w-full px-3" @change="setMeta('categories', ($event.target as HTMLInputElement).value.split(/[,，]/).map(v => v.trim()).filter(Boolean))"></label><label class="block text-xs text-muted">置顶权重<input type="number" min="0" :value="metadata.pin ?? 0" class="field-control mt-2 w-full px-3" @change="setMeta('pin', Number(($event.target as HTMLInputElement).value))"></label><BaseSwitch :model-value="!!metadata.wip" label="显示施工提醒" @update:model-value="setMeta('wip', $event)" />
+            <label v-for="field in [{ key: 'title', label: '标题', type: 'text' }, { key: 'description', label: '原简介（必填）', type: 'text' }, { key: 'publish', label: '发布日期', type: 'date' }, { key: 'update', label: '更新日期', type: 'date' }]" :key="field.key" class="block text-xs text-muted">{{ field.label }}<input :type="field.type" :value="metadata[field.key] ?? ''" class="field-control mt-2 w-full px-3" @change="setMeta(field.key, ($event.target as HTMLInputElement).value || undefined)"></label><label class="block text-xs text-muted">标签<input :value="Array.isArray(metadata.tags) ? metadata.tags.join(', ') : ''" class="field-control mt-2 w-full px-3" @change="setMeta('tags', ($event.target as HTMLInputElement).value.split(/[,，]/).map(v => v.trim()).filter(Boolean))"></label><label class="block text-xs text-muted">专栏<input :value="Array.isArray(metadata.categories) ? metadata.categories.join(', ') : ''" class="field-control mt-2 w-full px-3" @change="setMeta('categories', ($event.target as HTMLInputElement).value.split(/[,，]/).map(v => v.trim()).filter(Boolean))"></label><label class="block text-xs text-muted">置顶权重<input type="number" min="0" :value="metadata.pin ?? 0" class="field-control mt-2 w-full px-3" @change="setMeta('pin', Number(($event.target as HTMLInputElement).value))"></label><BaseSwitch :model-value="!!metadata.wip" label="显示施工提醒" @update:model-value="setMeta('wip', $event)" />
           </div>
           <BaseSelect :model-value="String(metadata.theme ?? '#a369ff')" label="主题色" :options="themeColors.map(color => ({ value: color, label: color }))" class="mt-4" @update:model-value="setMeta('theme', $event)" />
         </section>
@@ -480,7 +492,9 @@ onBeforeUnmount(() => {
           </h2><label class="block text-xs text-muted">图片说明<input v-model="imageAlt" class="field-control mt-2 w-full px-3"></label><label class="mt-4 block text-xs text-muted">上传图片<input type="file" accept="image/png,image/jpeg,image/webp,image/gif" :disabled="uploading" class="field-control mt-2 block w-full text-xs file:ui-feedback file:mr-3 file:min-h-11 file:cursor-pointer file:border-0 file:rounded-button file:bg-transparent file:px-3 file:text-ink active:file:bg-accent-pressed hover:file:bg-accent-surface hover:file:text-accent-soft" @change="selectImage"></label><progress v-if="uploading" :value="progress" max="100" class="mt-3 w-full" aria-label="图片上传进度" /><p class="mt-2 text-xs text-muted">
             单张最多 5 MiB。发布前仅站主可见。
           </p><div v-for="asset in assets" :key="asset.id" class="mt-4 border-t border-line pt-4">
-            <img :src="endpoint(`/api/admin/assets/${asset.id}`)" alt="暂存图片预览" class="max-h-36 w-full rounded object-contain"><div class="mt-2 flex flex-wrap gap-2">
+            <img :src="endpoint(`/api/admin/assets/${asset.id}`)" alt="暂存图片预览" class="max-h-36 w-full rounded object-contain"><p class="mt-2 text-xs text-muted">
+              {{ formatFileSize(asset.size) }} · {{ asset.mime.replace('image/', '').toUpperCase() }}
+            </p><div class="mt-2 flex flex-wrap gap-2">
               <button class="control-base control-quiet text-xs text-accent-soft" @click="addImage(asset.path)">
                 插入正文
               </button><button class="control-base control-quiet text-xs text-accent-soft" @click="setMeta('cover', asset.path)">

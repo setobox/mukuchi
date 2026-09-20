@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { CoverFormat, CoverIcon, CoverImage, RasterCover } from '~/features/cover/model'
+import { formatFileSize } from '#shared/admin/media'
 import { readIcon, readRaster } from '~/features/cover/assets'
 import { createTextMeasurer, downloadCover, exportCover } from '~/features/cover/export'
 import { defaultCover, initialIcon } from '~/features/cover/model'
@@ -116,7 +117,7 @@ async function output(apply: boolean) {
     }
     else {
       downloadCover(blob, selectedFormat)
-      status.value = `${formatLabel.value} 图片已生成。`
+      status.value = `${formatLabel.value} 图片已生成，${formatFileSize(blob.size)}。`
     }
   }
   catch (cause) { error.value = cause instanceof Error ? cause.message : '生成失败，请重试。' }
