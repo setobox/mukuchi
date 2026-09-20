@@ -1,7 +1,7 @@
 import type { H3Event } from 'h3'
-import { parseMarkdown } from '@nuxtjs/mdc/runtime'
 import { z } from 'zod'
 import { listContent, readContent } from '#admin-driver'
+import highlighter from '#mdc-highlighter'
 import { AdminError, articlePublication, articleTitle, createDraftSchema, imageLimit, newArticleSource, publicationInput, sameArticleSource, saveDraftSchema, sha256 } from '../../../shared/admin/model'
 import { writeSummary } from '../ai/content'
 import { currentSummary, draftSummaryRoute } from '../ai/service'
@@ -11,6 +11,7 @@ import { identifyImage } from '../media/images'
 import { githubClient, publicationStatus, publishDraft } from '../publishing/service'
 import { listArticleRows } from './article-list'
 import { adminOptions, adminStorage, readAdminJson, readLimitedBody, withAdmin } from './http'
+import { renderArticlePreview } from './preview'
 
 export async function adminRoute(event: H3Event) {
   await requireOwner(event)
@@ -80,32 +81,11 @@ export async function adminRoute(event: H3Event) {
       return { segments: await editorSegments(input.source) }
     }
     if (action === 'preview' && method === 'POST') {
-      const input = z.object({ source: saveDraftSchema.shape.source }).strict().parse(await readAdminJson(event))
-      const parsed = await parseMarkdown(input.source, { highlight: false, toc: { depth: 5, searchDepth: 12 } })
+      const input = z.object({ source: saveDraftSchema.shape.source, summaryText: z.string().max(300).optional() }).strict().parse(await readAdminJson(event))
       const summary = await currentSummary(event, input.source)
-      if (summary.status === 'valid' && summary.record) {
-        parsed.data.description = summary.record.text
-        parsed.data.summarySource = 'ai'
-      }
-      else { parsed.data.summarySource = 'description' }
       const assets = await withAdmin(event, repo => repo.assets(id))
       const prefix = useRuntimeConfig(event).app.baseURL.replace(/\/$/, '')
-      function rewrite(node: { props?: Record<string, unknown>, children?: unknown[] }) {
-        if (node.props) {
-          for (const key of ['src', 'cover', 'poster']) {
-            const asset = assets.find(asset => asset.path === node.props?.[key])
-            if (asset)
-              node.props[key] = `${prefix}/api/admin/assets/${asset.id}`
-          }
-        }
-        for (const child of node.children ?? []) {
-          if (child && typeof child === 'object')
-            rewrite(child)
-        }
-      }
-      rewrite(parsed.body)
-      const cover = assets.find(asset => asset.path === parsed.data.cover)
-      return { ...parsed, data: { ...parsed.data, cover: cover ? `${prefix}/api/admin/assets/${cover.id}` : parsed.data.cover } }
+      return renderArticlePreview(input.source, draft.path, assets, prefix, summary, input.summaryText, highlighter)
     }
   }
   if (resource === 'assets') {

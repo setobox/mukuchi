@@ -63,8 +63,12 @@ try {
   const image = await call(`/api/admin/assets/${assetId}`)
   assert.equal(image.headers.get('content-type'), 'image/png')
   assert.equal((await image.arrayBuffer()).byteLength, bytes.length)
-  const preview = await (await call(`/api/admin/drafts/${draft.id}/preview`, { method: 'POST', body: { source: `${source}\n![测试](${asset.path})` } })).json()
+  const beforePreview = await (await call(`/api/admin/drafts/${draft.id}`)).json() as { draft: unknown }
+  const preview = await (await call(`/api/admin/drafts/${draft.id}/preview`, { method: 'POST', body: { source: `${source}\n![测试](${asset.path})\n\n\`\`\`ts\nconst unsaved = true\n\`\`\`` } })).json()
   assert.ok(JSON.stringify(preview).includes(`/api/admin/assets/${assetId}`))
+  assert.ok(JSON.stringify(preview).includes('shiki'))
+  const afterPreview = await (await call(`/api/admin/drafts/${draft.id}`)).json() as { draft: unknown }
+  assert.deepEqual(afterPreview.draft, beforePreview.draft, '预览不能保存源码、递增版本或修改时间')
   await call(`/api/admin/assets/${assetId}`, { method: 'DELETE' })
   assetId = ''
 }

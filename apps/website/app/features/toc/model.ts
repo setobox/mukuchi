@@ -15,6 +15,9 @@ export interface ContentTocProps {
   defaultOpen?: boolean
   /** Number of rows kept visible when collapsed on small screens. */
   collapsedRows?: number
+  /** Use a dialog's scroll viewport without changing the editor route hash. */
+  scrollRoot?: HTMLElement | null
+  layout?: 'viewport' | 'container'
 }
 
 // Adapted from Nuxt UI v4.6.0 ContentToc (MIT); see THIRD_PARTY_NOTICES.md.

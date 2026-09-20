@@ -9,7 +9,7 @@ import { computed, nextTick, onScopeDispose, ref, useTemplateRef, watch } from '
 import { useNuxtApp, useRoute, useRouter } from '#app'
 import AppIcon from '~/components/AppIcon.vue'
 import { circuitMask, flattenToc, tocLinkHeight, tocPreviewHeight } from '~/features/toc/model'
-import { useScrollspy } from '~/features/toc/useScrollspy'
+import { findHeading, useScrollspy } from '~/features/toc/useScrollspy'
 
 defineOptions({ inheritAttrs: false })
 
@@ -21,6 +21,7 @@ const props = withDefaults(defineProps<ContentTocProps>(), {
   open: undefined,
   defaultOpen: false,
   collapsedRows: 0,
+  layout: 'viewport',
 })
 const emit = defineEmits<{ 'update:open': [value: boolean], 'move': [id: string] }>()
 const slots = defineSlots<{
@@ -44,7 +45,7 @@ const router = useRouter()
 const route = useRoute()
 const nuxtApp = useNuxtApp()
 const flattened = computed(() => flattenToc(props.links))
-const { activeHeadings, refresh } = useScrollspy(() => flattened.value.map(({ link }) => link.id))
+const { activeHeadings, refresh } = useScrollspy(() => flattened.value.map(({ link }) => link.id), () => props.scrollRoot)
 const stopLoading = nuxtApp.hooks.hook('page:loading:end', refresh)
 const stopTransition = nuxtApp.hooks.hook('page:transition:finish', refresh)
 onScopeDispose(() => {
@@ -124,13 +125,17 @@ useResizeObserver(previewViewport, () => followActive('instant'))
 
 async function scrollToHeading(id: string) {
   const path = route.path
-  await router.push(`#${encodeURIComponent(id)}`)
+  if (props.scrollRoot === undefined)
+    await router.push(`#${encodeURIComponent(id)}`)
   emit('move', id)
   await nextTick()
   if (route.path !== path)
     return
-  const heading = document.getElementById(id)
-  heading?.scrollIntoView({ block: 'start', behavior: 'instant' })
+  const heading = findHeading(id, props.scrollRoot)
+  if (heading && props.scrollRoot) {
+    props.scrollRoot.scrollTo({ top: heading.getBoundingClientRect().top - props.scrollRoot.getBoundingClientRect().top + props.scrollRoot.scrollTop - 24, behavior: 'instant' })
+  }
+  else { heading?.scrollIntoView({ block: 'start', behavior: 'instant' }) }
   heading?.setAttribute('tabindex', '-1')
   heading?.focus({ preventScroll: true })
 }
@@ -198,6 +203,7 @@ async function scrollToHeading(id: string) {
     as="nav"
     :aria-label="title"
     data-slot="root"
+    :data-layout="layout"
     :style="previewEnabled ? { '--toc-trigger-height': 'var(--toc-preview-trigger-height)', '--toc-block-padding': 'var(--toc-preview-block-padding)' } : undefined"
     class="min-w-0 border-b border-line border-dashed bg-acrylic backdrop-blur-sm lg:border-0 lg:bg-transparent lg:backdrop-blur-none"
   >
@@ -237,6 +243,21 @@ async function scrollToHeading(id: string) {
 </template>
 
 <style scoped>
+[data-layout='container'] { background: transparent; border: 0; backdrop-filter: none; }
+[data-layout='container'] [data-slot='container'] { padding-block: 0; }
+[data-layout='container'] button[data-slot='trigger'],
+[data-layout='container'] .toc-content,
+[data-layout='container'] [data-slot='content']:has(.toc-preview) { display: none; }
+[data-layout='container'] p[data-slot='trigger'] { display: flex; }
+[data-layout='container'] div[data-slot='content']:last-child { display: block; }
+@container article-preview (max-width: 850px) {
+  [data-layout='container'] button[data-slot='trigger'] { display: flex; }
+  [data-layout='container'] button[data-slot='trigger'] :deep(.i-lucide-chevron-down) { display: inline-block; }
+  [data-layout='container'] p[data-slot='trigger'],
+  [data-layout='container'] div[data-slot='content']:last-child { display: none; }
+  [data-layout='container'] .toc-content[data-state='open'],
+  [data-layout='container'] [data-slot='content']:has(.toc-preview) { display: block; }
+}
 .toc-preview {
   transition: height 200ms ease-out;
 }

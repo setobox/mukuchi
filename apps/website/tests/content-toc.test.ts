@@ -32,7 +32,7 @@ const links: TocLink[] = [
   { id: 'C# 与 100%', text: 'C# 与 100%', depth: 2 },
 ]
 
-const observers: { callback: IntersectionObserverCallback, observe: ReturnType<typeof vi.fn>, disconnect: ReturnType<typeof vi.fn> }[] = []
+const observers: { callback: IntersectionObserverCallback, observe: ReturnType<typeof vi.fn>, disconnect: ReturnType<typeof vi.fn>, options?: IntersectionObserverInit }[] = []
 const resizeObservers: { callback: ResizeObserverCallback, observe: ReturnType<typeof vi.fn>, disconnect: ReturnType<typeof vi.fn> }[] = []
 const cleanup: (() => void)[] = []
 beforeEach(() => {
@@ -44,7 +44,7 @@ beforeEach(() => {
   vi.stubGlobal('IntersectionObserver', class {
     observe = vi.fn()
     disconnect = vi.fn()
-    constructor(public callback: IntersectionObserverCallback) { observers.push(this) }
+    constructor(public callback: IntersectionObserverCallback, public options?: IntersectionObserverInit) { observers.push(this) }
   })
   vi.stubGlobal('ResizeObserver', class {
     observe = vi.fn()
@@ -382,4 +382,27 @@ test('减少动态效果模式下，正文高亮变化也立即定位预览', as
   await intersect([['安装', true]])
   await intersect([['安装', false], ['C# 与 100%', true]])
   expect(scroll).toHaveBeenLastCalledWith({ top: 28, behavior: 'instant' })
+})
+
+test('弹窗目录只观察并滚动本容器的同名标题，不修改页面路由', async () => {
+  const viewport = document.createElement('div')
+  const heading = document.createElement('h2')
+  heading.id = '安装'
+  viewport.append(heading)
+  document.body.append(viewport)
+  cleanup.push(() => viewport.remove())
+  const scroll = vi.spyOn(viewport, 'scrollTo')
+  const host = mount(ContentToc, { links, scrollRoot: viewport, layout: 'container', collapsedRows: 3, highlight: true })
+  await nextTick()
+  const observer = observers.at(-1)!
+  expect(observer.options?.root).toBe(viewport)
+  expect(observer.observe.mock.calls.map(call => call[0])).toEqual([heading])
+  observer.callback([{ target: heading, isIntersecting: true } as IntersectionObserverEntry], {} as IntersectionObserver)
+  await nextTick()
+  expect(host.querySelector('a[aria-current="location"]')?.textContent).toContain('安装')
+  host.querySelector<HTMLAnchorElement>('a')!.click()
+  await nextTick()
+  expect(push).not.toHaveBeenCalled()
+  expect(scroll).toHaveBeenCalled()
+  expect(document.activeElement).toBe(heading)
 })

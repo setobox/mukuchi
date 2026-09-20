@@ -2,7 +2,11 @@
 import type { MaybeRefOrGetter } from 'vue'
 import { onMounted, onScopeDispose, ref, toValue, watch } from 'vue'
 
-export function useScrollspy(ids: MaybeRefOrGetter<readonly string[]>) {
+export function findHeading(id: string, root?: HTMLElement | null): HTMLElement | null {
+  return root === undefined ? document.getElementById(id) : [...root?.querySelectorAll<HTMLElement>('[id]') ?? []].find(node => node.id === id) ?? null
+}
+
+export function useScrollspy(ids: MaybeRefOrGetter<readonly string[]>, root?: MaybeRefOrGetter<HTMLElement | null | undefined>) {
   const activeHeadings = ref<string[]>([])
   let observer: IntersectionObserver | undefined
   let mounted = false
@@ -15,7 +19,7 @@ export function useScrollspy(ids: MaybeRefOrGetter<readonly string[]>) {
     activeHeadings.value = []
     const currentGeneration = ++generation
     const headings = [...new Set(toValue(ids))]
-      .map(id => document.getElementById(id))
+      .map(id => findHeading(id, toValue(root)))
       .filter((heading): heading is HTMLElement => heading !== null)
     const visible = new Set<string>()
     if (!headings.length || typeof IntersectionObserver === 'undefined')
@@ -34,11 +38,11 @@ export function useScrollspy(ids: MaybeRefOrGetter<readonly string[]>) {
       // Match upstream: retain the last visible group between sections.
       if (next.length)
         activeHeadings.value = next
-    })
+    }, { root: toValue(root) ?? null })
     headings.forEach(heading => observer?.observe(heading))
   }
 
-  watch(() => toValue(ids), refresh, { flush: 'post' })
+  watch([() => toValue(ids), () => toValue(root)], refresh, { flush: 'post' })
   onMounted(() => {
     mounted = true
     refresh()

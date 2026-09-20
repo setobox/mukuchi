@@ -22,10 +22,10 @@ const publicationState = computed(() => articlePublication(draft.value, publishe
 const assets = ref<Asset[]>([])
 const imagePreviews = computed(() => Object.fromEntries(assets.value.map(asset => [asset.path, endpoint(`/api/admin/assets/${asset.id}`)])))
 const local = ref(false)
-const mode = ref<'source' | 'rich' | 'preview'>('source')
+const mode = ref<'source' | 'rich'>('source')
 const segments = ref<{ source: string, raw: boolean }[]>([])
 const richKey = ref(0)
-const preview = ref<{ body: Record<string, unknown>, data: Record<string, unknown> } | null>(null)
+const previewOpen = ref(false)
 const metadata = computed(() => {
   try {
     return parseDocument(splitDocument(source.value).yaml).toJS({ maxAliasCount: 20 }) as Record<string, unknown> ?? {}
@@ -180,8 +180,6 @@ async function updateSummary(action: 'generate' | 'save', announce = false): Pro
   finally {
     summaryBusy.value = false
     await loadSummary().catch(() => {})
-    if (mode.value === 'preview')
-      await switchMode('preview')
   }
 }
 const summaryStatus = computed(() => {
@@ -206,8 +204,6 @@ async function switchMode(next: typeof mode.value) {
       segments.value = result.segments
       richKey.value++
     }
-    if (next === 'preview')
-      preview.value = await request(`drafts/${id}/preview`, { method: 'POST', body: { source: source.value } })
     mode.value = next
   }
   catch (cause) { error.value = adminError(cause) }
@@ -290,8 +286,6 @@ async function applyCover(result: RasterCover) {
       notice.value = '封面已保存到草稿。'
     },
   })
-  if (mode.value === 'preview')
-    await switchMode('preview')
 }
 async function publish(action: 'publish' | 'unpublish' = 'publish') {
   confirmAction.value = null
@@ -412,22 +406,16 @@ onBeforeUnmount(() => {
     </BaseButton>
     <div v-if="draft" class="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1fr)_280px]">
       <section class="min-w-0">
-        <div class="mb-4 flex gap-2" role="group" aria-label="编辑模式">
-          <button v-for="tab in (['rich', 'source', 'preview'] as const)" :key="tab" class="control-base control-quiet px-5" :class="{ 'control-selected': mode === tab }" :aria-pressed="mode === tab" :disabled="busy" @click="switchMode(tab)">
-            {{ { rich: '富文本', source: '源码', preview: '预览' }[tab] }}
+        <div class="mb-4 flex flex-wrap gap-2" role="group" aria-label="编辑模式">
+          <button v-for="tab in (['rich', 'source'] as const)" :key="tab" class="control-base control-quiet px-5" :class="{ 'control-selected': mode === tab }" :aria-pressed="mode === tab" :disabled="busy" @click="switchMode(tab)">
+            {{ { rich: '富文本', source: '源码' }[tab] }}
           </button>
+          <BaseButton variant="border" class="ml-auto" @click="previewOpen = true">
+            <span class="i-lucide-eye mr-2" aria-hidden="true" />预览文章
+          </BaseButton>
         </div>
         <textarea v-if="mode === 'source'" :value="source" aria-label="完整 Markdown 与 MDC 源码" spellcheck="false" class="field-control min-h-[65dvh] w-full resize-y p-5 text-xs leading-7 font-mono" @input="changeSource(($event.target as HTMLTextAreaElement).value)" />
         <LazyRichEditor v-else-if="mode === 'rich'" :key="richKey" :segments="segments" :image-previews="imagePreviews" @change="changeSource(splitDocument(source).header + $event)" />
-        <div v-else-if="preview" class="border border-line rounded-panel p-5">
-          <h2 class="mb-4 text-page text-themed">
-            {{ preview.data.title }}
-          </h2><p v-if="preview.data.summarySource !== 'ai'" class="mb-5 text-muted">
-            {{ preview.data.description }}
-          </p><img v-if="typeof preview.data.cover === 'string'" :src="preview.data.cover" alt="文章封面预览" class="mb-6 max-w-full rounded-panel"><ArticleSummary v-if="preview.data.summarySource === 'ai'" :text="String(preview.data.description)" /><ArticleBody :content-key="source">
-            <ContentRenderer :value="{ ...preview.data, body: preview.body }" />
-          </ArticleBody>
-        </div>
         <section v-if="remote !== undefined" class="mt-6 border border-warn rounded-panel p-5">
           <h2 class="mb-3 text-heading">
             已发布版本
@@ -516,6 +504,7 @@ onBeforeUnmount(() => {
         </div>
       </aside>
     </div>
+    <AdminArticlePreview v-model="previewOpen" :draft-id="id" :source="source" :summary-text="summaryEdited ? summaryText : undefined" />
     <AcrylicDialog v-model="coverOpen" title="封面制作器" placement="editor" :dismissible="!coverBusy">
       <LazyCoverMaker v-if="coverOpen" :initial-title="typeof metadata.title === 'string' ? metadata.title : ''" :apply-cover="applyCover" @busy="coverBusy = $event" />
     </AcrylicDialog>

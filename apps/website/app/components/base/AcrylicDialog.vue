@@ -4,7 +4,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, provide, ref, shallowRe
 import { overlayTargetKey } from '~/shared/overlay'
 
 const props = withDefaults(
-  defineProps<{ title: string, description?: string, placement?: 'default' | 'image' | 'commands' | 'drawer' | 'editor', dismissible?: boolean }>(),
+  defineProps<{ title: string, description?: string, placement?: 'default' | 'image' | 'commands' | 'drawer' | 'editor' | 'preview', dismissible?: boolean }>(),
   { placement: 'default', dismissible: true },
 )
 const emit = defineEmits<{ opened: [], closed: [], keydown: [event: KeyboardEvent] }>()
@@ -182,8 +182,8 @@ onBeforeUnmount(() => {
         placement === 'drawer'
           ? 'acrylic-drawer fixed inset-0 m-0 h-dvh max-h-dvh w-full max-w-none overflow-clip border-0 rounded-none bg-transparent p-0'
           : 'mx-auto mb-auto border border-line-strong rounded-[20px] bg-acrylic shadow-dialog backdrop-blur-[24px]',
-        placement === 'image'
-          ? 'mt-4 h-[calc(100dvh-32px)] w-[calc(100vw-32px)] max-w-site overflow-hidden p-3 [&[open]]:flex flex-col gap-3'
+        (placement === 'image' || placement === 'preview')
+          ? 'mt-4 h-[calc(100dvh-32px)] w-[calc(100vw-32px)] overflow-hidden p-3 [&[open]]:flex flex-col gap-3'
           : placement === 'commands'
             ? 'mt-[min(var(--header-height),calc(var(--dialog-viewport-height,100dvh)*0.08))] w-[min(640px,calc(100vw-32px))] max-h-[calc(var(--dialog-viewport-height,100dvh)-32px-min(var(--header-height),calc(var(--dialog-viewport-height,100dvh)*0.08)))] overflow-hidden p-4 md:p-6 [&[open]]:flex flex-col'
             : placement === 'drawer'
@@ -191,6 +191,7 @@ onBeforeUnmount(() => {
               : placement === 'editor'
                 ? 'my-4 w-[min(1440px,calc(100vw-32px))] max-h-[calc(100dvh-32px)] overflow-auto [scrollbar-gutter:stable] p-4 md:p-6'
                 : 'mt-[calc(var(--header-height)+14px)] w-[min(480px,calc(100vw-40px))] max-h-[calc(100dvh-100px)] overflow-auto [scrollbar-gutter:stable] p-6',
+        placement === 'preview' ? 'max-w-[1440px]' : placement === 'image' ? 'max-w-site' : '',
       ]"
       tabindex="-1"
       :autofocus="placement === 'drawer' || undefined"
@@ -233,7 +234,7 @@ onBeforeUnmount(() => {
             </button>
           </div>
         </header>
-        <div :class="placement === 'commands' ? 'min-h-0 flex flex-1 flex-col pt-4' : placement === 'image' ? 'min-h-0 flex-1' : placement === 'drawer' ? '' : 'py-6'">
+        <div :class="placement === 'commands' ? 'min-h-0 flex flex-1 flex-col pt-4' : (placement === 'image' || placement === 'preview') ? 'min-h-0 flex-1' : placement === 'drawer' ? '' : 'py-6'">
           <slot />
         </div>
         <footer
