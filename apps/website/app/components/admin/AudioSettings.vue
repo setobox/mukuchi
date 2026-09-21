@@ -190,7 +190,7 @@ useIntervalFn(() => {
             <p v-if="!form.encryptionReady" class="text-xs text-warn">
               服务端加密密钥尚未配置，暂不能保存语音凭据。
             </p>
-            <label v-if="form.keyConfigured" class="min-h-11 flex items-center gap-3 text-sm text-error"><input v-model="clearKey" type="checkbox" class="accent-error">删除已保存的语音密钥</label>
+            <label v-if="form.keyConfigured" class="checkbox-field min-h-11 flex items-center gap-3 text-sm text-error"><input v-model="clearKey" type="checkbox" class="accent-error">删除已保存的语音密钥</label>
             <p class="text-xs text-muted">
               启用总开关前，请分别保存所需的朗读、播客配置。不使用的类型可在对应页关闭。
             </p>
@@ -247,7 +247,7 @@ useIntervalFn(() => {
       <div v-else class="overflow-hidden border border-line rounded-panel">
         <article v-for="article in visible" :key="article.path" class="border-b border-line p-4 last:border-b-0">
           <div class="flex flex-wrap items-center gap-3">
-            <label class="min-h-11 flex items-center"><input v-model="selected[kind]" type="checkbox" :value="article.path" :aria-label="`选择 ${article.title}`" :disabled="!!enqueueing.length || state(article) === 'disabled' || (selected[kind].length >= 50 && !selected[kind].includes(article.path))" class="accent-accent"></label>
+            <label class="checkbox-field min-h-11 min-w-11 flex items-center justify-center"><input v-model="selected[kind]" type="checkbox" :value="article.path" :aria-label="`选择 ${article.title}`" :disabled="!!enqueueing.length || state(article) === 'disabled' || (selected[kind].length >= 50 && !selected[kind].includes(article.path))" class="accent-accent"></label>
             <div class="min-w-0 flex-1">
               <p class="break-words text-heading">
                 {{ article.title }}
@@ -289,7 +289,7 @@ useIntervalFn(() => {
                 重新生成
               </BaseButton>
             </div>
-            <label v-if="job.status === 'unknown'" class="mt-3 min-h-11 flex items-center gap-3 text-xs text-warn"><input v-model="acknowledgeCost" type="checkbox" :value="job.id" class="accent-accent">我已检查原任务，了解重新生成可能再次计费。</label>
+            <label v-if="job.status === 'unknown'" class="checkbox-field mt-3 min-h-11 flex items-center gap-3 text-xs text-warn"><input v-model="acknowledgeCost" type="checkbox" :value="job.id" class="accent-accent">我已检查原任务，了解重新生成可能再次计费。</label>
           </div>
           <details v-if="jobsFor(article.path).length > 1" class="mt-3">
             <summary class="control-base cursor-pointer text-xs text-muted">

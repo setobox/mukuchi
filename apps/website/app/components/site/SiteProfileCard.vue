@@ -19,7 +19,7 @@ function onFocusOut(event: FocusEvent) {
 
 <template>
   <section
-    class="profile-card mx-auto max-w-120 w-full rounded-panel lg:max-w-none"
+    class="profile-card group/profile mx-auto max-w-120 w-full rounded-panel lg:max-w-none"
     tabindex="0"
     aria-label="站主介绍"
     :data-revealed="hovered || focused"
@@ -30,6 +30,7 @@ function onFocusOut(event: FocusEvent) {
     @focusout="onFocusOut"
   >
     <BorderGlow
+      class-name="ui-feedback group-focus-visible/profile:border-accent"
       :colors="colors"
       background-color="var(--color-surface)"
       glow-color="270 95 82"

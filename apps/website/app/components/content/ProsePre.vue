@@ -26,7 +26,7 @@ function HighlightStyles() {
 </script>
 
 <template>
-  <div :class="grouped ? 'min-w-0' : 'my-6 min-w-0 overflow-hidden border border-line rounded-xl bg-code'">
+  <div :class="grouped ? 'min-w-0' : 'field-group my-6 min-w-0 overflow-hidden border border-line rounded-xl bg-code'">
     <div v-if="!grouped" class="min-w-0 flex items-center justify-between gap-2 border-b border-line px-3 py-1">
       <span class="min-w-0 break-all text-xs text-muted">{{ label }}</span>
       <CodeCopy :code="code" />

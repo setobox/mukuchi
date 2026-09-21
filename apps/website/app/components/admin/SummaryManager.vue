@@ -242,7 +242,7 @@ onBeforeUnmount(() => {
     <AdminSkeleton v-if="loading && !loaded" />
     <div v-else class="overflow-hidden border border-line rounded-panel">
       <article v-for="row in visible" :key="row.path" class="flex flex-wrap items-center gap-3 border-b border-line p-4 last:border-b-0">
-        <label class="min-h-11 flex items-center gap-3">
+        <label class="checkbox-field min-h-11 min-w-11 flex items-center justify-center gap-3">
           <input v-model="selected" type="checkbox" :value="row.path" :disabled="running || saving || row.ai.summary.status === 'disabled' || (selected.length >= 50 && !selected.includes(row.path))" :aria-label="`选择 ${row.title}`" class="accent-accent">
         </label>
         <div class="min-w-0 flex-1">

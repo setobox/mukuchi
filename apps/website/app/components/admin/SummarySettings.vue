@@ -73,7 +73,7 @@ async function test() {
           <p v-if="!form.encryptionReady" class="mt-2 text-xs text-warn">
             服务端加密密钥尚未配置，暂时不能保存 API 密钥。
           </p>
-          <label v-if="form.keyConfigured" class="ui-feedback mt-2 min-h-11 flex items-center gap-3 rounded-button text-xs text-error underline-offset-4 has-[:disabled]:pointer-events-none active:underline hover:underline has-[:disabled]:opacity-45"><input v-model="clearKey" type="checkbox" class="ui-feedback accent-error">删除已保存的密钥</label>
+          <label v-if="form.keyConfigured" class="checkbox-field mt-2 min-h-11 flex items-center gap-3 text-xs text-error underline-offset-4 has-[:disabled]:pointer-events-none active:underline hover:underline has-[:disabled]:opacity-45"><input v-model="clearKey" type="checkbox" class="ui-feedback accent-error">删除已保存的密钥</label>
         </div>
         <label class="block text-sm text-muted">摘要提示词<textarea v-model="form.prompt" rows="6" required maxlength="6000" class="field-control mt-2 w-full p-3 leading-7" /></label>
         <p class="text-xs text-muted leading-6">

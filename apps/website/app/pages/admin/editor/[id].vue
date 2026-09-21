@@ -386,13 +386,13 @@ onBeforeUnmount(() => {
       </div><BaseButton variant="border" :loading="saving" :disabled="summaryBusy || busy || !draft" @click="save(true)">
         保存草稿
       </BaseButton><BaseTooltip :text="!publicationState.hasChanges && !summaryEdited ? '没有需要更新的内容' : '保存当前内容并提交到网站'">
-        <span tabindex="0"><BaseButton :loading="busy" :disabled="summaryBusy || !draft || uploading || (!publicationState.hasChanges && !summaryEdited)" :title="!publicationState.hasChanges && !summaryEdited ? '没有需要更新的内容' : undefined" @click="publish()">
+        <span tabindex="0" class="group"><BaseButton class="group-focus-visible:bg-accent-hover" :loading="busy" :disabled="summaryBusy || !draft || uploading || (!publicationState.hasChanges && !summaryEdited)" :title="!publicationState.hasChanges && !summaryEdited ? '没有需要更新的内容' : undefined" @click="publish()">
           {{ publicationState.published ? '更新' : publicationState.hasPublished ? '重新上线' : '发布' }}{{ local ? '到本地' : '到网站' }}
         </BaseButton></span>
       </BaseTooltip>
     </div>
     <p v-if="error" role="alert" class="mb-5 border border-error rounded-button p-4 text-error">
-      {{ error }} <button class="control-base ml-3 text-error underline-offset-4 active:underline hover:underline" @click="showRemote">
+      {{ error }} <button class="focus-text control-base ml-3 text-error underline-offset-4 active:underline hover:underline" @click="showRemote">
         查看已发布版本
       </button>
     </p>
@@ -487,7 +487,7 @@ onBeforeUnmount(() => {
                 插入正文
               </button><button class="control-base control-quiet text-xs text-accent-soft" @click="setMeta('cover', asset.path)">
                 设为封面
-              </button><button class="control-base text-xs text-error underline-offset-4 active:underline hover:underline" @click="removeAsset(asset)">
+              </button><button class="focus-text control-base text-xs text-error underline-offset-4 active:underline hover:underline" @click="removeAsset(asset)">
                 删除暂存
               </button>
             </div>

@@ -153,12 +153,9 @@ a {
   background: color-mix(in srgb, var(--color-accent) 30%, transparent);
   color: var(--color-heading);
 }
+/* Controls own focus feedback through their border, fill or underline. */
 :focus {
   outline: none;
-}
-:focus-visible {
-  outline: 2px solid var(--color-accent-text);
-  outline-offset: 4px;
 }
 @media (min-width: 900px) {
   :root {

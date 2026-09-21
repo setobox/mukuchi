@@ -46,7 +46,7 @@ onMounted(inspectImage)
       :aria-haspopup="interactive ? 'dialog' : undefined"
       :disabled="interactive && !loaded ? true : undefined"
       class="block max-w-full rounded-panel p-0 text-left"
-      :class="{ 'control-disabled ui-feedback': interactive, 'cursor-zoom-in hover:opacity-85 active:opacity-75': interactive && loaded }"
+      :class="{ 'control-disabled ui-feedback': interactive, 'cursor-zoom-in hover:opacity-85 focus-visible:opacity-85 active:opacity-75': interactive && loaded }"
       @click="open"
     >
       <img

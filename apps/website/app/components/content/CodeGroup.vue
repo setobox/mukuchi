@@ -44,7 +44,7 @@ export default defineComponent({
       if (other || entries.length < 2)
         return nodes
       const selected = Math.min(active.value, entries.length - 1)
-      return h('div', { class: 'my-6 min-w-0 overflow-hidden border border-line rounded-xl bg-code' }, [
+      return h('div', { class: 'field-group my-6 min-w-0 overflow-hidden border border-line rounded-xl bg-code' }, [
         h('div', { class: 'min-w-0 flex items-center gap-2 border-b border-line px-2 py-1' }, [
           h('div', {
             'ref': bar,

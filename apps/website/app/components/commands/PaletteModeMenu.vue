@@ -99,7 +99,7 @@ function select(mode: PaletteMode) {
     >
       <button
         v-for="option in options" :key="option.mode" type="button" role="menuitemradio" :aria-checked="mode === option.mode" tabindex="-1"
-        class="control-quiet min-h-11 w-full flex items-center gap-2 px-3 text-left focus-visible:outline-offset--2"
+        class="control-quiet min-h-11 w-full flex items-center gap-2 px-3 text-left"
         :class="mode === option.mode ? 'control-selected' : 'text-heading'"
         @click="select(option.mode)"
       >

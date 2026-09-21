@@ -47,7 +47,7 @@ function loaded(event: Event) {
       </button>
     </template>
     <div
-      ref="stage" class="relative h-full min-h-0 touch-none select-none overflow-hidden rounded-xl bg-canvas"
+      ref="stage" class="ui-feedback relative h-full min-h-0 touch-none select-none overflow-hidden border border-transparent rounded-xl bg-canvas focus-visible:border-accent"
       :class="dragging ? 'cursor-grabbing' : enabled ? 'cursor-grab' : ''"
       tabindex="0" role="region" aria-label="图片展示区域，可用加减号缩放、方向键平移、0 复位" @dragstart.prevent
     >

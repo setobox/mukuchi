@@ -47,7 +47,7 @@ function escape(event: KeyboardEvent) {
       <SelectPortal :to="portalTarget ?? 'body'">
         <SelectContent position="popper" align="start" :side-offset="6" :collision-padding="8" :collision-boundary="portalTarget" :body-lock="!portalTarget" class="select-content z-50 max-w-[min(400px,calc(100vw-16px))] min-w-[var(--reka-select-trigger-width)] overflow-hidden border border-line-strong rounded-button bg-surface text-sm text-ink shadow-floating" @escape-key-down="escape" @close-auto-focus="emit('closeAutoFocus', $event)">
           <SelectViewport class="max-h-[min(320px,var(--reka-select-content-available-height))] overflow-y-auto overscroll-contain p-1">
-            <SelectItem v-for="option in options" :key="key(option.value)" :value="key(option.value)" :disabled="option.disabled" :text-value="option.label" class="control-quiet relative min-h-11 flex cursor-default select-none items-center py-2 pl-3 pr-10 data-[highlighted]:bg-accent-surface data-[state=checked]:bg-accent-surface data-[highlighted]:text-accent-soft data-[state=checked]:text-accent-soft focus-visible:outline-offset--2">
+            <SelectItem v-for="option in options" :key="key(option.value)" :value="key(option.value)" :disabled="option.disabled" :text-value="option.label" class="control-quiet relative min-h-11 flex cursor-default select-none items-center py-2 pl-3 pr-10 data-[state=checked]:bg-accent-surface data-[highlighted]:text-accent-soft data-[state=checked]:text-accent-soft data-[highlighted]:bg-accent-pressed!">
               <SelectItemText class="min-w-0 break-words">
                 {{ option.label }}
               </SelectItemText>

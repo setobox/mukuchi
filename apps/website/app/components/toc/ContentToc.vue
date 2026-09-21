@@ -152,7 +152,7 @@ async function scrollToHeading(id: string) {
           :href="`#${encodeURIComponent(link.id)}`"
           data-slot="link"
           :aria-current="activeHeadings.includes(link.id) ? 'location' : undefined"
-          class="ui-link relative flex items-center rounded-chip py-1 text-sm leading-5 focus-visible:outline-offset-0"
+          class="ui-link relative flex items-center rounded-chip py-1 text-sm leading-5"
           :class="activeHeadings.includes(link.id) ? 'text-accent-soft' : 'text-muted'"
           @click.prevent="scrollToHeading(link.id)"
         >

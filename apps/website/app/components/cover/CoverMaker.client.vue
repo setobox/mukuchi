@@ -250,7 +250,7 @@ onBeforeUnmount(() => {
           <div v-if="backgroundImage" class="flex items-center gap-3">
             <img :src="backgroundImage.dataUrl" alt="已上传背景" class="h-12 w-18 rounded-button object-cover"><p class="min-w-0 flex-1 break-all text-xs text-muted">
               {{ backgroundImage.name }}<br>{{ backgroundImage.width }} × {{ backgroundImage.height }}
-            </p><button type="button" class="control-base text-xs text-error underline-offset-4 active:underline hover:underline" @click="backgroundImage = undefined">
+            </p><button type="button" class="focus-text control-base text-xs text-error underline-offset-4 active:underline hover:underline" @click="backgroundImage = undefined">
               移除
             </button>
           </div>

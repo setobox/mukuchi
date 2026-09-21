@@ -80,7 +80,7 @@ const PreviewImage = Image.extend({
 const extensions = [StarterKit.configure({ heading: { levels: [1, 2, 3, 4, 5, 6] }, link: { openOnClick: false } }), PreviewImage, TableKit, TaskList, TaskItem.configure({ nested: true, a11y: { checkboxLabel: node => `任务：${node.textContent || '未命名'}` } }), RawSource, Markdown]
 const manager = new MarkdownManager({ extensions })
 const content: JSONContent[] = props.segments.flatMap(segment => segment.raw ? [{ type: 'rawSource', attrs: { source: segment.source } }] : manager.parse(segment.source).content ?? [])
-const editor = useEditor({ extensions, content: { type: 'doc', content: content.length ? content : [{ type: 'paragraph' }] }, editorProps: { attributes: { 'class': 'ui-feedback min-h-[420px] rounded-button p-5 text-m leading-8 focus-visible:outline-offset-[-2px]', 'role': 'textbox', 'aria-label': '文章正文富文本编辑', 'aria-multiline': 'true' } }, onCreate: syncHeading, onTransaction: syncHeading, onUpdate: ({ editor }) => emit('change', editor.getMarkdown()) })
+const editor = useEditor({ extensions, content: { type: 'doc', content: content.length ? content : [{ type: 'paragraph' }] }, editorProps: { attributes: { 'class': 'ui-feedback min-h-[420px] rounded-button p-5 text-m leading-8', 'role': 'textbox', 'aria-label': '文章正文富文本编辑', 'aria-multiline': 'true' } }, onCreate: syncHeading, onTransaction: syncHeading, onUpdate: ({ editor }) => emit('change', editor.getMarkdown()) })
 function selectHeading(level: number | undefined) {
   if (level && level >= 1 && level <= 6 && editor.value) {
     headingSelected = true
@@ -104,7 +104,7 @@ onBeforeUnmount(() => editor.value?.destroy())
 </script>
 
 <template>
-  <div class="ui-feedback overflow-hidden border border-line-strong rounded-panel focus-within:border-accent">
+  <div class="field-group overflow-hidden border border-line-strong rounded-panel">
     <div v-if="editor" class="flex flex-wrap gap-1 border-b border-line bg-surface p-2" role="toolbar" aria-label="正文格式">
       <button class="control-base control-quiet px-3" :class="{ 'control-selected': editor.isActive('bold') }" :aria-pressed="editor.isActive('bold')" @click="editor.chain().focus().toggleBold().run()">
         加粗
@@ -149,6 +149,6 @@ onBeforeUnmount(() => editor.value?.destroy())
         插入链接
       </BaseButton>
     </form>
-    <EditorContent :editor="editor" class="break-words [&_.tiptap_a]:ui-feedback [&_.tiptap_input]:ui-feedback [&_.tiptap_p]:my-3 [&_.tiptap_img]:max-w-full [&_.tiptap_table]:w-full [&_.tiptap_ol]:list-decimal [&_.tiptap_ul]:list-disc [&_.tiptap_pre]:overflow-x-auto [&_.tiptap_td]:border [&_.tiptap_th]:border [&_.tiptap_blockquote]:border-l-3 [&_.tiptap_blockquote]:border-accent [&_.tiptap_td]:border-line-strong [&_.tiptap_th]:border-line-strong [&_.tiptap_pre]:rounded [&_.tiptap_pre]:bg-surface [&_.tiptap_pre]:p-4 [&_.tiptap_td]:p-2 [&_.tiptap_th]:p-2 [&_.tiptap_blockquote]:pl-4 [&_.tiptap_ol]:pl-6 [&_.tiptap_ul]:pl-6 [&_.tiptap_h1]:text-page [&_.tiptap_h2]:text-section [&_.tiptap_h3]:text-title [&_.tiptap_a]:text-accent-soft [&_.tiptap_h4]:font-bold [&_.tiptap_a]:underline [&_.tiptap_a]:underline-offset-4 [&_.tiptap_input]:accent-accent" />
+    <EditorContent :editor="editor" class="break-words [&_.tiptap_a]:ui-link [&_.tiptap_input]:ui-feedback [&_.tiptap_label]:checkbox-field [&_.tiptap_p]:my-3 [&_.tiptap_img]:max-w-full [&_.tiptap_table]:w-full [&_.tiptap_ol]:list-decimal [&_.tiptap_ul]:list-disc [&_.tiptap_pre]:overflow-x-auto [&_.tiptap_td]:border [&_.tiptap_th]:border [&_.tiptap_blockquote]:border-l-3 [&_.tiptap_blockquote]:border-accent [&_.tiptap_td]:border-line-strong [&_.tiptap_th]:border-line-strong [&_.tiptap_pre]:rounded [&_.tiptap_pre]:bg-surface [&_.tiptap_pre]:p-4 [&_.tiptap_td]:p-2 [&_.tiptap_th]:p-2 [&_.tiptap_blockquote]:pl-4 [&_.tiptap_ol]:pl-6 [&_.tiptap_ul]:pl-6 [&_.tiptap_h1]:text-page [&_.tiptap_h2]:text-section [&_.tiptap_h3]:text-title [&_.tiptap_a]:text-accent-soft [&_.tiptap_h4]:font-bold [&_.tiptap_a]:underline [&_.tiptap_a]:underline-offset-4 [&_.tiptap_input]:accent-accent" />
   </div>
 </template>
