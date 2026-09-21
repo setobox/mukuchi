@@ -25,7 +25,7 @@ export const themeColors = [
 // checks run against the original frontmatter at the import boundary.
 export const postFields = z.object({
   title: z.string().min(1),
-  description: z.string().min(1),
+  description: z.string(),
   aiSummary: z.boolean().default(true),
   audio: z.object({ narration: z.boolean().optional(), podcast: z.boolean().optional() }).optional(),
   summary: summaryRecordSchema.optional().catch(undefined),
@@ -56,10 +56,8 @@ export function isCalendarDate(value: string): boolean {
 
 export const postSchema = postFields
   .superRefine((data, ctx) => {
-    for (const field of ['title', 'description'] as const) {
-      if (!data[field].trim())
-        ctx.addIssue({ code: 'custom', path: [field], message: '不能为空' })
-    }
+    if (!data.title.trim())
+      ctx.addIssue({ code: 'custom', path: ['title'], message: '不能为空' })
     for (const field of ['publish', 'update'] as const) {
       if (data[field] && !isCalendarDate(data[field]))
         ctx.addIssue({ code: 'custom', path: [field], message: '必须是有效的 YYYY-MM-DD 日期' })

@@ -10,6 +10,11 @@ import {
 import { postSchema } from '../shared/content/schema.ts'
 
 const meta = { title: '测试文章', description: '测试描述', publish: '2024-02-29' }
+test.each(['', '   '])('文章允许空简介，并将空白简介规范为空字符串：%j', (description) => {
+  const source = ['---', 'title: React', `description: '${description}'`, 'publish: \'2024-02-29\'', '---', '# 正文'].join('\n')
+  expect(validateFrontmatter(source, 'drafts/react.md', 'posts')).toMatchObject({ title: 'React', description: '' })
+})
+
 test('文章填充默认值，并规范标签和专栏', () => {
   expect(
     postSchema.parse({ ...meta, tags: [' Vue ', 'Vue'], categories: ['前端', '前端'] }),

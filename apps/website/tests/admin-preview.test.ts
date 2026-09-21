@@ -41,6 +41,12 @@ test('预览当前源码，保留日期、标签、MDC、代码和目录，并�
   expect(asset.path).toBe('/images/private.png')
 })
 
+test('空简介草稿可以预览，并可使用 AI 摘要', async () => {
+  const emptyDescription = source.replace('description: 原简介', 'description: \'\'')
+  expect((await renderArticlePreview(emptyDescription, 'drafts/react.md', [], '', missing)).data).toMatchObject({ description: '', summarySource: 'description' })
+  expect((await renderArticlePreview(emptyDescription, 'drafts/react.md', [], '', missing, '生成的摘要')).data).toMatchObject({ description: '生成的摘要', summarySource: 'ai' })
+})
+
 test('未保存摘要只应用于本次预览，空摘要回退简介', async () => {
   expect((await renderArticlePreview(source, 'hello.md', [], '', missing, '还未保存的摘要')).data).toMatchObject({ description: '还未保存的摘要', summarySource: 'ai' })
   expect((await renderArticlePreview(source, 'hello.md', [], '', missing, '')).data).toMatchObject({ description: '原简介', summarySource: 'description' })

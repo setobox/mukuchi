@@ -13,6 +13,13 @@ const site: RssSite = {
 const post: RssPost = { path: '/posts/example', title: '文章', description: '摘要', publish: '2024-03-01' }
 const items = (source: string) => Array.from(parseXml(source).getElementsByTagName('item'))
 
+test('空简介文章可以生成 RSS 并通过发布检查', () => {
+  const posts = [{ ...post, description: '' }]
+  const xml = createRssFeed(posts, site)
+  expect(elementText(items(xml)[0]!, 'description')).toBe('')
+  expect(() => assertRss(xml, posts, site.siteUrl)).not.toThrow()
+})
+
 test('RSS 保留中文与特殊字符，摘要中的 HTML 作为文字显示', () => {
   const text = '中文 😀 <script> & "引号" \'单引号\' ]]> &lt;\r\n第二行'
   const xml = createRssFeed([{ ...post, title: text, description: text }], { ...site, name: text, author: text })
