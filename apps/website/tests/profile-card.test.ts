@@ -12,7 +12,7 @@ const owner = {
   name: '姬顶盒',
   avatar: 'https://q2.qlogo.cn/headimg_dl?dst_uin=1102778969&spec=0',
   introduction: ['欢迎来到我的博客！', '这里有开发、工具、游戏相关的技术见解和有趣的见闻。'],
-  signature: 'while(!dead) {\n  time--; exp++;\n}',
+  signature: 'while(!dead) {\n  time--;\n  exp++;\n}',
   github: 'https://github.com/setobox',
 }
 const NuxtLink = defineComponent({
