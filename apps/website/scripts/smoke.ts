@@ -56,10 +56,17 @@ for (const [kind, field] of [['tag', 'tags'], ['category', 'categories']] as con
   }
   assert.equal((await request(taxonomyPath(kind, '__deployment_missing__'))).status, 404)
 }
-for (const path of ['/about', ...posts.map(post => String(post.path))]) {
+for (const path of ['/about', '/use', ...posts.map(post => String(post.path))]) {
   const response = await request(path)
   assert.equal(response.status, 200, path)
   const html = await response.text()
+  if (path === '/use') {
+    assert.match(html, /<title>Use - Setobox<\/title>/, 'Use 页面标题')
+    assert.match(html, /<meta name="description" content="我正在使用的开发工具、设计软件与硬件设备。">/, 'Use SEO 简介')
+    const aboutLinks = html.match(/<a\b[^>]+href="\/about"[^>]*>/g) ?? []
+    assert(aboutLinks.some(link => link.includes('aria-current="page"')), 'Use 归属关于分区')
+    assert(html.includes('AMD Ryzen 9 9950X3D'), 'Use 正文已渲染')
+  }
   assert(html.includes('https://blog.setobox.me'), `正式地址：${path}`)
   assert(/<link\s[^>]*rel="icon"[^>]*href="\/favicon\.ico"/.test(html), `页面使用本地静态图标：${path}`)
   assert(/<link\s[^>]*rel="alternate"[^>]*href="https:\/\/blog\.setobox\.me\/rss\.xml"/.test(html), `RSS 自动发现：${path}`)
@@ -71,4 +78,4 @@ for (const [path, title] of [['/tools', '工具'], ['/tools/cover', '封面制�
   assert.equal(response.status, 200, path)
   assert.match(await response.text(), new RegExp(`<h1[^>]*>\\s*${title}\\s*</h1>`), `${path} 页面标题`)
 }
-console.log(`HTTP 验收通过：${origin.origin}，${posts.length} 篇文章、RSS、浏览器图标、全部专栏和标签、封面工具、Cookie 与错误状态。`)
+console.log(`HTTP 验收通过：${origin.origin}，${posts.length} 篇文章、Use 页、RSS、浏览器图标、全部专栏和标签、封面工具、Cookie 与错误状态。`)

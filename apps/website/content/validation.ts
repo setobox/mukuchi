@@ -21,6 +21,8 @@ export async function validateContentDirectory() {
     }
   }
   await walk(postsRoot)
-  const about = join(contentRoot, 'about.md')
-  validateFrontmatter(await readFile(about, 'utf8'), about, 'about')
+  for (const kind of ['about', 'use'] as const) {
+    const filename = join(contentRoot, `${kind}.md`)
+    validateFrontmatter(await readFile(filename, 'utf8'), filename, kind)
+  }
 }

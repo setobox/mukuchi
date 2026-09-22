@@ -70,6 +70,9 @@ test.each([true, false])('Content 默认路径在 dev=%s 时生效，元数据�
         '/posts/notes',
       ])
       expect(db.prepare('SELECT path FROM _content_about').get()?.path).toBe('/about')
+      expect(db.prepare('SELECT path, title, description FROM _content_use').all()).toEqual([
+        { path: '/use', title: 'Use', description: '我的装备' },
+      ])
       expect(db.prepare('SELECT title, publish, pin, theme FROM _content_posts LIMIT 1').get()).toMatchObject({
         title: '测试文章',
         publish: '2024-02-29',

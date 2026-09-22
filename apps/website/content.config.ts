@@ -21,5 +21,14 @@ export default defineContentConfig({
       },
       schema: aboutFields,
     }),
+    use: defineCollection({
+      type: 'page',
+      source: {
+        cwd: fileURLToPath(new URL('../../content/', import.meta.url)),
+        include: 'use.md',
+        prefix: '/',
+      },
+      schema: aboutFields,
+    }),
   },
 })

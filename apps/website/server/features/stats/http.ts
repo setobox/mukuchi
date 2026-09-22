@@ -48,7 +48,7 @@ export async function requireStatsPath(event: H3Event, input: unknown): Promise<
   catch {
     throw createError({ statusCode: 400, message: '页面路径无效' })
   }
-  if (['/posts', '/about', '/categories', '/tools'].includes(path))
+  if (['/posts', '/about', '/use', '/categories', '/tools'].includes(path))
     return path
   let exists: boolean
   try {

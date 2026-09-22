@@ -40,7 +40,7 @@ export default defineNuxtConfig({
     '#admin-driver': fileURLToPath(new URL('./server/features/admin/drivers/node', import.meta.url)),
   },
   nitro: {
-    prerender: { crawlLinks: false, failOnError: true, routes: ['/about', rssPath] },
+    prerender: { crawlLinks: false, failOnError: true, routes: ['/about', '/use', rssPath] },
     cloudflare: { deployConfig: true, nodeCompat: true },
   },
   modules: ['@nuxt/content', '@nuxtjs/color-mode', '@unocss/nuxt', '@vueuse/nuxt', '@nuxt/eslint', githubSnapshots, coverIcons, audio, adminPreview],
@@ -88,7 +88,7 @@ export default defineNuxtConfig({
       }
     },
     'content:file:afterParse': ({ file, content, collection }) => {
-      if (collection.name !== 'posts' && collection.name !== 'about')
+      if (collection.name !== 'posts' && collection.name !== 'about' && collection.name !== 'use')
         return
       Object.assign(content, validateFrontmatter(file.body, file.path, collection.name))
     },
@@ -127,6 +127,7 @@ export default defineNuxtConfig({
     [rssPath]: { prerender: true, headers: { 'content-type': rssContentType, 'cache-control': rssCacheControl } },
     '/': { redirect: { to: '/posts', statusCode: 302 } },
     '/about': { prerender: true },
+    '/use': { prerender: true },
     '/posts': { prerender: false, headers: { 'cache-control': 'private, no-store' } },
     '/categories': { prerender: false, headers: { 'cache-control': 'private, no-store' } },
     '/categories/**': { prerender: false, headers: { 'cache-control': 'private, no-store' } },

@@ -43,11 +43,14 @@ useActionButton({
           {{ site.owner.description }}
         </p>
         <ArticleContent v-if="about" :value="about" class="mb-8" />
-        <div class="flex items-center gap-7 border-t border-line pt-[18px]">
+        <div class="flex flex-wrap items-center gap-x-7 gap-y-2 border-t border-line pt-[18px]">
           <NuxtLink to="/posts" class="text-link">
             浏览文章<AppIcon name="arrow" />
           </NuxtLink><NuxtLink to="/tools" class="text-link">
             查看工具<AppIcon name="arrow" />
+          </NuxtLink>
+          <NuxtLink to="/use" class="text-link">
+            Use · 我的装备<AppIcon name="arrow" />
           </NuxtLink>
         </div>
       </section>

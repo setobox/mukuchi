@@ -10,6 +10,14 @@ import {
 import { postSchema } from '../shared/content/schema.ts'
 
 const meta = { title: '测试文章', description: '测试描述', publish: '2024-02-29' }
+test.each(['about', 'use'] as const)('静态页 %s 校验标题和简介，不要求文章发布日期', (kind) => {
+  const source = ['---', 'title: Use', 'description: 我的装备', '---', '## Development'].join('\n')
+  expect(validateFrontmatter(source, `${kind}.md`, kind)).toEqual({ title: 'Use', description: '我的装备' })
+  expect(() => validateFrontmatter(source.replace('title: Use\n', ''), `${kind}.md`, kind)).toThrow(new RegExp(`${kind}.md.*title`))
+  expect(() => validateFrontmatter(source.replace('description: 我的装备', 'description: ""'), `${kind}.md`, kind)).toThrow(new RegExp(`${kind}.md.*description`))
+  expect(() => validateFrontmatter(source.replace('title: Use', 'title: Use\npath: /other'), `${kind}.md`, kind)).toThrow(/不能通过 frontmatter 覆盖/)
+})
+
 test.each(['', '   '])('文章允许空简介，并将空白简介规范为空字符串：%j', (description) => {
   const source = ['---', 'title: React', `description: '${description}'`, 'publish: \'2024-02-29\'', '---', '# 正文'].join('\n')
   expect(validateFrontmatter(source, 'drafts/react.md', 'posts')).toMatchObject({ title: 'React', description: '' })

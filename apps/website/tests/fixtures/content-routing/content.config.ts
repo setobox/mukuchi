@@ -27,5 +27,13 @@ export default defineContentConfig({
         getItem: async () => body,
       })],
     },
+    use: {
+      ...config.collections.use,
+      source: [defineCollectionSource({
+        prefix: '/',
+        getKeys: async () => ['use.md'],
+        getItem: async () => ['---', 'title: Use', 'description: 我的装备', '---', '## Development', '- Editor: VS Code'].join('\n'),
+      })],
+    },
   },
 })

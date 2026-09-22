@@ -41,13 +41,13 @@ for (const response of concurrent) {
 }
 assert.equal((await getSummary()).pageViews, baseline.pageViews + 1)
 assert.equal((await post({ ...event, path: '/about' })).status, 409)
-for (const [path, nextCookie] of [[article, cookie], ['/about', `${visitorCookie}=${randomUUID()}`], ['/posts', '']] as const) {
+for (const [path, nextCookie] of [[article, cookie], ['/about', `${visitorCookie}=${randomUUID()}`], ['/posts', ''], ['/use', cookie]] as const) {
   const response = await post({ eventId: randomUUID(), path }, { cookie: nextCookie })
   assert.equal(response.status, 200)
   recordedSchema.parse(await response.json())
 }
 const after = await getSummary()
-assert.equal(after.pageViews, baseline.pageViews + 4)
+assert.equal(after.pageViews, baseline.pageViews + 5)
 assert.equal(after.visitors, baseline.visitors + 2)
 assert.equal(pageStatsSchema.parse(await (await fetch(url(`/api/stats/page?path=${encodeURIComponent(article)}`))).json()).pageViews, pageBefore.pageViews + 2)
 assert.equal((await post({ eventId: randomUUID(), path: '/does-not-exist' })).status, 404)
@@ -75,5 +75,6 @@ const report = z.object({
 assert.deepEqual(report.total, after)
 assert.equal(report.daily[0]?.day, today)
 assert.ok(report.pages.some(page => page.path === '/about'))
+assert.ok(report.pages.some(page => page.path === '/use'))
 assert.equal((await getSummary()).pageViews, after.pageViews, '无效请求和只读查询不得产生访问')
 console.log('统计 HTTP 验收通过：并发去重、PV/UV、页面计数、鉴权、输入校验、查询与响应头。')
