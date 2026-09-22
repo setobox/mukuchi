@@ -3,6 +3,7 @@ import process from 'node:process'
 import { fileURLToPath } from 'node:url'
 import githubSnapshots from './content/github/module'
 import { validateContentDirectory, validateFrontmatter } from './content/validation.ts'
+import adminPreview from './modules/admin-preview/module'
 import audio from './modules/audio/module'
 import coverIcons from './modules/cover-icons/module'
 import { localRequestAllowed } from './server/features/auth/policy.ts'
@@ -42,7 +43,7 @@ export default defineNuxtConfig({
     prerender: { crawlLinks: false, failOnError: true, routes: ['/about', rssPath] },
     cloudflare: { deployConfig: true, nodeCompat: true },
   },
-  modules: ['@nuxt/content', '@nuxtjs/color-mode', '@unocss/nuxt', '@vueuse/nuxt', '@nuxt/eslint', githubSnapshots, coverIcons, audio],
+  modules: ['@nuxt/content', '@nuxtjs/color-mode', '@unocss/nuxt', '@vueuse/nuxt', '@nuxt/eslint', githubSnapshots, coverIcons, audio, adminPreview],
   colorMode: {
     preference: 'system',
     fallback: 'dark',

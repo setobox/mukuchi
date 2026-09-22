@@ -1,7 +1,7 @@
 import type { H3Event } from 'h3'
 import { z } from 'zod'
 import { listContent, readContent } from '#admin-driver'
-import highlighter from '#mdc-highlighter'
+import highlighter from '#admin-preview-highlighter'
 import { AdminError, articlePublication, articleTitle, createDraftSchema, imageLimit, newArticleSource, publicationInput, sameArticleSource, saveDraftSchema, sha256 } from '../../../shared/admin/model'
 import { writeSummary } from '../ai/content'
 import { currentSummary, draftSummaryRoute } from '../ai/service'
