@@ -1,5 +1,7 @@
 export const icons = {
   github: 'i-lucide-github',
+  youtube: 'i-lucide-youtube',
+  tv: 'i-lucide-tv-minimal',
   star: 'i-lucide-star',
   fork: 'i-lucide-git-fork',
   license: 'i-lucide-scale',
