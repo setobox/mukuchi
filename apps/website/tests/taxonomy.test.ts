@@ -59,6 +59,7 @@ async function render(component: Component, props: Record<string, unknown>) {
     PostTags,
     PostListItem: Item,
     PostCard: Item,
+    PostPagination: Container,
     BaseButton: Container,
     ContentEmptyState: Container,
   })) app.component(name, child)
@@ -168,6 +169,10 @@ test('文章集合仅使用显式筛选条件，旧查询参数不影响默认�
   vi.stubGlobal('usePostCatalog', catalogState)
   vi.stubGlobal('useCookie', () => ref('list'))
   vi.stubGlobal('useRoute', () => ({ path: '/posts', query: { tag: 'C++', category: '开发' } }))
+  vi.stubGlobal('useRouter', () => ({ replace: vi.fn() }))
+  vi.stubGlobal('usePageUrl', () => ref('https://blog.setobox.me/posts'))
+  vi.stubGlobal('useHead', vi.fn())
+  vi.stubGlobal('useSeoMeta', vi.fn())
   const all = await render(PostCollection, {})
   expect(all).toContain('文章一')
   expect(all).toContain('文章二')

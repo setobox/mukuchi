@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import type { TaxonomyFilter } from '#shared/content/taxonomy'
+import { usePreferredReducedMotion } from '@vueuse/core'
+import { computed, nextTick, onMounted, useTemplateRef, watch } from 'vue'
 import { filterPosts } from '#shared/content/catalog'
+import { paginatePosts } from '~/features/posts/pagination'
 
 const props = defineProps<{ filter?: TaxonomyFilter }>()
 const { data, tags, error, status, refresh } = usePostCatalog()
@@ -8,6 +11,44 @@ const tag = computed(() => props.filter?.kind === 'tag' ? props.filter.name : ''
 const posts = computed(() =>
   filterPosts(data.value ?? [], props.filter),
 )
+const route = useRoute()
+const router = useRouter()
+const pagination = computed(() => paginatePosts(posts.value, route.query.page))
+const listStart = useTemplateRef<HTMLElement>('listStart')
+const preferredMotion = usePreferredReducedMotion()
+const baseUrl = usePageUrl(() => route.path)
+const canonical = computed(() => pagination.value.page > 1
+  ? `${baseUrl.value}?page=${pagination.value.page}`
+  : baseUrl.value)
+useHead({ link: [{ key: 'canonical', rel: 'canonical', href: canonical }] })
+useSeoMeta({ ogUrl: canonical })
+
+function location(page: number) {
+  const query = { ...route.query }
+  if (page === 1)
+    delete query.page
+  else
+    query.page = String(page)
+  return { path: route.path, query }
+}
+
+// Wait for client hydration and a successful catalog before correcting the URL.
+// An empty or pending catalog must not discard a directly requested later page.
+onMounted(() => {
+  watch([() => route.query.page, pagination, status, error], () => {
+    if (status.value !== 'success' || error.value)
+      return
+    const target = location(pagination.value.page)
+    if (route.query.page !== target.query.page)
+      void router.replace({ ...target, hash: route.hash })
+  }, { immediate: true })
+})
+
+async function focusList() {
+  await nextTick()
+  listStart.value?.focus({ preventScroll: true })
+  listStart.value?.scrollIntoView({ block: 'start', behavior: preferredMotion.value === 'reduce' ? 'instant' : 'smooth' })
+}
 const preference = useCookie<string>('mukuchi:post-view', {
   default: () => 'list',
   sameSite: 'lax',
@@ -29,7 +70,7 @@ const filtered = computed(() => !!props.filter)
       <div v-if="tags.length" class="mb-6 lg:hidden">
         <TagFilter :tags="tags" :selected="tag" />
       </div>
-      <div class="flex flex-wrap items-center justify-between gap-3 border-b border-line pb-4">
+      <div ref="listStart" tabindex="-1" role="group" aria-label="文章列表" class="flex flex-wrap items-center justify-between gap-3 border-b border-line pb-4">
         <div v-if="$slots['toolbar-start']" class="min-w-0 flex-[1_1_12rem]">
           <slot name="toolbar-start" />
         </div>
@@ -81,11 +122,18 @@ const filtered = computed(() => !!props.filter)
         :description="filtered ? '请更改筛选条件或清除筛选。' : undefined"
       />
       <div v-else-if="view === 'grid'" class="grid gap-5 pt-6 md:grid-cols-2">
-        <PostCard v-for="post in posts" :key="post.path" :post="post" />
+        <PostCard v-for="post in pagination.posts" :key="post.path" :post="post" />
       </div>
       <div v-else>
-        <PostListItem v-for="post in posts" :key="post.path" :post="post" />
+        <PostListItem v-for="post in pagination.posts" :key="post.path" :post="post" />
       </div>
+      <PostPagination
+        v-if="!error && status === 'success'"
+        :page="pagination.page"
+        :page-count="pagination.pageCount"
+        :location="location"
+        @navigate="focusList"
+      />
     </div>
   </SiteColumns>
 </template>

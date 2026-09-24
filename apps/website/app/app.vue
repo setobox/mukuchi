@@ -15,7 +15,7 @@ useHead({
   titleTemplate: title => (title && title !== site.name ? `${title} - ${site.name}` : site.name),
   link: [
     { rel: 'icon', href: faviconHref },
-    { rel: 'canonical', href: canonical },
+    { key: 'canonical', rel: 'canonical', href: canonical },
     { rel: 'alternate', type: 'application/rss+xml', title: `${site.name} RSS`, href: rssUrl },
   ],
 })
