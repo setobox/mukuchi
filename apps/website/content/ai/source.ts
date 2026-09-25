@@ -59,5 +59,5 @@ export function summaryContentSource(root: string) {
       return applySummarySnapshot(await readFile(path, 'utf8'), key)
     },
   })
-  return { ...source, cwd: root, include: '**/*.md', prefix: '/posts' }
+  return { ...source, cwd: root.replace(/\\/g, '/'), include: '**/*.md', prefix: '/posts' }
 }
