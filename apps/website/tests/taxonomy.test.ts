@@ -1,6 +1,7 @@
 import type { Component } from 'vue'
 import type { NuxtApp } from '#app'
 import type { TaxonomyFilter } from '../shared/content/taxonomy'
+import { DOMParser } from '@xmldom/xmldom'
 import { afterEach, expect, test, vi } from 'vite-plus/test'
 import { computed, createSSRApp, defineComponent, h, ref } from 'vue'
 import { renderToString } from 'vue/server-renderer'
@@ -162,6 +163,19 @@ test.each([PostListItem, PostCard])('文章两种视图均先显示标题，再�
     expect(text.indexOf(ordered[index]!)).toBeGreaterThan(text.indexOf(ordered[index - 1]!))
   expect(html).toContain(`href="${taxonomyPath('category', '第二分类')}"`)
   expect(text).not.toContain('#内容管理')
+})
+
+test.each([PostListItem, PostCard])('文章视图保留完整标题与简介，悬停说明正确还原特殊字符及空简介', async (component) => {
+  const title = '很长的文章标题 UnbrokenEnglishTitle'.repeat(12)
+  for (const description of ['', '简短说明', '含 "引号"、<标签> & 特殊字符与连续英文 UnbrokenEnglishDescription'.repeat(12)]) {
+    const html = await render(component, { post: { ...posts[0]!, title, description } })
+    const document = new DOMParser().parseFromString(html, 'text/html')
+    expect(document.getElementsByTagName('h2')[0]!.textContent?.trim()).toBe(title)
+    const summary = document.getElementsByTagName('p')[0]!
+    expect(summary.textContent?.trim()).toBe(description)
+    expect(summary.getAttribute('title')).toBe(description)
+    expect(document.getElementsByTagName('script')).toHaveLength(0)
+  }
 })
 
 test('文章集合仅使用显式筛选条件，旧查询参数不影响默认与独立筛选结果', async () => {

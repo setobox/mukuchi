@@ -8,12 +8,12 @@ defineProps<{ post: PostSummary }>()
   <article class="min-w-0 flex gap-3 border border-line rounded-panel bg-surface p-2 md:gap-6 md:p-4">
     <div class="min-w-0 flex-1 py-2 pl-2 md:pl-3">
       <h2 class="text-title text-themed font-bold">
-        <NuxtLink :to="post.path" class="ui-link inline-block max-w-full min-h-11 break-words md:min-h-0">
+        <NuxtLink :to="post.path" class="ui-link block max-w-full min-h-11 truncate md:min-h-0">
           {{ post.title }}
         </NuxtLink>
       </h2>
       <PostMeta :post="post" class="mt-2" />
-      <p class="mt-2 break-words text-ink">
+      <p :title="post.description" class="line-clamp-2 mt-2 break-words text-ink">
         {{ post.description }}
       </p>
       <PostTags :tags="post.tags" class="mt-4" />
