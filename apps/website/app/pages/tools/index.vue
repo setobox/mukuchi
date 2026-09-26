@@ -1,5 +1,5 @@
 <script setup lang="ts">
-definePageMeta({ section: 'tools', pageKind: 'index', pageTitle: '工具' })
+definePageMeta({ section: 'tools', pageKind: 'index', pageTitle: '工具', parentPath: '/my' })
 useSeoMeta({ title: '工具', description: '实用工具。' })
 </script>
 

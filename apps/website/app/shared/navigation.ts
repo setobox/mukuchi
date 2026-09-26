@@ -1,4 +1,5 @@
-export type SiteSection = 'posts' | 'categories' | 'tools' | 'about'
+export const siteSections = ['posts', 'categories', 'tags', 'archive', 'series', 'my', 'projects', 'collections', 'tools', 'about'] as const
+export type SiteSection = typeof siteSections[number]
 export type PageKind = 'index' | 'detail'
 
 export interface PageContext {

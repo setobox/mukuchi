@@ -6,7 +6,7 @@ const props = defineProps<{ filter: TaxonomyFilter, categories: { name: string, 
 const title = computed(() => taxonomyTitle(props.filter.kind, props.filter.name))
 useSeoMeta({
   title,
-  description: () => props.filter.kind === 'category' ? `浏览“${props.filter.name}”专栏的文章。` : `浏览带有“${props.filter.name}”标签的文章。`,
+  description: () => props.filter.kind === 'category' ? `浏览“${props.filter.name}”分类的文章。` : `浏览带有“${props.filter.name}”标签的文章。`,
 })
 usePostListActions()
 </script>

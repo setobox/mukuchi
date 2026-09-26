@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import type { Command } from '~/features/commands/controller'
-import type { IconName } from '~/shared/icons'
 import { acceptsPaletteShortcut, groupCommands, nextSelection, paletteInputAction } from '~/features/commands/controller'
 import { navigateFromPalette } from '~/features/commands/navigation'
 import { createSearchLoader } from '~/features/search/loader'
 import { searchArticles } from '~/features/search/model'
 
 const { site } = useAppConfig()
+const { destinations } = useSiteNavigation()
 const palette = useCommandPalette()
 const { query, inputQuery, mode, commands, commandQuery, isOpen } = palette
 const dialogOpen = computed({
@@ -93,9 +93,7 @@ function register(command: Command) {
   onScopeDispose(unregister)
 }
 register({ id: 'search', label: '搜索文章', keywords: ['search', '文章'], icon: 'search', category: '搜索', visible: () => site.features.search, keepOpen: true, execute: () => palette.open('search') })
-for (const navigation of site.navigation) {
-  register({ id: `navigate:${navigation.section}`, label: `前往${navigation.label}`, keywords: [navigation.section, navigation.to], icon: navigation.icon as IconName, category: '页面', execute: () => navigate(navigation.to) })
-}
+useNavigationCommands(destinations, palette.register, navigate)
 for (const option of [
   { preference: 'light', label: '浅色主题', icon: 'sun' },
   { preference: 'dark', label: '深色主题', icon: 'moon' },

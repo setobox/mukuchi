@@ -1,6 +1,5 @@
-import type { PageContext, SiteSection } from '~/shared/navigation'
-
-const sections: readonly SiteSection[] = ['posts', 'categories', 'tools', 'about']
+import type { PageContext } from '~/shared/navigation'
+import { siteSections } from '~/shared/navigation'
 
 export function usePageContext() {
   const route = useRoute()
@@ -9,7 +8,7 @@ export function usePageContext() {
     () => null,
   )
   return computed<PageContext>(() => {
-    const section = sections.find(item => item === route.meta.section) ?? 'posts'
+    const section = siteSections.find(item => item === route.meta.section) ?? 'posts'
     return {
       path: route.path.replace(/\/$/, '') || '/',
       section,

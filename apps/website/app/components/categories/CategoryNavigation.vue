@@ -72,7 +72,7 @@ onClickOutside(container, () => close())
   <nav
     ref="container"
     class="relative min-w-0"
-    aria-label="专栏分类"
+    aria-label="文章分类"
     @keydown.esc.prevent="open && close(true)"
     @focusout="
       (event) => {
@@ -139,7 +139,7 @@ onClickOutside(container, () => close())
         "
         :aria-expanded="open"
         :aria-controls="popupId"
-        :aria-label="selectedOverflow ? `更多专栏，当前专栏：${selected}` : '更多专栏'"
+        :aria-label="selectedOverflow ? `更多分类，当前分类：${selected}` : '更多分类'"
         @click="open = !open"
       >
         更多<AppIcon

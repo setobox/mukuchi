@@ -200,9 +200,9 @@ test('文章集合仅使用显式筛选条件，旧查询参数不影响默认�
   expect(tagged).toContain('文章二')
 })
 
-test('动态标题与导航上下文随路径变化，标签仍属于文章导航', () => {
+test('动态标题与导航上下文随路径变化，标签使用独立导航类型', () => {
   const route = ref({ path: '/tags/C%23', params: { name: 'C#' }, meta: {
-    section: 'posts',
+    section: 'tags',
     pageKind: 'index',
     parentPath: '/posts',
     pageTitle: (current: { params: { name: string } }) => taxonomyTitle('tag', current.params.name),
@@ -211,7 +211,7 @@ test('动态标题与导航上下文随路径变化，标签仍属于文章导�
   vi.stubGlobal('useRoute', () => route.value)
   vi.stubGlobal('useState', () => ref(null))
   const page = usePageContext()
-  expect(page.value).toMatchObject({ title: '标签：C#', section: 'posts', parentPath: '/posts' })
+  expect(page.value).toMatchObject({ title: '标签：C#', section: 'tags', parentPath: '/posts' })
   route.value.params.name = 'Vue'
   route.value.path = '/tags/Vue'
   expect(page.value.title).toBe('标签：Vue')

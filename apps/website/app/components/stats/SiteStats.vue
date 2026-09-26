@@ -9,7 +9,7 @@ const counts = computed(() => catalog.data.value && !catalog.error.value ? conte
 const items = computed(() => [
   { label: '文章', icon: 'notebook', value: counts.value?.articles },
   { label: '标签', icon: 'tags', value: counts.value?.tags },
-  { label: '专栏', icon: 'folder', value: counts.value?.categories },
+  { label: '分类', icon: 'folder', value: counts.value?.categories },
 ] as const)
 const visits = computed(() => [
   { label: '累计浏览量', icon: 'eye', value: mounted.value ? stats.state.value.summary?.pageViews : undefined },

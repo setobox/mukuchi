@@ -48,14 +48,16 @@ for (const path of ['/about', '/use', ...paths]) {
   const description = descriptions.get(path)
   if (description) {
     const escaped = description.text.replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', '\'': '&#39;' })[char]!)
-    assert(html.includes(`<meta name="description" content="${escaped}">`), `SEO 简介须与内容索引一致：${path}`)
+    // Empty post descriptions are valid; Unhead omits empty meta tags.
+    const renderedDescription = html.match(/<meta name="description" content="([^"]*)">/)?.[1] ?? ''
+    assert.equal(renderedDescription, escaped, `SEO 简介须与内容索引一致：${path}`)
     assert.equal(html.includes('aria-label="AI 摘要"'), description.ai, `摘要卡片须与摘要来源一致：${path}`)
     if (description.ai)
       assert(html.includes(`${escaped}</p>`), `摘要卡片须与内容索引一致：${path}`)
   }
   await access(new URL('_payload.json', directory))
 }
-for (const path of ['posts', 'categories', 'tags', 'tools']) {
+for (const path of ['posts', 'categories', 'tags', 'tools', 'my']) {
   await assert.rejects(access(new URL(`${path}/index.html`, publicRoot)), `列表页不能预渲染：/${path}`)
 }
 console.log(`预渲染验收通过：${paths.length} 篇文章、关于页、Use 页与 RSS；列表保持 SSR。`)

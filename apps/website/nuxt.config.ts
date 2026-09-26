@@ -133,6 +133,7 @@ export default defineNuxtConfig({
     '/categories/**': { prerender: false, headers: { 'cache-control': 'private, no-store' } },
     '/tags/**': { prerender: false, headers: { 'cache-control': 'private, no-store' } },
     '/tools': { prerender: false },
+    '/my': { prerender: false },
   },
   eslint: {
     config: {

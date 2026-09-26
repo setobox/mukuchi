@@ -2,7 +2,7 @@
 import { taxonomyTitle } from '#shared/content/taxonomy'
 
 definePageMeta({
-  section: 'posts',
+  section: 'tags',
   pageKind: 'index',
   pageTitle: route => taxonomyTitle('tag', route.params.name),
   parentPath: '/posts',

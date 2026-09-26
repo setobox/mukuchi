@@ -7,6 +7,7 @@ const rssHref = computed(() => `${config.app.baseURL.replace(/\/$/, '')}${rssPat
 const palette = useCommandPalette()
 const route = useRoute()
 const page = usePageContext()
+const { items: navigation } = useSiteNavigation()
 const { y } = useWindowScroll()
 const menuOpen = ref(false)
 const movingDown = ref(false)
@@ -56,20 +57,7 @@ watch(desktop, (value) => {
           >{{ page.title }}</span>
         </Transition>
       </div>
-      <nav class="hidden items-center gap-1.5 text-s lg:flex" aria-label="主导航">
-        <NuxtLink
-          v-for="item in site.navigation"
-          :key="item.to"
-          :to="item.to"
-          :aria-current="page.section === item.section ? 'page' : undefined"
-          :class="
-            page.section === item.section ? 'control-selected font-semibold' : 'text-muted'
-          "
-          class="control-base control-quiet relative px-[15px] py-2.5"
-        >
-          {{ item.label }}
-        </NuxtLink>
-      </nav>
+      <SiteDesktopNavigation :items="navigation" :reset-key="`${route.fullPath}:${desktop}`" class="hidden lg:block" />
       <div class="ml-auto flex items-center gap-0.5 lg:ml-0 lg:border-l lg:border-line lg:pl-4">
         <ThemeToggle />
         <ClientOnly><AccountMenu /></ClientOnly>
@@ -113,23 +101,7 @@ watch(desktop, (value) => {
                 <MenuToggleIcon :expanded="expanded" />
               </button>
             </template>
-            <nav aria-label="移动导航" class="flex flex-col gap-2 text-s">
-              <NuxtLink
-                v-for="item in site.navigation"
-                :key="item.to"
-                :to="item.to"
-                :aria-current="page.section === item.section ? 'page' : undefined"
-                class="control-quiet min-h-14 flex items-center px-4 py-3"
-                :class="
-                  page.section === item.section
-                    ? 'control-selected font-medium'
-                    : 'text-muted'
-                "
-                @click="menuOpen = false"
-              >
-                {{ item.label }}
-              </NuxtLink>
-            </nav>
+            <SiteMobileNavigation :items="navigation" :open="menuOpen" @navigate="menuOpen = false" />
           </AcrylicDialog>
         </div>
       </div>
