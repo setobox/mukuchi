@@ -34,6 +34,48 @@ test('不完整草稿可列出、搜索和筛选，不要求文章达到发布�
   expect(filterArticleRows(rows, '', 'all', 'all', 'failed')).toHaveLength(0)
 })
 
+test('后台按发布日期、文件名序号和规范化网址排序，无发布日期草稿排最后', async () => {
+  const files = [
+    { path: '0.folder/plain.md', publish: '2026-09-16' },
+    { path: '1.zulu/2.two.md', publish: '2026-09-16' },
+    { path: '9.alpha/02.two.md', publish: '2026-09-16' },
+    { path: '0.folder/10.ten.md', publish: '2026-09-16' },
+    { path: '99.folder/1.one.md', publish: '2026-09-16' },
+    { path: 'new.md', publish: '2026-09-17' },
+    { path: '0.old.md', publish: '2026-09-15' },
+  ].map(({ path, publish }) => ({ path, source: audioSource.replace('2026-09-16', publish), hash: 'hash' }))
+  const drafts = [{ ...draft, path: '0.missing.md', source: '未完成内容', baseHash: null }]
+  const rows = await buildArticleRows(files, drafts, summary, audio)
+  expect(rows.map(row => row.path)).toEqual([
+    'new.md',
+    '0.folder/10.ten.md',
+    '9.alpha/02.two.md',
+    '1.zulu/2.two.md',
+    '99.folder/1.one.md',
+    '0.folder/plain.md',
+    '0.old.md',
+    '0.missing.md',
+  ])
+  expect(rows.every(row => row.sortAt === row.publish)).toBe(true)
+  expect(rows.at(-1)?.editedAt).toBe(draft.updatedAt)
+})
+
+test('修改更新日期和保存草稿不改变后台顺序，更新和保存时间仍可展示', async () => {
+  const files = [
+    { path: draft.path, source: audioSource, hash: 'hash' },
+    { path: 'new.md', source: audioSource.replace('2026-09-16', '2026-09-17'), hash: 'hash' },
+  ]
+  const before = await buildArticleRows(files, [], summary, audio)
+  const updatedSource = audioSource.replace('publish: 2026-09-16', 'publish: 2026-09-16\nupdate: 2026-09-26\npin: 99')
+  const afterUpdate = await buildArticleRows([{ ...files[0]!, source: updatedSource }, files[1]!], [], summary, audio)
+  const afterSave = await buildArticleRows(files, [{ ...draft, source: `${updatedSource}新正文`, updatedAt: '2026-09-27T12:00:00Z' }], summary, audio)
+  const expected = ['new.md', draft.path]
+  expect(before.map(row => row.path)).toEqual(expected)
+  expect(afterUpdate.map(row => row.path)).toEqual(expected)
+  expect(afterSave.map(row => row.path)).toEqual(expected)
+  expect(afterSave[1]).toMatchObject({ publish: '2026-09-16', sortAt: '2026-09-16', update: '2026-09-26', editedAt: '2026-09-27T12:00:00Z' })
+})
+
 test('当前音频状态不受最近 500 条任务限制，并区分未上线、关闭、旧配置和审核状态', async () => {
   const { repo, db } = audioDatabase()
   try {

@@ -5,6 +5,7 @@ export function usePostCatalog() {
     queryCollection('posts')
       .select(
         'path',
+        'stem',
         'title',
         'description',
         'publish',

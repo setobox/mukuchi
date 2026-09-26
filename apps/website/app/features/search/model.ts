@@ -4,6 +4,7 @@ import { sortPosts } from '../../../shared/content/catalog'
 export const searchSectionsSchema = z.array(z.object({
   id: z.string(),
   path: z.string().startsWith('/posts/').refine(path => !/[?#\\\r\n]/.test(path)),
+  stem: z.string().optional(),
   title: z.string(),
   titles: z.array(z.string()),
   content: z.string(),

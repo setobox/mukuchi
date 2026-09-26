@@ -11,7 +11,7 @@ import { assertRss } from './lib/rss.ts'
 const origin = new URL(process.env.MUKUCHI_SMOKE_URL || 'http://127.0.0.1:8787')
 assert(['http:', 'https:'].includes(origin.protocol))
 const db = new DatabaseSync(fileURLToPath(new URL('../.data/content/contents.sqlite', import.meta.url)), { readOnly: true })
-const posts = db.prepare('SELECT path, title, description, publish, "update", tags, categories FROM _content_posts ORDER BY path').all()
+const posts = db.prepare('SELECT path, stem, title, description, publish, "update", tags, categories FROM _content_posts ORDER BY path').all()
 db.close()
 function terms(value: unknown): string[] {
   assert.equal(typeof value, 'string')

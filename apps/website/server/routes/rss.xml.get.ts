@@ -3,7 +3,7 @@ import { createRssFeed } from '../../shared/rss/feed'
 
 export default defineEventHandler(async (event) => {
   const posts = await queryCollection(event, 'posts')
-    .select('path', 'title', 'description', 'publish', 'update')
+    .select('path', 'stem', 'title', 'description', 'publish', 'update')
     .all()
   const { site } = useAppConfig()
   const config = useRuntimeConfig(event)

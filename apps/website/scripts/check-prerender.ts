@@ -11,7 +11,7 @@ let paths: string[]
 let rssPosts: unknown
 let descriptions: Map<string, { text: string, ai: boolean }>
 try {
-  rssPosts = database.prepare('SELECT path, title, description, publish, "update" FROM _content_posts').all()
+  rssPosts = database.prepare('SELECT path, stem, title, description, publish, "update" FROM _content_posts').all()
   descriptions = new Map(database.prepare('SELECT path, description, summarySource FROM _content_posts').all().map(row => [String(row.path), { text: String(row.description), ai: row.summarySource === 'ai' }]))
   const usePage = database.prepare('SELECT path, description FROM _content_use').get()
   assert.equal(usePage?.path, '/use')

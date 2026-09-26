@@ -1,6 +1,9 @@
+import { readFile } from 'node:fs/promises'
 import { expect, test } from 'vite-plus/test'
 import { visibleCategoryCount } from '../app/features/categories/overflow.ts'
-import { validateFrontmatter } from '../content/validation.ts'
+import { readFrontmatter, validateFrontmatter } from '../content/validation.ts'
+import { articleRoute } from '../shared/admin/model.ts'
+import { archiveYears } from '../shared/content/browse.ts'
 import {
   aggregateTerms,
   filterPosts,
@@ -61,9 +64,9 @@ test('原始 frontmatter 缺少标题时不使用正文标题替代，错误包�
     /empty.md.*frontmatter/,
   )
 })
-test('按置顶权重、发布日期倒序和路径升序排序，不修改输入', () => {
+test('按置顶权重、发布日期倒序和路径升序排序，更新日期不参与且不修改输入', () => {
   const posts = [
-    { path: '/posts/b', pin: 0, publish: '2026-09-13' },
+    { path: '/posts/b', pin: 0, publish: '2026-09-13', update: '2026-09-30' },
     { path: '/posts/a', pin: 0, publish: '2026-09-13' },
     { path: '/posts/new', pin: 0, publish: '2026-09-14' },
     { path: '/posts/pinned', pin: 2, publish: '2020-01-01' },
@@ -76,6 +79,70 @@ test('按置顶权重、发布日期倒序和路径升序排序，不修改输�
   ])
   expect(posts[0]?.path).toBe('/posts/b')
 })
+
+test('Markdown 示例按发布先后倒序展示：Markdown 最早，MDC 其次，扩展功能再后', async () => {
+  const filenames = ['01.markdown.md', '02.mdc-tutorial.md', '03.markdown-extended.md', '04.video.md', '05.collapse.md']
+  const posts = await Promise.all(filenames.map(async (filename) => {
+    const source = await readFile(new URL(`../../../content/posts/1.markdown/${filename}`, import.meta.url), 'utf8')
+    return {
+      ...postSchema.parse(readFrontmatter(source, filename)),
+      stem: `posts/1.markdown/${filename.slice(0, -3)}`,
+      path: articleRoute(`1.markdown/${filename}`),
+    }
+  }))
+  const newestFirst = ['在正文中使用折叠内容', '在文章中嵌入视频', 'Markdown 扩展功能', 'MDC 教程', 'Markdown 教程']
+  expect(sortPosts(posts).map(post => post.title)).toEqual(newestFirst)
+  expect(archiveYears(posts).flatMap(group => group.articles.map(post => post.title))).toEqual(newestFirst)
+})
+
+test('同日按文件名序号数值倒序，有序号优先，目录编号不参与排序', () => {
+  const posts = [
+    { path: '/posts/a-plain', stem: '0.folder/plain' },
+    { path: '/posts/b-missing' },
+    { path: '/posts/ten', stem: '0.folder/10.ten' },
+    { path: '/posts/two', stem: '1.folder/02.two' },
+    { path: '/posts/one', stem: '99.folder/1.one' },
+  ].map(post => ({ ...post, publish: '2026-09-25', pin: 0 }))
+  const before = structuredClone(posts)
+  expect(sortPosts(posts).map(post => post.path)).toEqual([
+    '/posts/ten',
+    '/posts/two',
+    '/posts/one',
+    '/posts/a-plain',
+    '/posts/b-missing',
+  ])
+  expect(posts).toEqual(before)
+})
+
+test('发布日期优先于序号，序号相同时按规范化网址升序', () => {
+  const posts = [
+    { path: '/posts/z/same', stem: '1.z/2.same', publish: '2026-09-25' },
+    { path: '/posts/old', stem: '0.old', publish: '2026-09-24' },
+    { path: '/posts/a/same', stem: '9.a/02.same', publish: '2026-09-25' },
+    { path: '/posts/new', publish: '2026-09-26' },
+  ].map(post => ({ ...post, pin: 0 }))
+  expect(sortPosts(posts).map(post => post.path)).toEqual([
+    '/posts/new',
+    '/posts/a/same',
+    '/posts/z/same',
+    '/posts/old',
+  ])
+})
+test('归档按发布日期和序号分组，置顶和更新日期不改变归档顺序', () => {
+  const posts = [
+    { path: '/posts/a', stem: '0.folder/10.a', publish: '2026-09-25', pin: 9 },
+    { path: '/posts/b', stem: '99.folder/02.b', publish: '2026-09-25', pin: 0 },
+    { path: '/posts/new', publish: '2026-09-26', pin: 0 },
+    { path: '/posts/old', publish: '2025-01-01', update: '2026-09-27', pin: 99 },
+  ]
+  const before = structuredClone(posts)
+  expect(archiveYears(posts).map(group => [group.year, group.articles.map(post => post.path)])).toEqual([
+    ['2026', ['/posts/new', '/posts/a', '/posts/b']],
+    ['2025', ['/posts/old']],
+  ])
+  expect(posts).toEqual(before)
+})
+
 test('多专栏聚合不重复计数，专栏与标签各自筛选', () => {
   const posts = [
     {

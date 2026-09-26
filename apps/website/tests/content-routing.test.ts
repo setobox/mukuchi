@@ -7,6 +7,8 @@ import { DatabaseSync } from 'node:sqlite'
 import { fileURLToPath } from 'node:url'
 import { promisify } from 'node:util'
 import { expect, test } from 'vite-plus/test'
+import { sortPosts } from '../shared/content/catalog.ts'
+import { postSchema } from '../shared/content/schema.ts'
 
 const exec = promisify(execFile)
 
@@ -67,6 +69,19 @@ test.each([true, false])('Content 默认路径在 dev=%s 时生效，元数据�
         '/posts/guide/installation',
         '/posts/markdown/_getting-started',
         '/posts/markdown/markdown',
+        '/posts/notes',
+      ])
+      const posts = db.prepare('SELECT path, stem, title, description, publish, pin FROM _content_posts').all().map(row => ({
+        ...postSchema.parse(row),
+        path: String(row.path),
+        stem: String(row.stem),
+      }))
+      expect(posts.find(post => post.path === '/posts/markdown/markdown')?.stem).toBe('posts/1.markdown/01.markdown')
+      expect(sortPosts(posts).map(post => post.path)).toEqual([
+        '/posts/guide/installation',
+        '/posts/markdown/markdown',
+        '/posts',
+        '/posts/markdown/_getting-started',
         '/posts/notes',
       ])
       expect(db.prepare('SELECT path FROM _content_about').get()?.path).toBe('/about')

@@ -69,6 +69,29 @@ test('RSS 使用北京时间零点，更新摘要不改变永久标识和发布�
   expect(createRssFeed([post], site)).toBe(oldXml)
 })
 
+test('RSS 按发布日期和文件名序号排序，发布检查接受新顺序并拒绝旧路径顺序', () => {
+  const posts = [
+    { ...post, path: '/posts/a-plain', stem: '0.folder/plain', update: '2026-09-25', pin: 99 },
+    { ...post, path: '/posts/ten', stem: '1.folder/10.ten' },
+    { ...post, path: '/posts/two', stem: '2.folder/02.two' },
+    { ...post, path: '/posts/one', stem: '99.folder/1.one' },
+    { ...post, path: '/posts/new', publish: '2024-03-02' },
+  ]
+  const before = structuredClone(posts)
+  const xml = createRssFeed(posts, site)
+  expect(items(xml).map(item => elementText(item, 'link'))).toEqual([
+    '/posts/new',
+    '/posts/ten',
+    '/posts/two',
+    '/posts/one',
+    '/posts/a-plain',
+  ].map(path => `${site.siteUrl}${path}`))
+  expect(() => assertRss(xml, posts, site.siteUrl)).not.toThrow()
+  const oldOrder = createRssFeed(posts.map(post => ({ ...post, stem: undefined })), site)
+  expect(() => assertRss(oldOrder, posts, site.siteUrl)).toThrow('RSS 文章顺序错误')
+  expect(posts).toEqual(before)
+})
+
 test.each([
   ['1970-01-01', 'Thu, 01 Jan 1970 00:00:00 +0800'],
   ['2024-02-29', 'Thu, 29 Feb 2024 00:00:00 +0800'],

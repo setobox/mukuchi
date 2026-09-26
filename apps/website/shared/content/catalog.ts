@@ -1,11 +1,37 @@
 import type { PostSummary } from './schema.ts'
 import type { TaxonomyFilter } from './taxonomy'
 
-export function sortPosts<T extends Pick<PostSummary, 'pin' | 'publish' | 'path'>>(
+type PostOrder = Pick<PostSummary, 'publish' | 'path' | 'stem'>
+
+function postSequence(stem?: string): bigint | undefined {
+  // Content's normalized URL drops numeric prefixes; only the source filename
+  // supplies the article sequence, not any numbered parent directories.
+  const prefix = /^(\d+)\./.exec(stem?.split('/').at(-1) ?? '')
+  return prefix ? BigInt(prefix[1]!) : undefined
+}
+
+export function comparePostOrder(a: PostOrder, b: PostOrder): number {
+  const dateOrder = compare(b.publish, a.publish)
+  if (dateOrder)
+    return dateOrder
+  const left = postSequence(a.stem)
+  const right = postSequence(b.stem)
+  if (left !== right) {
+    if (left === undefined)
+      return 1
+    if (right === undefined)
+      return -1
+    // A larger sequence means published later that day, so it appears first.
+    return left > right ? -1 : 1
+  }
+  return compare(a.path, b.path)
+}
+
+export function sortPosts<T extends Pick<PostSummary, 'pin' | 'publish' | 'path' | 'stem'>>(
   posts: readonly T[],
 ): T[] {
   return [...posts].sort(
-    (a, b) => b.pin - a.pin || compare(b.publish, a.publish) || compare(a.path, b.path),
+    (a, b) => b.pin - a.pin || comparePostOrder(a, b),
   )
 }
 function compare(a: string, b: string) {

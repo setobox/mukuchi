@@ -1,6 +1,8 @@
 import type { Element } from '@xmldom/xmldom'
+import type { RssPost } from '../../shared/rss/feed.ts'
 import assert from 'node:assert/strict'
 import { DOMParser } from '@xmldom/xmldom'
+import { comparePostOrder } from '../../shared/content/catalog.ts'
 import { rssPostSchema } from '../../shared/rss/feed.ts'
 import { pageUrl } from '../../shared/site/url.ts'
 
@@ -38,7 +40,7 @@ export function assertRss(source: string, rows: unknown, siteUrl: string, baseUR
   const items = Array.from(doc.getElementsByTagName('item'))
   assert.equal(items.length, posts.length, 'RSS 数量与内容索引不一致')
   const expected = new Map(posts.map(post => [pageUrl(siteUrl, baseURL, post.path), post]))
-  let previous: { publish: string, path: string } | undefined
+  let previous: RssPost | undefined
   for (const item of items) {
     const link = elementText(item, 'link')
     const post = expected.get(link)
@@ -55,7 +57,7 @@ export function assertRss(source: string, rows: unknown, siteUrl: string, baseUR
     assert.equal(Date.parse(elementText(item, 'pubDate')), Date.parse(`${post.publish}T00:00:00+08:00`))
     assert(item.getElementsByTagNameNS('http://purl.org/dc/elements/1.1/', 'creator').item(0)?.textContent)
     if (previous) {
-      assert(previous.publish > post.publish || (previous.publish === post.publish && previous.path < post.path), 'RSS 文章顺序错误')
+      assert(comparePostOrder(previous, post) < 0, 'RSS 文章顺序错误')
     }
     previous = post
   }

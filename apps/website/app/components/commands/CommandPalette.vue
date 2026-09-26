@@ -38,7 +38,7 @@ const loader = createSearchLoader(async () => queryCollectionSearchSections('pos
   ignoredTags: ['script', 'style'],
   minHeading: 'h1',
   maxHeading: 'h6',
-  extraFields: ['path', 'description', 'tags', 'categories', 'pin', 'publish'],
+  extraFields: ['path', 'stem', 'description', 'tags', 'categories', 'pin', 'publish'],
 }))
 const { status, documents } = loader
 const matches = computed(() => searchArticles(documents.value, mode.value === 'search' ? query.value : ''))

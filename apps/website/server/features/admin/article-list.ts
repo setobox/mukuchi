@@ -9,6 +9,7 @@ import manifest from '#audio-manifest'
 import { articlePublication, articleRoute, articleTitle } from '../../../shared/admin/model'
 import { matchingSummary, summaryConfigHash, summaryRecordSchema } from '../../../shared/ai/model'
 import { audioConfigHash, kindEnabled } from '../../../shared/audio/model'
+import { comparePostOrder } from '../../../shared/content/catalog'
 import { readFrontmatter } from '../../../shared/content/document'
 import { summaryInput } from '../ai/content'
 import { withAi } from '../ai/service'
@@ -57,14 +58,17 @@ export async function buildArticleRows(files: ContentFile[], drafts: Draft[], su
       publish: metadata.publish ?? '',
       update: metadata.update ?? '',
       editedAt,
-      sortAt: editedAt || metadata.update || metadata.publish || '',
+      sortAt: metadata.publish ?? '',
       draft: draft ? { id: draft.id, version: draft.version } : null,
       publication,
       audioSourceChanged,
       ai: { summary: await summary(source), narration: audio(route, 'narration'), podcast: audio(route, 'podcast') },
     }
   }))
-  return rows.sort((left, right) => right.sortAt.localeCompare(left.sortAt) || left.path.localeCompare(right.path))
+  return rows.sort((left, right) => comparePostOrder(
+    { publish: left.publish, stem: left.path.replace(/\.md$/, ''), path: left.route },
+    { publish: right.publish, stem: right.path.replace(/\.md$/, ''), path: right.route },
+  ))
 }
 
 export async function listArticleRows(event: H3Event, files: ContentFile[], drafts: Draft[]) {

@@ -67,6 +67,23 @@ test('超过二十篇返回总数和前二十篇，摘要截取命中附近文�
   expect(match.results[0]?.excerpt.startsWith('…')).toBe(true)
 })
 
+test('搜索相关性优先，同分结果沿用文章日期与序号排序', () => {
+  const documents = prepareSearchDocuments([
+    section({ path: '/posts/a', id: '/posts/a', stem: '0.folder/plain', title: '关键词' }),
+    section({ path: '/posts/ten', id: '/posts/ten', stem: '0.folder/10.ten', title: '关键词' }),
+    section({ path: '/posts/two', id: '/posts/two', stem: '99.folder/02.two', title: '关键词' }),
+    section({ path: '/posts/new', id: '/posts/new', publish: '2026-09-15', title: '关键词' }),
+    section({ path: '/posts/body', id: '/posts/body', publish: '2026-09-16', content: '关键词', pin: 9 }),
+  ])
+  expect(searchArticles(documents, '关键词').results.map(result => result.id)).toEqual([
+    '/posts/new',
+    '/posts/ten',
+    '/posts/two',
+    '/posts/a',
+    '/posts/body',
+  ])
+})
+
 test('高亮输出纯文本分段，合并重叠关键词且不解释 HTML 或正则', () => {
   const text = '<script>alert(1)</script> Nuxt'
   const parts = highlightParts(text, '<script> NUXT ux')

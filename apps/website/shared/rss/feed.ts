@@ -1,10 +1,11 @@
 import { z } from 'zod'
+import { comparePostOrder } from '../content/catalog.ts'
 import { isCalendarDate, postFields } from '../content/schema.ts'
 import { pageUrl } from '../site/url.ts'
 import { rssPath } from './config.ts'
 
 export const rssPostSchema = postFields.pick({ title: true, description: true, publish: true })
-  .extend({ path: z.string().min(1), update: postFields.shape.update.nullish() })
+  .extend({ path: z.string().min(1), stem: z.string().optional(), update: postFields.shape.update.nullish() })
   .superRefine((post, ctx) => {
     for (const field of ['publish', 'update'] as const) {
       if (post[field] && !isCalendarDate(post[field]))
@@ -44,10 +45,7 @@ function rssDate(value: string): string {
 }
 
 export function createRssFeed(input: readonly RssPost[], site: RssSite): string {
-  const posts = rssPostSchema.array().parse(input).sort((a, b) =>
-    a.publish === b.publish
-      ? (a.path < b.path ? -1 : a.path > b.path ? 1 : 0)
-      : a.publish > b.publish ? -1 : 1)
+  const posts = rssPostSchema.array().parse(input).sort(comparePostOrder)
   const url = (path: string) => xmlText(pageUrl(site.siteUrl, site.baseURL, path))
   const latest = posts.map(post => post.update || post.publish).sort().at(-1)
   return [

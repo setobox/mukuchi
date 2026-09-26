@@ -44,7 +44,7 @@ export const postFields = z.object({
 })
 export const aboutFields = z.object({ title: z.string().min(1), description: z.string().min(1) })
 export type PostMeta = z.infer<typeof postFields>
-export type PostSummary = Omit<PostMeta, 'aiSummary' | 'summary' | 'summarySource'> & { path: string }
+export type PostSummary = Omit<PostMeta, 'aiSummary' | 'summary' | 'summarySource'> & { path: string, stem?: string }
 
 export function isCalendarDate(value: string): boolean {
   const [year, month, day] = value.split('-').map(Number)
