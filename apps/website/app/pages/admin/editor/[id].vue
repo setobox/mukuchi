@@ -4,6 +4,7 @@ import type { SummaryState } from '#shared/ai/model'
 import type { RasterCover } from '~/features/cover/model'
 import { parseDocument } from 'yaml'
 import { formatFileSize } from '#shared/admin/media'
+import { updateMetadata } from '#shared/admin/metadata'
 import { articlePublication, publicationLabels, sameArticleSource } from '#shared/admin/model'
 import { splitDocument } from '#shared/content/document'
 import { themeColors } from '#shared/content/schema'
@@ -210,24 +211,17 @@ async function switchMode(next: typeof mode.value) {
   finally { busy.value = false }
 }
 function setMeta(field: string, value: unknown) {
-  if (JSON.stringify(metadata.value[field]) === JSON.stringify(value))
+  return setMetadata({ [field]: value })
+}
+function setMetadata(patch: Record<string, unknown>) {
+  if (Object.entries(patch).every(([field, value]) => JSON.stringify(metadata.value[field]) === JSON.stringify(value)))
     return true
-  const parts = splitDocument(source.value)
   try {
-    const document = parseDocument(parts.yaml || '{}')
-    if (document.errors.length) {
-      error.value = '请先在源码模式修正 YAML 格式'
-      return false
-    }
-    if (value === undefined)
-      document.delete(field)
-    else
-      document.set(field, value)
-    changeSource(`---\n${document.toString()}---\n${parts.body}`)
+    changeSource(updateMetadata(source.value, patch))
     return true
   }
-  catch {
-    error.value = '元数据格式无效，请在源码模式修正'
+  catch (cause) {
+    error.value = cause instanceof Error ? cause.message : '元数据格式无效，请在源码模式修正'
     return false
   }
 }
@@ -473,6 +467,7 @@ onBeforeUnmount(() => {
             <label v-for="field in [{ key: 'title', label: '标题', type: 'text' }, { key: 'description', label: '原简介（必填）', type: 'text' }, { key: 'publish', label: '发布日期', type: 'date' }, { key: 'update', label: '更新日期', type: 'date' }]" :key="field.key" class="block text-xs text-muted">{{ field.label }}<input :type="field.type" :value="metadata[field.key] ?? ''" class="field-control mt-2 w-full px-3" @change="setMeta(field.key, ($event.target as HTMLInputElement).value || undefined)"></label><label class="block text-xs text-muted">标签<input :value="Array.isArray(metadata.tags) ? metadata.tags.join(', ') : ''" class="field-control mt-2 w-full px-3" @change="setMeta('tags', ($event.target as HTMLInputElement).value.split(/[,，]/).map(v => v.trim()).filter(Boolean))"></label><label class="block text-xs text-muted">专栏<input :value="Array.isArray(metadata.categories) ? metadata.categories.join(', ') : ''" class="field-control mt-2 w-full px-3" @change="setMeta('categories', ($event.target as HTMLInputElement).value.split(/[,，]/).map(v => v.trim()).filter(Boolean))"></label><label class="block text-xs text-muted">置顶权重<input type="number" min="0" :value="metadata.pin ?? 0" class="field-control mt-2 w-full px-3" @change="setMeta('pin', Number(($event.target as HTMLInputElement).value))"></label><BaseSwitch :model-value="!!metadata.wip" label="显示施工提醒" @update:model-value="setMeta('wip', $event)" />
           </div>
           <BaseSelect :model-value="String(metadata.theme ?? '#a369ff')" label="主题色" :options="themeColors.map(color => ({ value: color, label: color }))" class="mt-4" @update:model-value="setMeta('theme', $event)" />
+          <AdminSeriesFields :metadata="metadata" class="mt-5 border-t border-line pt-5" @change="setMetadata" />
         </section>
         <section class="border border-line rounded-panel p-5">
           <h2 class="mb-4 text-heading font-semibold">

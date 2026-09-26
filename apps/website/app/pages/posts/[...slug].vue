@@ -132,6 +132,7 @@ useActionButton({
         <ArticleHeader :post="post" />
         <ArticleSummary v-if="post.summarySource === 'ai'" :text="post.description" />
         <ClientOnly><ArticleAudio :path="post.path" /></ClientOnly>
+        <ArticleSeries v-if="post.series" :name="post.series" :current-path="post.path" />
         <ArticleContent :value="post" />
         <ArticleLicense
           class="mt-10"

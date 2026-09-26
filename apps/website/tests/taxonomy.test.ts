@@ -11,6 +11,7 @@ import PostListItem from '../app/components/posts/PostListItem.vue'
 import PostMeta from '../app/components/posts/PostMeta.vue'
 import PostTags from '../app/components/posts/PostTags.vue'
 import TagFilter from '../app/components/posts/TagFilter.vue'
+import SiteSidebar from '../app/components/site/SiteSidebar.vue'
 import { usePageContext } from '../app/composables/usePageContext'
 import { useTaxonomyPage } from '../app/composables/useTaxonomyPage'
 import { validateFrontmatter } from '../content/validation'
@@ -55,6 +56,8 @@ async function render(component: Component, props: Record<string, unknown>) {
     ArticleViews: Container,
     SiteColumns: Container,
     SiteSidebar: Container,
+    SiteProfileCard: Container,
+    SiteStats: Container,
     TagFilter,
     PostMeta,
     PostTags,
@@ -125,11 +128,16 @@ test('未知专栏与标签返回 404，内容查询失败优先返回 500', asy
   await expect(useTaxonomyPage('tag')).rejects.toMatchObject({ statusCode: 500, message: '文章加载失败' })
 })
 
-test('标签入口始终进入全站标签路径，全部标签回到文章列表', async () => {
+test('标签入口始终进入全站标签路径，查看全部在末尾进入标签总览且不显示数量', async () => {
   const html = await render(TagFilter, { tags: [{ name: 'C#', count: 1 }], selected: 'C#' })
-  expect(html).toContain('href="/posts"')
+  expect(html).toContain('href="/tags"')
   expect(html).toContain('href="/tags/C%23"')
   expect(html).toContain('aria-current="true"')
+  expect(html.replace(/<[^>]*>/g, '')).not.toContain('1')
+  const document = new DOMParser().parseFromString(html, 'text/html')
+  const links = [...document.getElementsByTagName('a')]
+  expect(links.map(link => link.getAttribute('href'))).toEqual(['/tags/C%23', '/tags'])
+  expect(links.at(-1)!.textContent?.trim()).toBe('查看全部')
   const tags = await render(PostTags, { tags: ['C++'] })
   expect(tags).toContain('href="/tags/C%2B%2B"')
   const meta = await render(PostMeta, { post: posts[0] })
@@ -147,11 +155,39 @@ test('井号仅作为显示前缀，标签原名和路径编码保持不变', as
       expect(html).toContain(`href="${taxonomyPath('tag', name)}"`)
     }
   }
-  expect(filter.replace(/<[^>]*>/g, '')).not.toContain('#全部标签')
+  expect(filter.replace(/<[^>]*>/g, '')).not.toContain('#查看全部')
   expect(filter).toMatch(/<a\s[^>]*href="\/tags\/C%23"[^>]*aria-current="true"/)
   const cleared = await render(TagFilter, { tags: [{ name: 'C#', count: 1 }] })
-  expect(cleared).toMatch(/<a\s[^>]*href="\/posts"[^>]*aria-current="true"/)
+  expect(cleared).toContain('href="/tags"')
+  expect(cleared).not.toContain('aria-current')
   expect(await render(PostTags, { tags: [] })).not.toContain('<ul')
+})
+
+test('侧栏只显示数量最多的十个标签，同数量按名称稳定排序，查看全部作为最后一个标签入口', async () => {
+  const tags = [
+    { name: 'C#', count: 999 },
+    { name: '较少', count: 1 },
+    ...Array.from({ length: 10 }, (_, index) => ({ name: `Tag${index}`, count: 20 - index })),
+    { name: 'A 同数量', count: 11 },
+  ].reverse()
+  const before = structuredClone(tags)
+  const html = await render(SiteSidebar, { tags, selectedTag: 'C#' })
+  const document = new DOMParser().parseFromString(html, 'text/html')
+  const links = [...document.getElementsByTagName('a')]
+  const expected = ['C#', ...Array.from({ length: 9 }, (_, index) => `Tag${index}`)]
+  expect(links.map(link => link.getAttribute('href'))).toEqual([...expected.map(name => taxonomyPath('tag', name)), '/tags'])
+  expect(links[0]!.getAttribute('aria-current')).toBe('true')
+  expect(links.at(-1)!.textContent?.trim()).toBe('查看全部')
+  expect(links.every(link => link.getAttribute('class')?.includes('chip-link'))).toBe(true)
+  expect(document.getElementsByTagName('button')).toHaveLength(0)
+  expect(html).not.toContain('999')
+  expect(html).not.toContain('全部标签')
+  expect(tags).toEqual(before)
+  const tied = new DOMParser().parseFromString(await render(SiteSidebar, { tags: [{ name: 'B', count: 2 }, { name: 'A', count: 2 }] }), 'text/html')
+  expect([...tied.getElementsByTagName('a')].map(link => link.textContent?.trim())).toEqual(['#A', '#B', '查看全部'])
+  const empty = await render(SiteSidebar, { tags: [] })
+  expect(empty).toContain('暂无标签')
+  expect(empty).not.toContain('href="/tags"')
 })
 
 test.each([PostListItem, PostCard])('文章两种视图均先显示标题，再显示元信息、摘要和标签', async (component) => {
@@ -204,14 +240,14 @@ test('动态标题与导航上下文随路径变化，标签使用独立导航�
   const route = ref({ path: '/tags/C%23', params: { name: 'C#' }, meta: {
     section: 'tags',
     pageKind: 'index',
-    parentPath: '/posts',
+    parentPath: '/tags',
     pageTitle: (current: { params: { name: string } }) => taxonomyTitle('tag', current.params.name),
   } })
   vi.stubGlobal('computed', computed)
   vi.stubGlobal('useRoute', () => route.value)
   vi.stubGlobal('useState', () => ref(null))
   const page = usePageContext()
-  expect(page.value).toMatchObject({ title: '标签：C#', section: 'tags', parentPath: '/posts' })
+  expect(page.value).toMatchObject({ title: '标签：C#', section: 'tags', parentPath: '/tags' })
   route.value.params.name = 'Vue'
   route.value.path = '/tags/Vue'
   expect(page.value.title).toBe('标签：Vue')

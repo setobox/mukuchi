@@ -219,7 +219,10 @@ test('真实配置只开放已完成页面，目录卡片与命令使用相同�
   expect(items.map(item => item.label)).toEqual(['首页', '分类', '我的', '关于'])
   const my = items.find(item => item.id === 'my')!
   expect(my.children.map(item => item.to)).toEqual(['/tools'])
-  expect(navigationDestinations(config.site.navigation).map(item => item.to)).toEqual(['/posts', '/categories', '/my', '/tools', '/about'])
+  expect(navigationDestinations(config.site.navigation).map(item => item.to)).toEqual(['/posts', '/categories', '/tags', '/archive', '/series', '/my', '/tools', '/about'])
+  expect(resolveNavigation(config.site.navigation, context('series', '/series'))[1]).toMatchObject({ label: '系列', active: true, current: 'page' })
+  expect(resolveNavigation(config.site.navigation, context('archive', '/archive'))[1]).toMatchObject({ label: '归档', active: true, current: 'page' })
+  expect(resolveNavigation(config.site.navigation, context('tags', '/tags/C%23'))[1]).toMatchObject({ label: '标签', active: true, current: 'location' })
   const app = createSSRApp(SiteDirectory, { items: my.children })
   app.component('NuxtLink', NuxtLink)
   const html = await renderToString(app)

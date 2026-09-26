@@ -2,6 +2,8 @@ import assert from 'node:assert/strict'
 import { access, readFile } from 'node:fs/promises'
 import { DatabaseSync } from 'node:sqlite'
 import { fileURLToPath } from 'node:url'
+import { DOMParser } from '@xmldom/xmldom'
+import { collectSeries } from '../shared/content/series.ts'
 import { pageUrl } from '../shared/site/url.ts'
 import { assertRss } from './lib/rss.ts'
 
@@ -10,7 +12,9 @@ const database = new DatabaseSync(fileURLToPath(new URL('.data/content/contents.
 let paths: string[]
 let rssPosts: unknown
 let descriptions: Map<string, { text: string, ai: boolean }>
+let series: ReturnType<typeof collectSeries>
 try {
+  series = collectSeries(database.prepare('SELECT path, title, publish, series, seriesOrder FROM _content_posts').all().map(row => ({ path: String(row.path), title: String(row.title), publish: String(row.publish), series: typeof row.series === 'string' ? row.series : undefined, seriesOrder: typeof row.seriesOrder === 'number' ? row.seriesOrder : undefined })))
   rssPosts = database.prepare('SELECT path, stem, title, description, publish, "update" FROM _content_posts').all()
   descriptions = new Map(database.prepare('SELECT path, description, summarySource FROM _content_posts').all().map(row => [String(row.path), { text: String(row.description), ai: row.summarySource === 'ai' }]))
   const usePage = database.prepare('SELECT path, description FROM _content_use').get()
@@ -46,6 +50,20 @@ for (const path of ['/about', '/use', ...paths]) {
     assert(!html.includes('aria-label="文章目录"'), 'Use 不显示页内目录')
   }
   const description = descriptions.get(path)
+  if (paths.includes(path)) {
+    const group = series.find(group => group.posts.some(post => post.path === path))
+    const document = new DOMParser().parseFromString(html, 'text/html')
+    const section = [...document.getElementsByTagName('section')].find(section => section.getAttribute('aria-label') === '同系列文章')
+    if (group) {
+      assert(section, `${path} 预渲染保留系列目录`)
+      assert.deepEqual([...section.getElementsByTagName('a')].map(link => link.getAttribute('href')), group.posts.map(post => post.path))
+      assert.deepEqual([...section.getElementsByTagName('a')].filter(link => link.getAttribute('aria-current') === 'page').map(link => link.getAttribute('href')), [path])
+      assert.equal(section.getElementsByTagName('button')[0]?.getAttribute('aria-expanded'), 'false')
+    }
+    else {
+      assert(!section, `${path} 未设置系列时保持旧行为`)
+    }
+  }
   if (description) {
     const escaped = description.text.replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', '\'': '&#39;' })[char]!)
     // Empty post descriptions are valid; Unhead omits empty meta tags.
@@ -57,7 +75,7 @@ for (const path of ['/about', '/use', ...paths]) {
   }
   await access(new URL('_payload.json', directory))
 }
-for (const path of ['posts', 'categories', 'tags', 'tools', 'my']) {
+for (const path of ['posts', 'categories', 'tags', 'archive', 'series', 'tools', 'my']) {
   await assert.rejects(access(new URL(`${path}/index.html`, publicRoot)), `列表页不能预渲染：/${path}`)
 }
 console.log(`预渲染验收通过：${paths.length} 篇文章、关于页、Use 页与 RSS；列表保持 SSR。`)

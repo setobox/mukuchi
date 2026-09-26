@@ -14,6 +14,7 @@ import { editorSegments, imageReferences, validateArticle } from '../server/feat
 import { identifyImage } from '../server/features/media/images'
 import { executePublication } from '../server/features/publishing/engine'
 import { createGithub } from '../server/features/publishing/github'
+import { updateMetadata } from '../shared/admin/metadata'
 import { articlePublication, articleRoute, filePathSchema, sha256 } from '../shared/admin/model'
 import { splitDocument } from '../shared/content/document'
 
@@ -85,6 +86,35 @@ test('草稿保存允许未完成内容，旧版本不能覆盖新版本，重�
   await expect(repo.remove(draft.id, 1)).rejects.toMatchObject({ statusCode: 409 })
   await repo.remove(draft.id, 2)
   await expect(repo.draft(draft.id)).rejects.toMatchObject({ statusCode: 404 })
+})
+
+test('系列元数据经过编辑、草稿保存重读、发布校验和本地发布后仍保留 0；移除系列不影响正文', async () => {
+  const { repo, options } = fixture()
+  const draft = await repo.create('series.md', source, null)
+  const edited = updateMetadata(source, { series: 'Vue / C#', seriesOrder: 0 })
+  await repo.save(draft.id, draft.version, edited)
+  const saved = await repo.draft(draft.id)
+  await expect(validateArticle(saved.source, saved.path)).resolves.toMatchObject({ series: 'Vue / C#', seriesOrder: 0 })
+  const context = {
+    local: true,
+    withRepo: async <T>(action: (repository: typeof repo) => Promise<T>) => action(repo),
+    storage: openStorage(options),
+    github: createGithub({ repository: 'test/blog', branch: 'main', token: 'unused' }),
+    publishLocal: (input: Parameters<typeof publishLocal>[1]) => publishLocal(options, input),
+    cleanup: async () => {},
+  }
+  await executePublication(context, { draftId: saved.id, version: saved.version, operationId: crypto.randomUUID(), action: 'publish' })
+  const published = await readContent(options, saved.path)
+  expect(published?.source).toBe(edited)
+  expect(splitDocument(published!.source).body).toBe(splitDocument(source).body)
+  const cleared = updateMetadata(saved.source, { series: undefined, seriesOrder: undefined })
+  await repo.save(saved.id, saved.version, cleared)
+  const removed = await repo.draft(saved.id)
+  expect(await validateArticle(removed.source, removed.path)).not.toHaveProperty('series')
+  await repo.save(removed.id, removed.version, updateMetadata(cleared, { seriesOrder: 1 }))
+  const invalid = await repo.draft(removed.id)
+  await expect(executePublication(context, { draftId: invalid.id, version: invalid.version, operationId: crypto.randomUUID(), action: 'publish' })).rejects.toMatchObject({ statusCode: 422 })
+  expect((await readContent(options, saved.path))?.source).toBe(edited)
 })
 test('生产、代理、局域网和伪造 Host 无法使用本地入口', () => {
   expect(localRequestAllowed(true, '::1', 'localhost:3000', false)).toBe(true)

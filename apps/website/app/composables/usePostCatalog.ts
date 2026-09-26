@@ -1,4 +1,5 @@
 import { aggregateTerms, sortPosts } from '~~/shared/content/catalog'
+import { collectSeries } from '~~/shared/content/series'
 
 export function usePostCatalog() {
   const query = useAsyncData('posts:catalog', () =>
@@ -13,6 +14,8 @@ export function usePostCatalog() {
         'cover',
         'tags',
         'categories',
+        'series',
+        'seriesOrder',
         'pin',
         'wip',
         'theme',
@@ -27,5 +30,6 @@ export function usePostCatalog() {
     refresh: query.refresh,
     tags: computed(() => aggregateTerms(query.data.value ?? [], 'tags')),
     categories: computed(() => aggregateTerms(query.data.value ?? [], 'categories')),
+    series: computed(() => collectSeries(query.data.value ?? [])),
   }
 }

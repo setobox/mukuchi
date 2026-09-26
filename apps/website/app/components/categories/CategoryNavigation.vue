@@ -18,7 +18,7 @@ const selectedOverflow = computed(() =>
   overflow.value.some(category => category.name === props.selected),
 )
 function location(category = '') {
-  return category ? taxonomyPath('category', category) : '/categories'
+  return category ? taxonomyPath('category', category) : '/posts'
 }
 function measure() {
   if (!container.value || !measurement.value)
@@ -95,8 +95,7 @@ onClickOutside(container, () => close())
         v-for="category in categories"
         :key="category.name"
         class="min-h-11 inline-flex flex-none items-center justify-center gap-2 whitespace-nowrap rounded-button px-3.5 py-2 font-medium"
-      >{{ category.name
-      }}<span class="shrink-0 text-sm font-mono">{{ category.count }}</span></span>
+      >{{ category.name }}</span>
     </div>
     <div class="flex gap-2">
       <NuxtLink
@@ -123,7 +122,7 @@ onClickOutside(container, () => close())
         "
         :aria-current="selected === category.name ? 'page' : undefined"
       >
-        {{ category.name }}<span class="shrink-0 text-sm font-mono">{{ category.count }}</span>
+        {{ category.name }}
       </NuxtLink>
       <button
         v-if="overflow.length"
@@ -175,7 +174,7 @@ onClickOutside(container, () => close())
           :aria-current="selected === category.name ? 'page' : undefined"
           @click="close()"
         >
-          <span class="min-w-0 break-words">{{ category.name }}</span><span class="shrink-0 text-sm font-mono">{{ category.count }}</span>
+          <span class="min-w-0 break-words">{{ category.name }}</span>
         </NuxtLink>
       </div>
     </Transition>

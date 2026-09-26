@@ -47,11 +47,15 @@ let assetId = ''
 try {
   await call(`/api/admin/drafts/${draft.id}`, { method: 'PUT', body: { source: '', version }, headers: { 'x-csrf-token': 'wrong' }, expected: 403 })
   await call(`/api/admin/drafts/${draft.id}`, { method: 'PUT', body: { source: '', version }, headers: { origin: 'https://untrusted.example' }, expected: 403 })
-  const source = '---\ntitle: 验收草稿\ndescription: 私有测试\npublish: \'2026-09-16\'\n---\n\n## 正文\n\n私有内容。\n\n::github{repo="nuxt/content"}\n::\n'
+  const source = '---\ntitle: 验收草稿\ndescription: 私有测试\npublish: \'2026-09-16\'\nseries: "Vue / C# 100%"\nseriesOrder: 0\n---\n\n## 正文\n\n私有内容。\n\n::github{repo="nuxt/content"}\n::\n'
   const saved = await (await call(`/api/admin/drafts/${draft.id}`, { method: 'PUT', body: { source, version } })).json() as { version: number }
   await call(`/api/admin/drafts/${draft.id}`, { method: 'PUT', body: { source: '旧版本', version }, expected: 409 })
   version = saved.version
-  await call(`/api/admin/drafts/${draft.id}/validate`, { method: 'POST' })
+  const validated = await (await call(`/api/admin/drafts/${draft.id}/validate`, { method: 'POST' })).json() as { metadata: { series: string, seriesOrder: number } }
+  assert.equal(validated.metadata.series, 'Vue / C# 100%')
+  assert.equal(validated.metadata.seriesOrder, 0)
+  const reread = await (await call(`/api/admin/drafts/${draft.id}`)).json() as { draft: { source: string } }
+  assert.equal(reread.draft.source, source, '系列元数据保存后完整重读')
   const segments = await (await call(`/api/admin/drafts/${draft.id}/segments`, { method: 'POST', body: { source } })).json() as { segments: { raw: boolean, source: string }[] }
   assert.ok(segments.segments.some(part => part.raw && part.source.includes('::github')))
   const bytes = Uint8Array.from(atob('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aXt8AAAAASUVORK5CYII='), char => char.charCodeAt(0))
@@ -69,6 +73,11 @@ try {
   assert.ok(JSON.stringify(preview).includes('shiki'))
   const afterPreview = await (await call(`/api/admin/drafts/${draft.id}`)).json() as { draft: unknown }
   assert.deepEqual(afterPreview.draft, beforePreview.draft, '预览不能保存源码、递增版本或修改时间')
+  const clearedSource = source.replace('series: "Vue / C# 100%"\nseriesOrder: 0\n', '')
+  const cleared = await (await call(`/api/admin/drafts/${draft.id}`, { method: 'PUT', body: { source: clearedSource, version } })).json() as { version: number }
+  version = cleared.version
+  const removed = await (await call(`/api/admin/drafts/${draft.id}/validate`, { method: 'POST' })).json() as { metadata: Record<string, unknown> }
+  assert(!('series' in removed.metadata) && !('seriesOrder' in removed.metadata), '清空后不残留系列字段')
   await call(`/api/admin/assets/${assetId}`, { method: 'DELETE' })
   assetId = ''
 }

@@ -8,10 +8,9 @@ const navigation: NavigationItem[] = [
     defaultChildId: 'categories',
     children: [
       { kind: 'link', id: 'categories', label: '分类', to: '/categories', icon: 'layers', sections: ['categories'] },
-      // Enable each index when its implementation has been accepted.
-      { kind: 'link', id: 'tags', label: '标签', to: '/tags', icon: 'tags', sections: ['tags'], enabled: false },
-      { kind: 'link', id: 'archive', label: '归档', to: '/archive', icon: 'clock', sections: ['archive'], enabled: false },
-      { kind: 'link', id: 'series', label: '系列', to: '/series', icon: 'list', sections: ['series'], enabled: false },
+      { kind: 'link', id: 'tags', label: '标签', to: '/tags', icon: 'tags', sections: ['tags'] },
+      { kind: 'link', id: 'archive', label: '归档', to: '/archive', icon: 'clock', sections: ['archive'] },
+      { kind: 'link', id: 'series', label: '系列', to: '/series', icon: 'list', sections: ['series'] },
     ],
   },
   {

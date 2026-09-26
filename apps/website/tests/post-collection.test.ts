@@ -200,7 +200,7 @@ test('标签与专栏在筛选后计算页数，切换路径回首页，查询�
   expect(state.host.querySelector('a[rel="next"]')?.getAttribute('href')).toBe('/categories/%E5%86%85%E5%AE%B9%E7%AE%A1%E7%90%86?tag=old&page=2')
 })
 
-test.each(['/categories', '/tags/C%23', '/tags/%2523', '/tags/C%2B%2B', '/categories/%E5%BC%80%E5%8F%91'])('分页保留路径编码：%s', async (path) => {
+test.each(['/posts', '/tags/C%23', '/tags/%2523', '/tags/C%2B%2B', '/categories/%E5%BC%80%E5%8F%91'])('分页保留路径编码：%s', async (path) => {
   const state = await setup({ url: `${path}?page=2` })
   await state.mount()
   expect(state.host.querySelector('a[rel="next"]')?.getAttribute('href')).toBe(`${path}?page=3`)

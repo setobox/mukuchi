@@ -1,11 +1,15 @@
 <script setup lang="ts">
-withDefaults(
+import { computed } from 'vue'
+import { rankTerms } from '#shared/content/browse'
+
+const props = withDefaults(
   defineProps<{
     tags?: { name: string, count: number }[]
     selectedTag?: string
   }>(),
   { selectedTag: '' },
 )
+const popularTags = computed(() => rankTerms(props.tags ?? []).slice(0, 10))
 </script>
 
 <template>
@@ -19,7 +23,7 @@ withDefaults(
       </h2>
       <TagFilter
         v-if="tags.length"
-        :tags="tags"
+        :tags="popularTags"
         :selected="selectedTag"
         class="mt-3"
       />

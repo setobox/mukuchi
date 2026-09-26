@@ -23,6 +23,18 @@ export const themeColors = [
 
 // Keep the collection shape JSON-schema compatible; calendar and cross-field
 // checks run against the original frontmatter at the import boundary.
+const seriesFields = z.object({
+  series: z.string().min(1).optional(),
+  seriesOrder: z.number().int('系列顺序必须为整数').nonnegative('系列顺序不能小于 0').optional(),
+})
+function validateSeries(data: z.infer<typeof seriesFields>, ctx: z.RefinementCtx) {
+  if (data.series !== undefined && (!data.series.trim() || /\p{Cc}/u.test(data.series) || !data.series.isWellFormed()))
+    ctx.addIssue({ code: 'custom', path: ['series'], message: '系列名称不能为空或包含控制字符、无效 Unicode' })
+  if (data.seriesOrder !== undefined && !data.series?.trim())
+    ctx.addIssue({ code: 'custom', path: ['seriesOrder'], message: '请先填写所属系列' })
+}
+export const seriesSchema = seriesFields.superRefine(validateSeries)
+
 export const postFields = z.object({
   title: z.string().min(1),
   description: z.string(),
@@ -38,6 +50,7 @@ export const postFields = z.object({
   cover: z.string().optional(),
   tags: z.array(z.string().min(1)).default([]),
   categories: z.array(z.string().min(1)).default([]),
+  ...seriesFields.shape,
   pin: z.number().int().nonnegative().default(0),
   wip: z.boolean().default(false),
   theme: z.enum(themeColors).default('#a369ff'),
@@ -55,6 +68,7 @@ export function isCalendarDate(value: string): boolean {
 }
 
 export const postSchema = postFields
+  .superRefine(validateSeries)
   .superRefine((data, ctx) => {
     if (!data.title.trim())
       ctx.addIssue({ code: 'custom', path: ['title'], message: '不能为空' })
@@ -89,4 +103,5 @@ export const postSchema = postFields
     description: data.description.trim(),
     tags: [...new Set(data.tags.map(tag => tag.trim()))],
     categories: [...new Set(data.categories.map(category => category.trim()))],
+    ...(data.series === undefined ? {} : { series: data.series.trim() }),
   }))

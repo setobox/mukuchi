@@ -5,7 +5,7 @@ definePageMeta({
   section: 'tags',
   pageKind: 'index',
   pageTitle: route => taxonomyTitle('tag', route.params.name),
-  parentPath: '/posts',
+  parentPath: '/tags',
   key: route => route.path,
 })
 const { filter, categories } = await useTaxonomyPage('tag')
