@@ -24,14 +24,14 @@ const secret = btoa('a'.repeat(32))
 const url = 'https://audio.bytespeech.com/test.mp3'
 const step: AudioSteps = { do: async (_name, _options, callback) => callback(), sleep: async () => {} }
 
-test('MDC 正文保留标题、链接文字、行内代码与表格；播客保留代码且不使用摘要', async () => {
+test('音频保留标题、链接文字与表格，两种类型共用适合朗读的全文且不使用摘要', async () => {
   const source = `${audioSource}\n## 标题\n\n[链接文字](https://example.com) 和 \`inline()\`\n\n\`\`\`ts\nconst useful = 42\n\`\`\`\n\n| 属性 | 值 |\n| --- | --- |\n| 名称 | 示例 |\n\n::note\n组件内的正文\n::\n`
   const article = await audioArticle('1.a.md', source)
   expect(article.path).toBe('/posts/a')
-  expect(article.narration).toContain('链接文字 和 inline()')
-  expect(article.narration).toContain('代码示例请参阅原文')
+  expect(article.narration).toContain('链接文字 和 这段代码')
+  expect(article.narration).toContain('这里作者提供了一段代码示例')
   expect(article.narration).not.toContain('const useful')
-  expect(article.podcast).toContain('const useful = 42')
+  expect(article.podcast).toBe(article.narration)
   expect(article.narration).toContain('名称；示例；')
   expect(article.narration).toContain('组件内的正文')
   expect(article.narration).not.toContain('原简介')
@@ -133,9 +133,9 @@ test('超长正文明确失败，不调用供应商也不截断', async () => {
   expect(job.message).toContain('未提交供应商')
 })
 
-async function jobFixture(kind: 'narration' | 'podcast' = 'narration') {
+async function jobFixture(kind: 'narration' | 'podcast' = 'narration', source = audioSource) {
   const repo = fixture()
-  const current = await manifest()
+  const current = await manifest(source)
   await repo.saveSettings(audioSettings, await encryptApiKey('secret-value', secret), 0)
   await repo.synchronize(current, true)
   const job = (await repo.enqueue(current.articles[0]!, kind, audioSettings))!
@@ -143,6 +143,28 @@ async function jobFixture(kind: 'narration' | 'podcast' = 'narration') {
   const storage = audioBucket()
   return { repo, current, job, ...storage, options: { repo, bucket: storage.bucket, step, id: job.id, attempt: 0, secret, manifest: current } }
 }
+
+test.each(['narration', 'podcast'] as const)('%s 任务存储并提交过滤后的文本，额度使用实际输入长度', async (kind) => {
+  const source = `${audioSource}\n执行 \`pnpm run build\`，修改 src/main.ts，参考 https://example.com。\n\n::youtube{id="video-id"}\n点击播放\n::\n`
+  const { repo, job, options } = await jobFixture(kind, source)
+  expect(job.input).toContain('执行 这段代码，修改 这个文件，参考 这个链接。')
+  expect(job.input).toContain('这里作者附上了一段视频。')
+  expect(job.input).not.toMatch(/pnpm|src\/main|example\.com|video-id|点击播放/)
+  const submit = vi.fn(async () => {})
+  const podcast = vi.fn(async (input: Parameters<NonNullable<Parameters<typeof runAudioJob>[0]['podcast']>>[0]) => {
+    await input.generated(url)
+    return url
+  })
+  await runAudioJob({ ...options, narration: () => ({ submit, query: async () => url }), podcast, request: vi.fn(async () => mp3()) })
+  if (kind === 'narration') {
+    expect(submit).toHaveBeenCalledWith(job.input, expect.any(String))
+    expect((await repo.usage()).narrationCharacters).toBe(Array.from(job.input).length)
+  }
+  else {
+    expect(podcast).toHaveBeenCalledWith(expect.objectContaining({ text: job.input }))
+    expect((await repo.usage()).podcasts).toBe(1)
+  }
+})
 
 test('提交超时只查询原任务，成功朗读入 R2 后自动公开；重放不再次提交', async () => {
   const { repo, job, options, objects } = await jobFixture()
