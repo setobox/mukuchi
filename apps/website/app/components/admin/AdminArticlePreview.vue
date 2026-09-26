@@ -2,6 +2,7 @@
 import type { ArticlePreview } from '#shared/admin/preview'
 import { computed, onBeforeUnmount, ref, shallowRef, useTemplateRef, watch } from 'vue'
 import { accentVariables, normalizeAccent } from '#shared/theme/palette'
+import { revealContent } from '~/features/collapse/reveal'
 import { findHeading } from '~/features/toc/useScrollspy'
 
 const props = defineProps<{ draftId: string, source: string, summaryText?: string }>()
@@ -45,7 +46,7 @@ watch(open, (value) => {
   }
 })
 onBeforeUnmount(() => sequence++)
-function followLink(event: MouseEvent) {
+async function followLink(event: MouseEvent) {
   const anchor = event.target instanceof Element ? event.target.closest('a') : null
   if (!anchor)
     return
@@ -60,6 +61,8 @@ function followLink(event: MouseEvent) {
     catch { return }
     const heading = findHeading(id, viewport.value)
     if (heading && viewport.value) {
+      if (!await revealContent(heading) || !open.value || !viewport.value?.contains(heading))
+        return
       viewport.value.scrollTo({ top: heading.getBoundingClientRect().top - viewport.value.getBoundingClientRect().top + viewport.value.scrollTop - 24, behavior: 'instant' })
       heading.setAttribute('tabindex', '-1')
       heading.focus({ preventScroll: true })

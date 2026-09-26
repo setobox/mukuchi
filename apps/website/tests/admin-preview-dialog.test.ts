@@ -4,6 +4,7 @@ import { afterEach, expect, test, vi } from 'vite-plus/test'
 import { createApp, defineComponent, h, nextTick, ref } from 'vue'
 import AdminArticlePreview from '../app/components/admin/AdminArticlePreview.vue'
 import BaseButton from '../app/components/base/BaseButton.vue'
+import BaseCollapsible from '../app/components/base/BaseCollapsible.vue'
 
 afterEach(() => vi.unstubAllGlobals())
 const response = (title: string) => ({ data: { title, theme: '#ff7d36', summarySource: 'description' }, body: {}, toc: { links: [] } }) as ArticlePreview
@@ -64,5 +65,49 @@ test('打开预览只请求当前未保存源码，关闭后忽略过期响应�
   finally {
     app.unmount()
     host.remove()
+  }
+})
+
+test('预览正文锚点先展开内部折叠，只滚动预览容器并聚焦其中的标题', async () => {
+  vi.stubGlobal('useAdminSession', () => ({ request: async () => response('折叠预览') }))
+  vi.stubGlobal('useColorMode', () => ({ value: 'dark' }))
+  const open = ref(false)
+  const host = document.createElement('div')
+  const outside = document.createElement('h2')
+  outside.id = '预览目标'
+  document.body.append(outside, host)
+  const app = createApp({ render: () => h(AdminArticlePreview, { 'modelValue': open.value, 'onUpdate:modelValue': value => open.value = value, 'draftId': 'draft', 'source': '测试正文' }) })
+  const passthrough = defineComponent({ setup: (_, { slots }) => () => h('div', slots.default?.()) })
+  app.component('AcrylicDialog', passthrough)
+  app.component('ArticleBody', passthrough)
+  app.component('BaseButton', BaseButton)
+  for (const name of ['AdminSkeleton', 'ArticleHeader', 'ArticleSummary', 'ContentToc'])
+    app.component(name, defineComponent({ setup: () => () => h('div') }))
+  app.component('ContentRenderer', defineComponent({ setup: () => () => h('div', [
+    h('a', { href: `#${encodeURIComponent('预览目标')}` }, '定位'),
+    h(BaseCollapsible, {}, {
+      trigger: () => h('button', '说明'),
+      default: () => h('h2', { id: '预览目标' }, '预览内标题'),
+    }),
+  ]) }))
+  app.mount(host)
+  try {
+    open.value = true
+    await settle()
+    const viewport = host.querySelector<HTMLElement>('.preview-scroll')!
+    const heading = host.querySelector('h2')!
+    const scroll = vi.spyOn(viewport, 'scrollTo').mockImplementation(() => {
+      expect(heading.closest('[inert]')).toBeNull()
+    })
+    host.querySelector('a')!.click()
+    for (let index = 0; index < 8; index++) await nextTick()
+    expect(scroll).toHaveBeenCalledOnce()
+    expect(document.activeElement).toBe(heading)
+    expect(document.activeElement).not.toBe(outside)
+  }
+  finally {
+    app.unmount()
+    host.remove()
+    outside.remove()
   }
 })

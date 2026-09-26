@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { Command } from '~/features/commands/controller'
+import { findHashTarget, revealContent } from '~/features/collapse/reveal'
 import { acceptsPaletteShortcut, groupCommands, nextSelection, paletteInputAction } from '~/features/commands/controller'
 import { navigateFromPalette } from '~/features/commands/navigation'
 import { createSearchLoader } from '~/features/search/loader'
@@ -125,12 +126,16 @@ async function navigate(target: string) {
       await nextTick()
       await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())))
     },
-    scroll: ({ hash }) => {
-      const element = hash ? document.getElementById(decodeURIComponent(hash.slice(1))) : null
-      if (element)
+    scroll: async ({ hash, fullPath }) => {
+      const element = findHashTarget(hash)
+      if (element) {
+        if (!await revealContent(element) || router.currentRoute.value.fullPath !== fullPath)
+          return
         element.scrollIntoView({ block: 'start', behavior: 'instant' })
-      else
+      }
+      else {
         window.scrollTo({ top: 0, behavior: 'instant' })
+      }
     },
   })
 }

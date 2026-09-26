@@ -5,7 +5,7 @@ export interface PaletteNavigation {
   push: (target: string) => Promise<boolean>
   onPageReady: (callback: () => void) => () => void
   afterLayout: () => Promise<void>
-  scroll: (destination: PaletteDestination) => void
+  scroll: (destination: PaletteDestination) => void | Promise<void>
 }
 
 export async function navigateFromPalette(target: string, navigation: PaletteNavigation) {
@@ -21,7 +21,7 @@ export async function navigateFromPalette(target: string, navigation: PaletteNav
     // Nuxt applies route scrolling and head attributes after page readiness.
     await navigation.afterLayout()
     if (navigation.current().fullPath === destination.fullPath)
-      navigation.scroll(destination)
+      await navigation.scroll(destination)
   }
   finally {
     unsubscribe?.()

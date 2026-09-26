@@ -4,6 +4,7 @@ import type { ContentTocProps, TocLink } from '../app/features/toc/model'
 import { afterEach, beforeEach, expect, test, vi } from 'vite-plus/test'
 import { createApp, createSSRApp, defineComponent, h, nextTick, reactive, ref } from 'vue'
 import { renderToString } from 'vue/server-renderer'
+import BaseCollapsible from '../app/components/base/BaseCollapsible.vue'
 import ContentToc from '../app/components/toc/ContentToc.vue'
 import { circuitMask, flattenToc, tocPreviewHeight } from '../app/features/toc/model'
 
@@ -185,6 +186,24 @@ test('点击编码锚点触发 move 并定位和聚焦正文标题', async () =>
   expect(push).toHaveBeenCalledWith(`#${encodeURIComponent(heading.id)}`)
   expect(move).toHaveBeenCalledWith(heading.id)
   expect(scroll).toHaveBeenCalledWith({ block: 'start', behavior: 'instant' })
+  expect(document.activeElement).toBe(heading)
+})
+
+test('目录定位折叠内部标题时等待展开，并在内容可见后聚焦', async () => {
+  const host = mount(defineComponent(() => () => h('div', [
+    h(ContentToc, { links: [{ id: '折叠目标', text: '折叠目标', depth: 2 }] }),
+    h(BaseCollapsible, {}, {
+      trigger: () => h('button', '补充说明'),
+      default: () => h('h2', { id: '折叠目标' }, '折叠目标'),
+    }),
+  ])), {})
+  const heading = host.querySelector<HTMLElement>('h2')!
+  const scroll = vi.spyOn(heading, 'scrollIntoView').mockImplementation(() => {
+    expect(heading.closest('[inert]')).toBeNull()
+  })
+  host.querySelector<HTMLAnchorElement>('a[data-slot="link"]')!.click()
+  for (let index = 0; index < 8; index++) await nextTick()
+  expect(scroll).toHaveBeenCalledOnce()
   expect(document.activeElement).toBe(heading)
 })
 

@@ -8,6 +8,7 @@ import { CollapsibleContent, CollapsibleRoot, CollapsibleTrigger } from 'reka-ui
 import { computed, nextTick, onScopeDispose, ref, useTemplateRef, watch } from 'vue'
 import { useNuxtApp, useRoute, useRouter } from '#app'
 import AppIcon from '~/components/AppIcon.vue'
+import { revealContent } from '~/features/collapse/reveal'
 import { circuitMask, flattenToc, tocLinkHeight, tocPreviewHeight } from '~/features/toc/model'
 import { findHeading, useScrollspy } from '~/features/toc/useScrollspy'
 
@@ -132,6 +133,10 @@ async function scrollToHeading(id: string) {
   if (route.path !== path)
     return
   const heading = findHeading(id, props.scrollRoot)
+  if (heading?.closest('[data-collapsible-content]')) {
+    if (!await revealContent(heading) || route.path !== path)
+      return
+  }
   if (heading && props.scrollRoot) {
     props.scrollRoot.scrollTo({ top: heading.getBoundingClientRect().top - props.scrollRoot.getBoundingClientRect().top + props.scrollRoot.scrollTop - 24, behavior: 'instant' })
   }

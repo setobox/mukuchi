@@ -54,6 +54,24 @@ test('同页锚点不等待不存在的页面加载事件', async () => {
   expect(state.unsubscribe).not.toHaveBeenCalled()
 })
 
+test('等待折叠展开和定位完成后才结束命令导航', async () => {
+  const state = runtime(true)
+  let finish!: () => void
+  state.navigation.scroll = () => new Promise<void>((resolve) => {
+    finish = resolve
+  })
+  const completed = vi.fn()
+  const pending = navigateFromPalette('/posts/example#章节', state.navigation).then(completed)
+  await Promise.resolve()
+  await Promise.resolve()
+  state.layoutReady()
+  await Promise.resolve()
+  expect(completed).not.toHaveBeenCalled()
+  finish()
+  await pending
+  expect(completed).toHaveBeenCalledOnce()
+})
+
 test('失败释放页面监听，后续导航不会受到旧定位影响', async () => {
   const failed = runtime()
   failed.navigation.push = async () => false
