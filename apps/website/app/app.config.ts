@@ -1,3 +1,4 @@
+import type { AlertTheme } from '#shared/content/alerts'
 import type { NavigationItem } from './features/navigation/model'
 
 const navigation: NavigationItem[] = [
@@ -47,6 +48,9 @@ export default defineAppConfig({
     },
     navigation,
     features: { search: true, commands: true },
-    article: { notices: { wip: true, staleAfterDays: 365 as number | null } },
+    article: {
+      notices: { wip: true, staleAfterDays: 365 as number | null },
+      alerts: { theme: 'github' as AlertTheme },
+    },
   },
 })

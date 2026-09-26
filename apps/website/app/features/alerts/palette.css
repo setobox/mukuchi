@@ -1,0 +1,252 @@
+/* Adapted from rehype-callouts 2.2.0. See upstream/LICENSE and upstream/README.md. */
+.mdc-alert[data-alert-theme='github'][data-alert-type='note'] {
+  --alert-color-light: var(--callout-note-color-light, #0969da);
+  --alert-color-dark: var(--callout-note-color-dark, #2f81f7);
+}
+
+.mdc-alert[data-alert-theme='github'][data-alert-type='tip'] {
+  --alert-color-light: var(--callout-tip-color-light, #1a7f37);
+  --alert-color-dark: var(--callout-tip-color-dark, #3fb950);
+}
+
+.mdc-alert[data-alert-theme='github'][data-alert-type='important'] {
+  --alert-color-light: var(--callout-important-color-light, #8250df);
+  --alert-color-dark: var(--callout-important-color-dark, #a371f7);
+}
+
+.mdc-alert[data-alert-theme='github'][data-alert-type='warning'] {
+  --alert-color-light: var(--callout-warning-color-light, #9a6700);
+  --alert-color-dark: var(--callout-warning-color-dark, #d29922);
+}
+
+.mdc-alert[data-alert-theme='github'][data-alert-type='caution'] {
+  --alert-color-light: var(--callout-caution-color-light, #d1242f);
+  --alert-color-dark: var(--callout-caution-color-dark, #d1242f);
+}
+
+.mdc-alert[data-alert-theme='obsidian'][data-alert-type='note'] {
+  --alert-color-light: var(--callout-note-color-light, rgb(8, 109, 221));
+  --alert-color-dark: var(--callout-note-color-dark, rgb(2, 122, 255));
+}
+
+.mdc-alert[data-alert-theme='obsidian'][data-alert-type='abstract'] {
+  --alert-color-light: var(--callout-abstract-color-light, rgb(0, 191, 188));
+  --alert-color-dark: var(--callout-abstract-color-dark, rgb(83, 223, 221));
+}
+
+.mdc-alert[data-alert-theme='obsidian'][data-alert-type='summary'] {
+  --alert-color-light: var(--callout-summary-color-light, rgb(0, 191, 188));
+  --alert-color-dark: var(--callout-summary-color-dark, rgb(83, 223, 221));
+}
+
+.mdc-alert[data-alert-theme='obsidian'][data-alert-type='tldr'] {
+  --alert-color-light: var(--callout-tldr-color-light, rgb(0, 191, 188));
+  --alert-color-dark: var(--callout-tldr-color-dark, rgb(83, 223, 221));
+}
+
+.mdc-alert[data-alert-theme='obsidian'][data-alert-type='info'] {
+  --alert-color-light: var(--callout-info-color-light, rgb(8, 109, 221));
+  --alert-color-dark: var(--callout-info-color-dark, rgb(2, 122, 255));
+}
+
+.mdc-alert[data-alert-theme='obsidian'][data-alert-type='todo'] {
+  --alert-color-light: var(--callout-todo-color-light, rgb(8, 109, 221));
+  --alert-color-dark: var(--callout-todo-color-dark, rgb(2, 122, 255));
+}
+
+.mdc-alert[data-alert-theme='obsidian'][data-alert-type='tip'] {
+  --alert-color-light: var(--callout-tip-color-light, rgb(0, 191, 188));
+  --alert-color-dark: var(--callout-tip-color-dark, rgb(83, 223, 221));
+}
+
+.mdc-alert[data-alert-theme='obsidian'][data-alert-type='hint'] {
+  --alert-color-light: var(--callout-hint-color-light, rgb(0, 191, 188));
+  --alert-color-dark: var(--callout-hint-color-dark, rgb(83, 223, 221));
+}
+
+.mdc-alert[data-alert-theme='obsidian'][data-alert-type='important'] {
+  --alert-color-light: var(--callout-important-color-light, rgb(0, 191, 188));
+  --alert-color-dark: var(--callout-important-color-dark, rgb(83, 223, 221));
+}
+
+.mdc-alert[data-alert-theme='obsidian'][data-alert-type='success'] {
+  --alert-color-light: var(--callout-success-color-light, rgb(8, 185, 78));
+  --alert-color-dark: var(--callout-success-color-dark, rgb(68, 207, 110));
+}
+
+.mdc-alert[data-alert-theme='obsidian'][data-alert-type='check'] {
+  --alert-color-light: var(--callout-check-color-light, rgb(8, 185, 78));
+  --alert-color-dark: var(--callout-check-color-dark, rgb(68, 207, 110));
+}
+
+.mdc-alert[data-alert-theme='obsidian'][data-alert-type='done'] {
+  --alert-color-light: var(--callout-done-color-light, rgb(8, 185, 78));
+  --alert-color-dark: var(--callout-done-color-dark, rgb(68, 207, 110));
+}
+
+.mdc-alert[data-alert-theme='obsidian'][data-alert-type='question'] {
+  --alert-color-light: var(--callout-question-color-light, rgb(236, 117, 0));
+  --alert-color-dark: var(--callout-question-color-dark, rgb(233, 151, 63));
+}
+
+.mdc-alert[data-alert-theme='obsidian'][data-alert-type='help'] {
+  --alert-color-light: var(--callout-help-color-light, rgb(236, 117, 0));
+  --alert-color-dark: var(--callout-help-color-dark, rgb(233, 151, 63));
+}
+
+.mdc-alert[data-alert-theme='obsidian'][data-alert-type='faq'] {
+  --alert-color-light: var(--callout-faq-color-light, rgb(236, 117, 0));
+  --alert-color-dark: var(--callout-faq-color-dark, rgb(233, 151, 63));
+}
+
+.mdc-alert[data-alert-theme='obsidian'][data-alert-type='warning'] {
+  --alert-color-light: var(--callout-warning-color-light, rgb(236, 117, 0));
+  --alert-color-dark: var(--callout-warning-color-dark, rgb(233, 151, 63));
+}
+
+.mdc-alert[data-alert-theme='obsidian'][data-alert-type='attention'] {
+  --alert-color-light: var(--callout-attention-color-light, rgb(236, 117, 0));
+  --alert-color-dark: var(--callout-attention-color-dark, rgb(233, 151, 63));
+}
+
+.mdc-alert[data-alert-theme='obsidian'][data-alert-type='caution'] {
+  --alert-color-light: var(--callout-caution-color-light, rgb(236, 117, 0));
+  --alert-color-dark: var(--callout-caution-color-dark, rgb(233, 151, 63));
+}
+
+.mdc-alert[data-alert-theme='obsidian'][data-alert-type='failure'] {
+  --alert-color-light: var(--callout-failure-color-light, rgb(233, 49, 71));
+  --alert-color-dark: var(--callout-failure-color-dark, rgb(251, 70, 76));
+}
+
+.mdc-alert[data-alert-theme='obsidian'][data-alert-type='missing'] {
+  --alert-color-light: var(--callout-missing-color-light, rgb(233, 49, 71));
+  --alert-color-dark: var(--callout-missing-color-dark, rgb(251, 70, 76));
+}
+
+.mdc-alert[data-alert-theme='obsidian'][data-alert-type='fail'] {
+  --alert-color-light: var(--callout-fail-color-light, rgb(233, 49, 71));
+  --alert-color-dark: var(--callout-fail-color-dark, rgb(251, 70, 76));
+}
+
+.mdc-alert[data-alert-theme='obsidian'][data-alert-type='danger'] {
+  --alert-color-light: var(--callout-danger-color-light, rgb(233, 49, 71));
+  --alert-color-dark: var(--callout-danger-color-dark, rgb(251, 70, 76));
+}
+
+.mdc-alert[data-alert-theme='obsidian'][data-alert-type='error'] {
+  --alert-color-light: var(--callout-error-color-light, rgb(233, 49, 71));
+  --alert-color-dark: var(--callout-error-color-dark, rgb(251, 70, 76));
+}
+
+.mdc-alert[data-alert-theme='obsidian'][data-alert-type='bug'] {
+  --alert-color-light: var(--callout-bug-color-light, rgb(233, 49, 71));
+  --alert-color-dark: var(--callout-bug-color-dark, rgb(251, 70, 76));
+}
+
+.mdc-alert[data-alert-theme='obsidian'][data-alert-type='example'] {
+  --alert-color-light: var(--callout-example-color-light, rgb(120, 82, 238));
+  --alert-color-dark: var(--callout-example-color-dark, rgb(168, 130, 255));
+}
+
+.mdc-alert[data-alert-theme='obsidian'][data-alert-type='quote'] {
+  --alert-color-light: var(--callout-quote-color-light, rgb(158, 158, 158));
+  --alert-color-dark: var(--callout-quote-color-dark, rgb(158, 158, 158));
+}
+
+.mdc-alert[data-alert-theme='obsidian'][data-alert-type='cite'] {
+  --alert-color-light: var(--callout-cite-color-light, rgb(158, 158, 158));
+  --alert-color-dark: var(--callout-cite-color-dark, rgb(158, 158, 158));
+}
+
+.mdc-alert[data-alert-theme='vitepress'][data-alert-type='note'] {
+  --alert-color-light: var(--callout-note-color-light, rgb(142, 150, 170));
+  --alert-color-dark: var(--callout-note-color-dark, rgb(101, 117, 133));
+}
+
+.mdc-alert[data-alert-theme='vitepress'][data-alert-type='tip'] {
+  --alert-color-light: var(--callout-tip-color-light, rgb(100, 108, 255));
+  --alert-color-dark: var(--callout-tip-color-dark, rgb(100, 108, 255));
+}
+
+.mdc-alert[data-alert-theme='vitepress'][data-alert-type='important'] {
+  --alert-color-light: var(--callout-important-color-light, rgb(159, 122, 234));
+  --alert-color-dark: var(--callout-important-color-dark, rgb(159, 122, 234));
+}
+
+.mdc-alert[data-alert-theme='vitepress'][data-alert-type='warning'] {
+  --alert-color-light: var(--callout-warning-color-light, rgb(234, 179, 8));
+  --alert-color-dark: var(--callout-warning-color-dark, rgb(234, 179, 8));
+}
+
+.mdc-alert[data-alert-theme='vitepress'][data-alert-type='caution'] {
+  --alert-color-light: var(--callout-caution-color-light, rgb(244, 63, 94));
+  --alert-color-dark: var(--callout-caution-color-dark, rgb(244, 63, 94));
+}
+
+.mdc-alert[data-alert-theme='docusaurus'][data-alert-type='note'] {
+    --alert-border-color: var(--callout-note-border-color, rgb(212, 213, 216));
+    --alert-color-light: var(--callout-note-color-light, rgb(253, 253, 254));
+    --alert-color-dark: var(--callout-note-color-dark, rgb(71, 71, 72));
+    --alert-foreground-color-light: var(
+      --callout-note-color-dark,
+      rgb(71, 71, 72)
+    );
+    --alert-foreground-color-dark: var(
+      --callout-note-color-light,
+      rgb(253, 253, 254)
+    );
+  }
+
+.mdc-alert[data-alert-theme='docusaurus'][data-alert-type='tip'] {
+    --alert-border-color: var(--callout-tip-border-color, rgb(0, 148, 0));
+    --alert-color-light: var(--callout-tip-color-light, rgb(230, 246, 230));
+    --alert-color-dark: var(--callout-tip-color-dark, rgb(0, 49, 0));
+    --alert-foreground-color-light: var(--callout-tip-color-dark, rgb(0, 49, 0));
+    --alert-foreground-color-dark: var(
+      --callout-tip-color-light,
+      rgb(230, 246, 230)
+    );
+  }
+
+.mdc-alert[data-alert-theme='docusaurus'][data-alert-type='info'] {
+    --alert-border-color: var(--callout-info-border-color, rgb(76, 179, 212));
+    --alert-color-light: var(--callout-info-color-light, rgb(238, 249, 253));
+    --alert-color-dark: var(--callout-info-color-dark, rgb(25, 60, 71));
+    --alert-foreground-color-light: var(
+      --callout-info-color-dark,
+      rgb(25, 60, 71)
+    );
+    --alert-foreground-color-dark: var(
+      --callout-info-color-light,
+      rgb(238, 249, 253)
+    );
+  }
+
+.mdc-alert[data-alert-theme='docusaurus'][data-alert-type='warning'] {
+    --alert-border-color: var(--callout-warning-border-color, rgb(230, 167, 0));
+    --alert-color-light: var(--callout-warning-color-light, rgb(255, 248, 230));
+    --alert-color-dark: var(--callout-warning-color-dark, rgb(77, 56, 0));
+    --alert-foreground-color-light: var(
+      --callout-warning-color-dark,
+      rgb(77, 56, 0)
+    );
+    --alert-foreground-color-dark: var(
+      --callout-warning-color-light,
+      rgb(255, 248, 230)
+    );
+  }
+
+.mdc-alert[data-alert-theme='docusaurus'][data-alert-type='danger'] {
+    --alert-border-color: var(--callout-danger-border-color, rgb(225, 50, 56));
+    --alert-color-light: var(--callout-danger-color-light, rgb(255, 235, 236));
+    --alert-color-dark: var(--callout-danger-color-dark, rgb(75, 17, 19));
+    --alert-foreground-color-light: var(
+      --callout-danger-color-dark,
+      rgb(75, 17, 19)
+    );
+    --alert-foreground-color-dark: var(
+      --callout-danger-color-light,
+      rgb(255, 235, 236)
+    );
+  }
