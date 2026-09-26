@@ -5,8 +5,8 @@ defineProps<{ post: PostSummary }>()
 </script>
 
 <template>
-  <article class="flex gap-5 border-b border-line py-7 md:gap-7">
-    <div class="min-w-0 flex-1">
+  <article class="min-w-0 flex gap-3 border border-line rounded-panel bg-surface p-2 md:gap-6 md:p-4">
+    <div class="min-w-0 flex-1 py-2 pl-2 md:pl-3">
       <h2 class="text-title text-themed font-bold">
         <NuxtLink :to="post.path" class="ui-link inline-block max-w-full min-h-11 break-words md:min-h-0">
           {{ post.title }}
@@ -23,15 +23,15 @@ defineProps<{ post: PostSummary }>()
       :to="post.path"
       tabindex="-1"
       aria-hidden="true"
-      class="card-link hidden w-36 shrink-0 self-start overflow-hidden border border-transparent rounded-panel md:block"
+      class="ui-feedback relative max-w-[42%] w-36 shrink-0 self-stretch overflow-hidden rounded-panel md:aspect-video md:max-w-[300px] md:w-[30%] md:self-start active:opacity-75 hover:opacity-85"
     >
       <img
         :src="post.cover"
         alt=""
         loading="lazy"
-        width="288"
-        height="192"
-        class="aspect-[3/2] h-auto w-full object-cover"
+        width="640"
+        height="360"
+        class="absolute inset-0 h-full w-full object-cover object-center"
       >
     </NuxtLink>
   </article>

@@ -124,7 +124,7 @@ const filtered = computed(() => !!props.filter)
       <div v-else-if="view === 'grid'" class="grid gap-5 pt-6 md:grid-cols-2">
         <PostCard v-for="post in pagination.posts" :key="post.path" :post="post" />
       </div>
-      <div v-else>
+      <div v-else class="flex flex-col gap-4 pt-6">
         <PostListItem v-for="post in pagination.posts" :key="post.path" :post="post" />
       </div>
       <PostPagination

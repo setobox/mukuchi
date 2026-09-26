@@ -21,6 +21,13 @@ const status = ref('')
 const busy = ref(false)
 const activeTab = ref('text')
 const tabs = [{ id: 'text', name: '文字' }, { id: 'icon', name: '图标' }, { id: 'background', name: '背景' }, { id: 'canvas', name: '画布' }]
+const coverPreviews = [
+  { name: '桌面列表 · 16:9', ratio: '16/9', fit: 'cover', note: '宽度最多 300px。' },
+  { name: '移动列表 · 裁切示意', ratio: '144/216', fit: 'cover', note: '宽度最多 9rem，高度随卡片内容伸展。' },
+  { name: 'Grid 卡片 · 16:9', ratio: '16/9', fit: 'contain', note: '完整显示图片，保留原有布局。' },
+  { name: '移动详情 · 裁切示意', ratio: '335/320', fit: 'cover', note: '高度 320px，宽度随正文区域变化。' },
+  { name: '桌面详情 · 裁切示意', ratio: '844/480', fit: 'cover', note: '高度 480px，宽度随正文区域变化。' },
+] as const
 const root = useTemplateRef<HTMLElement>('root')
 const motion = useCoverMotion(root)
 const id = useId()
@@ -174,12 +181,13 @@ onBeforeUnmount(() => {
         </p>
       </div>
       <div v-if="applyCover && preview" class="grid grid-cols-2 gap-3">
-        <figure v-for="crop in [{ ratio: '16/9', name: '详情与卡片 · 16:9' }, { ratio: '3/2', name: '文章列表 · 3:2' }]" :key="crop.ratio" class="m-0 min-w-0">
+        <figure v-for="crop in coverPreviews" :key="crop.name" class="m-0 min-w-0">
           <div class="cover-checker overflow-hidden border border-line rounded-lg" :style="{ aspectRatio: crop.ratio }">
-            <img :src="preview" alt="文章封面裁切预览" class="h-full w-full object-cover">
+            <img :src="preview" :alt="crop.name" class="h-full w-full object-center" :class="crop.fit === 'contain' ? 'object-contain' : 'object-cover'">
           </div>
           <figcaption class="mt-1 text-xs text-muted">
             {{ crop.name }}
+            <span class="block">{{ crop.note }}</span>
           </figcaption>
         </figure>
       </div>

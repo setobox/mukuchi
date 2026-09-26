@@ -15,6 +15,6 @@ withDefaults(defineProps<{ post: PostMeta & { path: string }, preview?: boolean 
     </p>
     <PostTags :tags="post.tags" />
     <ArticleNotices :post="post" :path="post.path" />
-    <img v-if="post.cover" :src="post.cover" alt="" width="1200" height="675" class="mt-7 aspect-video h-auto w-full rounded-panel object-cover">
+    <img v-if="post.cover" :src="post.cover" alt="" width="1200" height="675" class="mt-7 h-80 w-full rounded-panel object-cover object-center md:h-120">
   </header>
 </template>
