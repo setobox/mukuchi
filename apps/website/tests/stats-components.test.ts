@@ -34,6 +34,11 @@ test('共享访问数据先到达时，SSR 与客户端仍以相同占位完成�
       app.mount(host)
       await nextTick()
       expect(host.textContent).toContain(component === ArticleViews ? '浏览 42 次' : '123,456,789')
+      if (component === ArticleViews) {
+        const icons = host.querySelectorAll('.i-lucide-eye')
+        expect(icons).toHaveLength(1)
+        expect(icons[0]!.getAttribute('aria-hidden')).toBe('true')
+      }
       expect(warn).not.toHaveBeenCalled()
       expect(error).not.toHaveBeenCalled()
     }

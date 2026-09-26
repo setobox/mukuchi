@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { normalizeStatsPath, statsNumber } from '#shared/stats/model'
+import AppIcon from '../AppIcon.vue'
 
 const props = defineProps<{ path: string }>()
 const stats = useVisitStats()
@@ -18,5 +19,5 @@ watch(() => props.path, (value) => {
 </script>
 
 <template>
-  <span v-if="stats.enabled" class="inline-block min-w-24 tabular-nums" :aria-label="label">浏览 {{ statsNumber(views) }} 次</span>
+  <span v-if="stats.enabled" class="min-w-24 inline-flex items-center gap-1.5 whitespace-nowrap tabular-nums" :aria-label="label"><AppIcon name="eye" /><span>浏览 {{ statsNumber(views) }} 次</span></span>
 </template>

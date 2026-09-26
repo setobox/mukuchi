@@ -10,6 +10,8 @@ export const icons = {
   clock: 'i-lucide-clock-alert',
   readingTime: 'i-lucide-clock',
   wordCount: 'i-lucide-file-text',
+  published: 'i-lucide-calendar-days',
+  updated: 'i-lucide-calendar-clock',
   zoomIn: 'i-lucide-zoom-in',
   zoomOut: 'i-lucide-zoom-out',
   reset: 'i-lucide-scan',

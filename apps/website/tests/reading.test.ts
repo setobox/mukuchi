@@ -66,11 +66,11 @@ test.each([PostListItem, PostCard, ArticleHeader])('首次 SSR 仅在文章详�
   expect(text).toContain('3分钟')
   expect(html).toContain('i-lucide-file-text')
   expect(html).toContain('i-lucide-clock')
-  expect(text.indexOf('共401字')).toBeGreaterThan(text.indexOf('发布于'))
+  expect(text.indexOf(post.publish)).toBeGreaterThan(text.indexOf(post.title))
   expect(text.indexOf('3分钟')).toBeGreaterThan(text.indexOf('共401字'))
   expect(text.indexOf('开发')).toBeGreaterThan(text.indexOf('3分钟'))
-  expect(text.indexOf('共401字')).toBeGreaterThan(text.indexOf('更新于'))
-  expect(text.indexOf('共401字')).toBeGreaterThan(text.indexOf('浏览 5 次'))
+  expect(text.indexOf(post.update!)).toBeGreaterThan(text.indexOf(post.publish))
+  expect(text.indexOf('浏览 5 次')).toBeGreaterThan(text.indexOf('3分钟'))
 })
 
 test('列表查询携带已计算字数，不加载正文', async () => {
