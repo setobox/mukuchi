@@ -1,5 +1,6 @@
 {
   "npm.scriptRunner": "vp",
+  "vitest.rootConfig": "vitest.config.ts",
   "editor.defaultFormatter": "dbaeumer.vscode-eslint",
   "[javascript]": {
     "editor.defaultFormatter": "dbaeumer.vscode-eslint"

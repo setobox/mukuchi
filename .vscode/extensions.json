@@ -1,4 +1,4 @@
 {
-  "recommendations": ["dbaeumer.vscode-eslint", "Vue.volar"],
+  "recommendations": ["dbaeumer.vscode-eslint", "Vue.volar", "vitest.explorer"],
   "unwantedRecommendations": ["oxc.oxc-vscode", "VoidZero.vite-plus-extension-pack"]
 }
