@@ -18,7 +18,11 @@ export function validateFrontmatter(source: string, filename: string, kind: 'pos
   const metadata = readFrontmatter(source, filename)
   if (metadata && typeof metadata === 'object' && ['path', '_path', 'id', 'stem'].some(key => key in metadata))
     throw new Error(`${filename}：文章路径和标识由文件路径生成，不能通过 frontmatter 覆盖`)
-  const result = (kind === 'posts' ? postSchema : aboutFields).safeParse(metadata)
+  // Reading statistics are derived from the body, never author-supplied metadata.
+  const input = kind === 'posts' && metadata && typeof metadata === 'object' && !Array.isArray(metadata)
+    ? { ...metadata, wordCount: 0 }
+    : metadata
+  const result = (kind === 'posts' ? postSchema : aboutFields).safeParse(input)
   if (!result.success)
     throw new Error(`${filename}：${result.error.issues.map(issue => `${issue.path.join('.')} ${issue.message}`).join('；')}`)
   return result.data

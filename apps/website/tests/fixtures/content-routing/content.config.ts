@@ -1,7 +1,7 @@
 import { defineCollectionSource, defineContentConfig } from '@nuxt/content'
 import config from '../../../content.config'
 
-const body = ['---', 'title: " 测试文章 "', 'description: 测试描述', 'publish: "2024-02-29"', '---', '# 正文'].join('\n')
+const body = ['---', 'title: " 测试文章 "', 'description: 测试描述', 'publish: "2024-02-29"', 'wordCount: 99999', '---', '# 正文'].join('\n')
 
 export default defineContentConfig({
   collections: {

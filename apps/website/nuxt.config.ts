@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
 import githubSnapshots from './content/github/module'
+import { markdownWordCount } from './content/reading.ts'
 import { validateContentDirectory, validateFrontmatter } from './content/validation.ts'
 import adminPreview from './modules/admin-preview/module'
 import audio from './modules/audio/module'
@@ -87,10 +88,12 @@ export default defineNuxtConfig({
         )
       }
     },
-    'content:file:afterParse': ({ file, content, collection }) => {
+    'content:file:afterParse': async ({ file, content, collection }) => {
       if (collection.name !== 'posts' && collection.name !== 'about' && collection.name !== 'use')
         return
       Object.assign(content, validateFrontmatter(file.body, file.path, collection.name))
+      if (collection.name === 'posts')
+        content.wordCount = await markdownWordCount(file.body)
     },
   },
   components: [{ path: '~/components', pathPrefix: false }],

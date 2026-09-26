@@ -8,6 +8,8 @@ export const icons = {
   code: 'i-lucide-code',
   construction: 'i-lucide-construction',
   clock: 'i-lucide-clock-alert',
+  readingTime: 'i-lucide-clock',
+  wordCount: 'i-lucide-file-text',
   zoomIn: 'i-lucide-zoom-in',
   zoomOut: 'i-lucide-zoom-out',
   reset: 'i-lucide-scan',

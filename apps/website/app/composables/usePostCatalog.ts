@@ -1,5 +1,5 @@
-import { aggregateTerms, sortPosts } from '~~/shared/content/catalog'
-import { collectSeries } from '~~/shared/content/series'
+import { aggregateTerms, sortPosts } from '#shared/content/catalog'
+import { collectSeries } from '#shared/content/series'
 
 export function usePostCatalog() {
   const query = useAsyncData('posts:catalog', () =>
@@ -9,6 +9,7 @@ export function usePostCatalog() {
         'stem',
         'title',
         'description',
+        'wordCount',
         'publish',
         'update',
         'cover',

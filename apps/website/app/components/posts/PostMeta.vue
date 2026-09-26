@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { PostSummary } from '#shared/content/schema'
 import { formatPostDate } from '#shared/content/catalog'
+import { readingMinutes } from '#shared/content/reading'
 import { taxonomyPath } from '#shared/content/taxonomy'
 
 withDefaults(defineProps<{ post: PostSummary, detailed?: boolean, views?: boolean }>(), { detailed: false, views: true })
@@ -12,6 +13,10 @@ withDefaults(defineProps<{ post: PostSummary, detailed?: boolean, views?: boolea
     <time :datetime="post.publish">发布于 {{ formatPostDate(post.publish) }}</time>
     <time v-if="detailed && post.update" :datetime="post.update">更新于 {{ formatPostDate(post.update) }}</time>
     <ArticleViews v-if="detailed && views" :path="post.path" />
+    <template v-if="detailed">
+      <span class="inline-flex items-center gap-1.5 whitespace-nowrap"><AppIcon name="wordCount" />共{{ post.wordCount }}字</span>
+      <span class="inline-flex items-center gap-1.5 whitespace-nowrap"><AppIcon name="readingTime" />{{ readingMinutes(post.wordCount) }}分钟</span>
+    </template>
     <NuxtLink
       v-for="category in post.categories"
       :key="category"

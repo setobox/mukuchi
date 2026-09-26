@@ -1,5 +1,6 @@
 import type { Asset } from '../shared/admin/model'
 import { expect, test } from 'vite-plus/test'
+import { markdownWordCount } from '../content/reading'
 import { renderArticlePreview } from '../server/features/admin/preview'
 
 const source = `---
@@ -27,6 +28,15 @@ MDC 内容
 `
 const asset = { id: 'private-image', path: '/images/private.png' } as Asset
 const missing = { status: 'missing', record: null, message: '' } as const
+
+test('预览与导入使用相同字数，忽略手写统计和生成摘要', async () => {
+  const input = source.replace('title: 未保存标题', 'title: 未保存标题\nwordCount: invalid')
+  const preview = await renderArticlePreview(input, 'hello.md', [], '', missing, '不同长度的生成摘要')
+  expect(preview.data.wordCount).toBe(13)
+  expect(preview.data.wordCount).toBe(await markdownWordCount(input))
+  const edited = input.replace('当前未保存的正文。', '正文。')
+  expect((await renderArticlePreview(edited, 'hello.md', [], '', missing)).data.wordCount).toBe(7)
+})
 
 test('预览当前源码，保留日期、标签、MDC、代码和目录，并映射私有图片', async () => {
   const result = await renderArticlePreview(source, 'hello.md', [asset], '/blog', missing)

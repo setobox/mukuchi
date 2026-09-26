@@ -38,6 +38,7 @@ export const seriesSchema = seriesFields.superRefine(validateSeries)
 export const postFields = z.object({
   title: z.string().min(1),
   description: z.string(),
+  wordCount: z.number().int().nonnegative().default(0),
   aiSummary: z.boolean().default(true),
   audio: z.object({ narration: z.boolean().optional(), podcast: z.boolean().optional() }).optional(),
   summary: summaryRecordSchema.optional().catch(undefined),

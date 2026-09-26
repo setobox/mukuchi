@@ -6,6 +6,7 @@ import { parseMarkdown } from '@nuxtjs/mdc/runtime'
 import rehypeHighlight from '@nuxtjs/mdc/runtime/highlighter/rehype'
 import { AdminError, articleRoute } from '../../../shared/admin/model'
 import { splitDocument, validateFrontmatter } from '../../../shared/content/document'
+import { countReadingWords } from '../../../shared/content/reading'
 import { postSchema } from '../../../shared/content/schema'
 
 /** Rendering is read-only: private assets and summary text only change the response. */
@@ -19,6 +20,7 @@ export async function renderArticlePreview(source: string, path: string, assets:
       ...(highlighter ? { rehype: { plugins: { highlight: { instance: rehypeHighlight, options: highlight } } } } : {}),
       toc: { depth: 5, searchDepth: 12 },
     })
+    data.wordCount = countReadingWords(parsed.body)
     const text = data.aiSummary && summaryText !== undefined ? summaryText.trim() : summary.status === 'valid' ? summary.record?.text : undefined
     data.summarySource = text ? 'ai' : 'description'
     if (text)
