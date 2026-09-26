@@ -150,7 +150,10 @@ for (const path of ['/about', '/use', ...posts.map(post => String(post.path))]) 
     assert.match(html, /<title>Use - Setobox<\/title>/, 'Use 页面标题')
     assert.match(html, /<meta name="description" content="我正在使用的开发工具、设计软件与硬件设备。">/, 'Use SEO 简介')
     const aboutLinks = html.match(/<a\b[^>]+href="\/about"[^>]*>/g) ?? []
-    assert(aboutLinks.some(link => link.includes('aria-current="page"')), 'Use 归属关于分区')
+    assert(
+      aboutLinks.some(link => link.includes('aria-current="location"')),
+      'Use 归属关于分区',
+    )
     assert(html.includes('AMD Ryzen 9 9950X3D'), 'Use 正文已渲染')
   }
   assert(html.includes('https://blog.setobox.me'), `正式地址：${path}`)
