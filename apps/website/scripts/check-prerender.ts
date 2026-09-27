@@ -30,6 +30,11 @@ finally {
   database.close()
 }
 const publicRoot = new URL('.output/public/', root)
+const collectionsHtml = await readFile(new URL('collections/index.html', publicRoot), 'utf8')
+assert.match(collectionsHtml, /<h1[^>]*>\s*导航\s*<\/h1>/, '导航页预渲染标题')
+assert(collectionsHtml.includes('网站、开发资源与在线工具收藏。'), '导航页预渲染简介')
+assert(collectionsHtml.includes('正在加载'), '导航页只预渲染外壳，数据由客户端加载')
+assert(!collectionsHtml.includes('aria-label="侧边栏"'), '导航页不显示博客侧栏')
 assert.deepEqual(await readFile(new URL('favicon.ico', publicRoot)), await readFile(new URL('public/favicon.ico', root)), '图标静态资源进入构建产物')
 assertRss(await readFile(new URL('rss.xml', publicRoot), 'utf8'), rssPosts, 'https://blog.setobox.me')
 for (const path of ['/about', '/use', ...paths]) {
@@ -78,4 +83,4 @@ for (const path of ['/about', '/use', ...paths]) {
 for (const path of ['posts', 'categories', 'tags', 'archive', 'series', 'tools', 'my']) {
   await assert.rejects(access(new URL(`${path}/index.html`, publicRoot)), `列表页不能预渲染：/${path}`)
 }
-console.log(`预渲染验收通过：${paths.length} 篇文章、关于页、Use 页与 RSS；列表保持 SSR。`)
+console.log(`预渲染验收通过：${paths.length} 篇文章、关于页、Use 页、导航页外壳与 RSS；文章列表保持 SSR。`)

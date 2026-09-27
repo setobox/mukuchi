@@ -24,7 +24,7 @@ const navigation: NavigationItem[] = [
     description: '项目、收藏与日常使用的小工具。',
     children: [
       { kind: 'link', id: 'projects', label: '项目', to: '/projects', icon: 'code', sections: ['projects'], description: '我正在构建和维护的项目。', enabled: false },
-      { kind: 'link', id: 'collections', label: '导航', to: '/collections', icon: 'grid', sections: ['collections'], description: '收藏的网站与资源。', enabled: false },
+      { kind: 'link', id: 'collections', label: '导航', to: '/collections', icon: 'grid', sections: ['collections'], description: '收藏的网站与资源。' },
       { kind: 'link', id: 'tools', label: '工具', to: '/tools', icon: 'shapes', sections: ['tools'], description: '制作文章封面，支持 PNG、SVG 和 WebP 导出。' },
     ],
   },

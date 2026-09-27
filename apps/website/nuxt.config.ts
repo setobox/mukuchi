@@ -41,7 +41,7 @@ export default defineNuxtConfig({
     '#admin-driver': fileURLToPath(new URL('./server/features/admin/drivers/node', import.meta.url)),
   },
   nitro: {
-    prerender: { crawlLinks: false, failOnError: true, routes: ['/about', '/use', rssPath] },
+    prerender: { crawlLinks: false, failOnError: true, routes: ['/about', '/use', '/collections', rssPath] },
     cloudflare: { deployConfig: true, nodeCompat: true },
   },
   modules: ['@nuxt/content', '@nuxtjs/color-mode', '@unocss/nuxt', '@vueuse/nuxt', '@nuxt/eslint', githubSnapshots, coverIcons, audio, adminPreview],
@@ -131,6 +131,7 @@ export default defineNuxtConfig({
     '/': { redirect: { to: '/posts', statusCode: 302 } },
     '/about': { prerender: true },
     '/use': { prerender: true },
+    '/collections': { prerender: true },
     '/posts': { prerender: false, headers: { 'cache-control': 'private, no-store' } },
     '/categories': { prerender: false, headers: { 'cache-control': 'private, no-store' } },
     '/categories/**': { prerender: false, headers: { 'cache-control': 'private, no-store' } },

@@ -218,8 +218,11 @@ test('真实配置只开放已完成页面，目录卡片与命令使用相同�
   const items = resolveNavigation(config.site.navigation, context('my', '/my'))
   expect(items.map(item => item.label)).toEqual(['首页', '分类', '我的', '关于'])
   const my = items.find(item => item.id === 'my')!
-  expect(my.children.map(item => item.to)).toEqual(['/tools'])
-  expect(navigationDestinations(config.site.navigation).map(item => item.to)).toEqual(['/posts', '/categories', '/tags', '/archive', '/series', '/my', '/tools', '/about'])
+  expect(my.children.map(item => item.to)).toEqual(['/collections', '/tools'])
+  expect(navigationDestinations(config.site.navigation).map(item => item.to)).toEqual(['/posts', '/categories', '/tags', '/archive', '/series', '/my', '/collections', '/tools', '/about'])
+  const collectionsMenu = resolveNavigation(config.site.navigation, context('collections', '/collections')).find(item => item.id === 'my')!
+  expect(collectionsMenu.active).toBe(true)
+  expect(collectionsMenu.children.find(item => item.to === '/collections')).toMatchObject({ active: true, current: 'page' })
   expect(resolveNavigation(config.site.navigation, context('series', '/series'))[1]).toMatchObject({ label: '系列', active: true, current: 'page' })
   expect(resolveNavigation(config.site.navigation, context('archive', '/archive'))[1]).toMatchObject({ label: '归档', active: true, current: 'page' })
   expect(resolveNavigation(config.site.navigation, context('tags', '/tags/C%23'))[1]).toMatchObject({ label: '标签', active: true, current: 'location' })
@@ -229,7 +232,7 @@ test('真实配置只开放已完成页面，目录卡片与命令使用相同�
   expect(html).toContain('href="/tools"')
   expect(html).toContain(my.children[0]!.description)
   expect(html).not.toContain('/projects')
-  expect(html).not.toContain('/collections')
+  expect(html).toContain('href="/collections"')
 })
 
 test('修改同一配置项的名称、图标、地址与启用状态后命令同步更新，卸载后不残留入口', async () => {

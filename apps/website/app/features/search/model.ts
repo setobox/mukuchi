@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { sortPosts } from '../../../shared/content/catalog'
+import { sortPosts } from '#shared/content/catalog'
 
 export const searchSectionsSchema = z.array(z.object({
   id: z.string(),
