@@ -29,7 +29,6 @@ const selected = ref(-1)
 const composing = ref(false)
 const executionError = ref('')
 const executing = ref(false)
-const modeMenuOpen = ref(false)
 const commandGroups = computed(() => groupCommands(commands.value.map((command, index) => ({ ...command, index }))))
 let afterClose: (() => void | Promise<void>) | undefined
 let disposed = false
@@ -232,8 +231,7 @@ onScopeDispose(() => {
 <template>
   <AcrylicDialog v-model="dialogOpen" :title="mode === 'search' ? '站内搜索' : '命令面板'" placement="commands" @opened="focusInput" @closed="closed">
     <label :for="inputId" class="sr-only">{{ mode === 'search' ? '文章关键词' : '命令关键词' }}</label>
-    <div class="field-group relative z-1 flex shrink-0 items-center gap-2 border border-line-strong rounded-button bg-canvas pl-1 pr-3">
-      <PaletteModeMenu :mode="mode" :features="site.features" :active="isOpen" @select="palette.open" @open-change="modeMenuOpen = $event" />
+    <div class="field-group relative z-1 flex shrink-0 items-center border border-line-strong rounded-button bg-canvas px-3">
       <input
         :id="inputId" ref="input" v-model="inputQuery" autofocus type="text" autocomplete="off" autocapitalize="off" :spellcheck="false"
         class="min-h-11 min-w-0 w-full border-0 rounded-button bg-transparent py-2 text-[16px] leading-6"
@@ -251,7 +249,7 @@ onScopeDispose(() => {
     <BaseButton v-if="mode === 'search' && status === 'error'" class="mb-3 self-start" variant="border" @click="loader.load()">
       重新加载
     </BaseButton>
-    <div :id="listId" role="listbox" :aria-label="mode === 'search' ? '文章搜索结果' : '可用命令'" :aria-busy="mode === 'search' && status === 'loading'" class="[scrollbar-gutter:stable] overflow-y-auto overscroll-contain pb-1" :class="[modeMenuOpen ? 'min-h-26' : 'min-h-0', !message ? 'mt-3' : '']">
+    <div :id="listId" role="listbox" :aria-label="mode === 'search' ? '文章搜索结果' : '可用命令'" :aria-busy="mode === 'search' && status === 'loading'" class="[scrollbar-gutter:stable] min-h-0 overflow-y-auto overscroll-contain pb-1" :class="!message ? 'mt-3' : ''">
       <template v-if="mode === 'search'">
         <div
           v-for="(result, index) in matches.results" :id="`${listId}-${index}`" :key="result.id"

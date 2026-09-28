@@ -35,11 +35,12 @@ async function fixture(markup: string, theme: string) {
 }
 
 describe.each(['dark', 'light'])('%s 聚焦样式', (theme) => {
-  test('搜索输入框只使用外层边框反馈，失焦后恢复且尺寸不变', async () => {
+  test('搜索与命令输入框只使用外层边框反馈，失焦后恢复且尺寸不变', async () => {
     const { window, document, style } = await fixture(paletteMarkup, theme)
     try {
       const input = document.querySelector('input')!
       const group = input.closest('.field-group')!
+      expect(group.querySelector('button')).toBeNull()
       const resting = style(group).borderColor
       const width = style(group).borderWidth
       input.focus()
