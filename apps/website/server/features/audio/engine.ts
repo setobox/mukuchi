@@ -148,7 +148,7 @@ export async function runAudioJob(options: {
           const { settings, key } = await provider()
           url = await (options.narration ?? createNarrationProvider)(settings, key).query(job.providerId) || url
         }
-        const response = await (options.request ?? fetch)(audioDownloadUrl(url), { redirect: 'error', signal: AbortSignal.timeout(240_000) })
+        const response = await (options.request ?? fetch)(audioDownloadUrl(url), { redirect: 'manual', signal: AbortSignal.timeout(240_000) })
         size = await saveAudio(bucket, objectKey, response)
       }
       await repo.finish(job, objectKey, size)

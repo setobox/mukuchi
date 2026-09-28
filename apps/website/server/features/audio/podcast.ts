@@ -14,7 +14,7 @@ export type OpenPodcastSocket = (headers: Record<string, string>) => Promise<Pod
 export const openPodcastSocket: OpenPodcastSocket = async (headers) => {
   const response = await fetch('https://openspeech.bytedance.com/api/v3/sami/podcasttts', {
     headers: { ...headers, Upgrade: 'websocket' },
-    redirect: 'error',
+    redirect: 'manual',
     signal: AbortSignal.timeout(30_000),
   })
   const socket = (response as Response & { webSocket?: PodcastSocket }).webSocket

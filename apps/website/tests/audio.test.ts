@@ -168,7 +168,9 @@ test.each(['narration', 'podcast'] as const)('%s 任务存储并提交过滤后�
     await input.generated(url)
     return url
   })
-  await runAudioJob({ ...options, narration: () => ({ submit, query: async () => url }), podcast, request: vi.fn(async () => mp3()) })
+  const request = vi.fn<typeof fetch>().mockResolvedValue(mp3())
+  await runAudioJob({ ...options, narration: () => ({ submit, query: async () => url }), podcast, request })
+  expect(request.mock.calls[0]?.[1]).toMatchObject({ redirect: 'manual' })
   if (kind === 'narration') {
     expect(submit).toHaveBeenCalledWith(job.input, expect.any(String))
     expect((await repo.usage()).narrationCharacters).toBe(Array.from(job.input).length)
@@ -275,6 +277,7 @@ test('长文本协议隔离密钥、校验任务 ID、将查询超时与鉴权�
   const provider = createNarrationProvider(audioSettings, 'secret', request)
   await provider.submit('全文', 'id')
   const [, options] = request.mock.calls[0]!
+  expect(options?.redirect).toBe('manual')
   expect(options?.headers).toMatchObject({ 'X-Api-Key': 'secret', 'X-Api-Resource-Id': 'seed-tts-2.0' })
   expect(JSON.parse(String(options?.body))).toMatchObject({ unique_id: 'id', req_params: { text: '全文' } })
   request.mockResolvedValue(new Response(null, { status: 401 }))

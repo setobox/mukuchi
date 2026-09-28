@@ -27,7 +27,7 @@ export function createNarrationProvider(settings: AudioSettings, key: string, re
     try {
       response = await request(`https://openspeech.bytedance.com/api/v3/tts/${action}`, {
         method: 'POST',
-        redirect: 'error',
+        redirect: 'manual',
         signal: AbortSignal.timeout(30_000),
         headers: { ...speechHeaders(settings, key, settings.narrationResource, id), 'content-type': 'application/json' },
         body: JSON.stringify(body),

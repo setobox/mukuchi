@@ -1,6 +1,6 @@
 import type { PodcastSocket } from '../server/features/audio/podcast'
 import { expect, test, vi } from 'vite-plus/test'
-import { generatePodcast } from '../server/features/audio/podcast'
+import { generatePodcast, openPodcastSocket } from '../server/features/audio/podcast'
 import { podcastFrame, readPodcastFrame } from '../server/features/audio/podcast-protocol'
 import { audioSettings } from './fixtures/audio'
 
@@ -58,6 +58,18 @@ function socketFixture(truncated = false) {
   }
   return { socket, sent }
 }
+test('播客 WebSocket 请求使用 Workers 支持的重定向策略', async () => {
+  const { socket } = socketFixture()
+  const request = vi.fn<typeof fetch>().mockResolvedValue(Object.assign(new Response(null, { status: 200 }), { webSocket: socket }))
+  vi.stubGlobal('fetch', request)
+  try {
+    expect(await openPodcastSocket({ 'X-Api-Key': 'test-key' })).toBe(socket)
+    expect(request.mock.calls[0]?.[1]).toMatchObject({ redirect: 'manual' })
+  }
+  finally {
+    vi.unstubAllGlobals()
+  }
+})
 test('播客输入明确传入全文长度和双人音色，保存轮次后接受最终地址', async () => {
   const { socket, sent } = socketFixture()
   const progress = vi.fn(async () => {})
