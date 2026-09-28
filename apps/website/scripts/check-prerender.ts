@@ -74,8 +74,9 @@ for (const path of ['/about', '/use', ...paths]) {
     // Empty post descriptions are valid; Unhead omits empty meta tags.
     const renderedDescription = html.match(/<meta name="description" content="([^"]*)">/)?.[1] ?? ''
     assert.equal(renderedDescription, escaped, `SEO 简介须与内容索引一致：${path}`)
-    assert.equal(html.includes('aria-label="AI 摘要"'), description.ai, `摘要卡片须与摘要来源一致：${path}`)
-    if (description.ai)
+    const hasSummary = paths.includes(path) && !!description.text.trim()
+    assert.equal(html.includes('aria-label="文章摘要"'), hasSummary, `摘要卡片须与文章简介一致：${path}`)
+    if (hasSummary)
       assert(html.includes(`${escaped}</p>`), `摘要卡片须与内容索引一致：${path}`)
   }
   await access(new URL('_payload.json', directory))

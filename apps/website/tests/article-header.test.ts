@@ -29,6 +29,7 @@ async function render(patch: Partial<typeof post> = {}, preview = false) {
 test('详情元信息位于标题之后，依次显示发布时间、更新时间、分类和标签', async () => {
   const document = await render()
   const text = document.documentElement.textContent!
+  expect(text).not.toContain(post.description)
   const ordered = ['共401字', '3分钟', '浏览 5 次', '文章标题', '2026-09-01', '2026-09-02', '开发', 'C#', '#Vue', '#C++']
   for (let index = 1; index < ordered.length; index++)
     expect(text.indexOf(ordered[index]!)).toBeGreaterThan(text.indexOf(ordered[index - 1]!))
@@ -75,6 +76,7 @@ test('后台预览保留相同元信息布局，隐藏浏览量', async () => {
   const document = await render({}, true)
   const text = document.documentElement.textContent!
   expect(text).not.toContain('浏览 5 次')
+  expect(text).not.toContain(post.description)
   expect(text.indexOf(post.publish)).toBeGreaterThan(text.indexOf('文章标题'))
   expect(text).toContain('共401字')
   expect(text).toContain('#Vue')

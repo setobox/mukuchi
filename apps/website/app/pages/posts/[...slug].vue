@@ -130,9 +130,9 @@ useActionButton({
       </template>
       <article class="min-w-0">
         <ArticleHeader :post="post" />
-        <ArticleSummary v-if="post.summarySource === 'ai'" :text="post.description" />
         <ClientOnly><ArticleAudio :path="post.path" /></ClientOnly>
         <ArticleSeries v-if="post.series" :name="post.series" :current-path="post.path" />
+        <ArticleSummary :text="post.description" />
         <ArticleContent :value="post" />
         <ArticleLicense
           class="mt-10"

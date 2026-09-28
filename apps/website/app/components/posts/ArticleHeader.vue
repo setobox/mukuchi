@@ -12,9 +12,6 @@ withDefaults(defineProps<{ post: PostMeta & { path: string }, preview?: boolean 
     <h1 class="my-5 break-words text-page text-themed leading-tight">
       {{ post.title }}
     </h1>
-    <p v-if="post.summarySource !== 'ai'" class="mb-6 text-muted leading-8">
-      {{ post.description }}
-    </p>
     <div class="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted">
       <time
         :datetime="post.publish"

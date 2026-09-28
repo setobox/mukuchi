@@ -106,7 +106,7 @@ async function followLink(event: MouseEvent) {
             </aside>
             <article class="preview-article min-w-0" @click.capture="followLink">
               <ArticleHeader :post="preview.data" preview />
-              <ArticleSummary v-if="preview.data.summarySource === 'ai'" :text="preview.data.description" />
+              <ArticleSummary :text="preview.data.description" />
               <ArticleBody :content-key="JSON.stringify(preview)">
                 <ContentRenderer :value="{ ...preview.data, body: preview.body }" />
               </ArticleBody>
@@ -141,7 +141,7 @@ async function followLink(event: MouseEvent) {
   .preview-toc { position: relative; top: auto; width: 100%; max-height: none; }
   .preview-article { width: 100%; }
   .preview-article :deep(h1) { font-size: 2rem; }
-  .preview-article :deep([aria-label='AI 摘要']) { padding: 20px; }
+  .preview-article :deep([aria-label='文章摘要']) { padding: 20px; }
   .preview-article :deep([aria-label='文章标签'] a) { min-height: 44px; }
 }
 </style>
