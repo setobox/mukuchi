@@ -219,6 +219,26 @@ test('结果查询失败保存需要处理状态；恢复仅查询，不再次�
   expect((await repo.job(job.id)).publication).toBe('public')
 })
 
+test('Workflow 转换异常类型后仍保留火山返回的失败详情', async () => {
+  const { repo, job, options } = await jobFixture()
+  const workflowStep: AudioSteps = {
+    do: async (_name, _config, callback) => {
+      try {
+        return await callback()
+      }
+      catch (error) {
+        throw new Error(error instanceof Error ? error.message : String(error))
+      }
+    },
+    sleep: async () => {},
+  }
+  await runAudioJob({ ...options, step: workflowStep, narration: () => ({
+    submit: async () => {},
+    query: async () => { throw new AudioProviderError('火山接口错误码 40000001：task not found', true) },
+  }) })
+  expect(await repo.job(job.id)).toMatchObject({ status: 'unknown', message: '火山接口错误码 40000001：task not found' })
+})
+
 test('旧执行在新尝试启动后返回失败，不能覆盖新尝试的状态', async () => {
   const { repo, job, options } = await jobFixture()
   const submit = vi.fn(async () => {})
@@ -283,6 +303,8 @@ test('长文本协议隔离密钥、校验任务 ID、将查询超时与鉴权�
   request.mockResolvedValue(new Response(null, { status: 401 }))
   await expect(provider.query('id')).rejects.toMatchObject({ uncertain: true })
   await expect(provider.submit('全文', 'id')).rejects.toMatchObject({ uncertain: false })
+  request.mockResolvedValue(Response.json({ code: 40000001, message: '  task  not found  ', data: {} }))
+  await expect(provider.query('id')).rejects.toMatchObject({ name: 'AudioProviderError', message: '火山接口错误码 40000001：task not found' })
   request.mockRejectedValue(new Error('secret should not leak'))
   await expect(provider.query('id')).rejects.toMatchObject({ uncertain: true, message: '火山连接中断或超时；请查询原任务确认结果' })
   for (const value of ['http://audio.bytespeech.com/a', 'https://bytespeech.com.attacker.test/a', 'https://user:pass@bytespeech.com/a', 'https://127.0.0.1/a']) expect(() => audioDownloadUrl(value)).toThrow()

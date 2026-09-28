@@ -161,7 +161,10 @@ export async function runAudioJob(options: {
       if (job.attempt !== attempt || job.status !== 'running')
         return false
       const uncertain = error instanceof AudioProviderError ? error.uncertain : job.phase !== 'pending'
-      await repo.fail(job, uncertain ? 'unknown' : 'failed', error instanceof AudioProviderError ? error.message : '音频处理失败，已保存任务进度；请检查服务状态')
+      const providerMessage = error instanceof Error && /^(?:火山|朗读|播客|供应商|音频下载)/u.test(error.message)
+        ? error.message.slice(0, 240)
+        : undefined
+      await repo.fail(job, uncertain ? 'unknown' : 'failed', providerMessage ?? '音频处理失败，已保存任务进度；请检查服务状态')
       return true
     })
   }

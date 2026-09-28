@@ -5,6 +5,7 @@ import { audioDownloadUrl, AudioProviderError, speechHeaders } from './provider'
 
 export const podcastProgressSchema = z.object({ lastRound: z.number().int().default(-1), resumes: z.number().int().default(0) })
 export interface PodcastSocket {
+  binaryType?: 'blob' | 'arraybuffer'
   accept: () => void
   send: (data: Uint8Array) => void
   close: (code?: number, reason?: string) => void
@@ -74,14 +75,15 @@ export async function generatePodcast(options: {
       if (settled)
         return
       heartbeat()
-      if (!(event.data instanceof ArrayBuffer) || ++queued > 256) {
+      const data = event.data
+      if (!(data instanceof ArrayBuffer || data instanceof Blob) || (data instanceof Blob ? data.size : data.byteLength) > 4 * 1024 * 1024 || ++queued > 256) {
         finish(new AudioProviderError('播客消息格式或缓冲大小异常', true))
         return
       }
-      const bytes = new Uint8Array(event.data)
       chain = chain.then(async () => {
         if (settled)
           return
+        const bytes = new Uint8Array(data instanceof Blob ? await data.arrayBuffer() : data)
         const frame = await readPodcastFrame(bytes)
         if (frame.sessionId && frame.sessionId !== sessionId)
           throw new AudioProviderError('播客返回了其他会话的数据', true)
@@ -135,6 +137,7 @@ export async function generatePodcast(options: {
           finish(new AudioProviderError('播客连接提前结束', true, true))
       })
     })
+    socket.binaryType = 'arraybuffer'
     socket.accept()
     heartbeat()
     socket.send(podcastFrame(1))

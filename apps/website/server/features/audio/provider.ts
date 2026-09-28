@@ -4,6 +4,7 @@ import { z } from 'zod'
 export class AudioProviderError extends Error {
   constructor(message: string, public readonly uncertain = false, public readonly retryable = false) {
     super(message)
+    this.name = 'AudioProviderError'
   }
 }
 export function speechHeaders(settings: AudioSettings, key: string, resource: string, requestId: string): Record<string, string> {
@@ -13,7 +14,8 @@ export function speechHeaders(settings: AudioSettings, key: string, resource: st
     'X-Api-Request-Id': requestId,
   }
 }
-const responseSchema = z.object({ code: z.number(), data: z.object({ task_id: z.string(), task_status: z.number(), audio_url: z.string().optional() }).optional() })
+const responseSchema = z.object({ code: z.number(), message: z.string().optional(), data: z.unknown().optional() })
+const taskSchema = z.object({ task_id: z.string(), task_status: z.number(), audio_url: z.string().optional() })
 export function audioDownloadUrl(value: string) {
   const url = new URL(value)
   const domains = ['bytespeech.com', 'bytetos.com', 'volces.com', 'bytedance.com']
@@ -45,11 +47,14 @@ export function createNarrationProvider(settings: AudioSettings, key: string, re
     catch {
       throw new AudioProviderError('火山返回的任务数据无效', true)
     }
-    if (parsed.code !== 20000000)
-      throw new AudioProviderError(`火山接口错误码 ${parsed.code}`, action === 'query' || parsed.code >= 50000000, parsed.code === 45000000 || parsed.code >= 50000000)
-    if (!parsed.data || parsed.data.task_id !== id)
+    if (parsed.code !== 20000000) {
+      const detail = parsed.message?.replace(/\s+/g, ' ').trim().slice(0, 200)
+      throw new AudioProviderError(`火山接口错误码 ${parsed.code}${detail ? `：${detail}` : ''}`, action === 'query' || parsed.code >= 50000000, parsed.code === 45000000 || parsed.code >= 50000000)
+    }
+    const data = taskSchema.safeParse(parsed.data)
+    if (!data.success || data.data.task_id !== id)
       throw new AudioProviderError('火山任务标识不匹配', true)
-    return parsed.data
+    return data.data
   }
   return {
     async submit(text: string, id: string) {

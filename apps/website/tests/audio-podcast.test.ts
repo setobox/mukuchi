@@ -29,11 +29,15 @@ test('播客二进制协议拒绝截断、错类型和过长数据，正确解�
   await expect(readPodcastFrame(new Uint8Array(4 * 1024 * 1024 + 1))).rejects.toThrow()
 })
 
-function socketFixture(truncated = false) {
+function socketFixture(truncated = false, incoming: 'arraybuffer' | 'blob' = 'arraybuffer') {
   const listeners = new Map<string, (event: { data?: unknown }) => void>()
   const sent: Uint8Array[] = []
-  const emit = (event: number, data: unknown = {}) => listeners.get('message')?.({ data: frame(event, data).buffer })
+  const emit = (event: number, data: unknown = {}) => {
+    const bytes = frame(event, data)
+    listeners.get('message')?.({ data: incoming === 'blob' ? new Blob([bytes]) : bytes.buffer })
+  }
   const socket: PodcastSocket = {
+    binaryType: 'blob',
     accept() {},
     close: vi.fn(),
     addEventListener(type, listener) {
@@ -77,12 +81,20 @@ test('播客输入明确传入全文长度和双人音色，保存轮次后接�
   const text = '正文'.repeat(11_000)
   const open = vi.fn(async () => socket)
   await generatePodcast({ settings: audioSettings, key: 'test-key', text, taskId: 'session', lastRound: -1, resume: false, open, progress, generated })
+  expect(socket.binaryType).toBe('arraybuffer')
   expect(progress).toHaveBeenCalledWith(0)
   expect(generated).toHaveBeenCalledWith('https://audio.bytespeech.com/podcast.mp3')
   const request = sent.find(bytes => new DataView(bytes.buffer).getUint32(4) === 100)!
   const body = new TextDecoder().decode(request).slice(new TextDecoder().decode(request).indexOf('{'))
   expect(JSON.parse(body)).toMatchObject({ action: 0, input_text: text, input_info: { input_text_max_length: 22_000 }, speaker_info: { speakers: ['host-a', 'host-b'], random_order: false } })
   expect(body).not.toContain('web_search')
+})
+test('播客在 Workers 默认 Blob 消息格式下仍能完成', async () => {
+  const { socket } = socketFixture(false, 'blob')
+  const generated = vi.fn(async () => {})
+  await generatePodcast({ settings: audioSettings, key: 'test-key', text: '正文', taskId: 'session', lastRound: -1, resume: false, open: async () => socket, progress: async () => {}, generated })
+  expect(socket.binaryType).toBe('arraybuffer')
+  expect(generated).toHaveBeenCalledWith('https://audio.bytespeech.com/podcast.mp3')
 })
 test('上游报告截断时不保存音频地址', async () => {
   const { socket } = socketFixture(true)
