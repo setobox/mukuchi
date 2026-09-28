@@ -1,6 +1,7 @@
 import type { H3Event } from 'h3'
 import type { AdminDatabase } from '../server/features/admin/database'
 import { afterEach, beforeEach, expect, test, vi } from 'vite-plus/test'
+import { encryptApiKey } from '../server/features/ai/crypto'
 import { audioArticle } from '../server/features/audio/content'
 import { audioFileRoute, audioJobRoute, audioJobsRoute, audioSettingsRoute, audioSyncRoute, publicAudioRoute } from '../server/features/audio/http'
 import { createAuthRepository } from '../server/features/auth/repository'
@@ -88,6 +89,9 @@ test('待审播客不进入公开查询和读取，公开后支持读取，隐�
   event.method = 'GET'
   expect((await publicAudioRoute(event)).items).toHaveLength(1)
   expect((await audioFileRoute(event)).status).toBe(200)
+  await fixture.repo.saveSettings({ ...audioSettings, enabled: false }, '', 1)
+  expect((await publicAudioRoute(event)).items).toHaveLength(1)
+  expect((await audioFileRoute(event)).status).toBe(200)
   const original = manifest.articles[0]!
   manifest.articles = [await audioArticle('a.md', `${audioSource}新正文`)]
   expect(await publicAudioRoute(event)).toEqual({ items: [] })
@@ -99,6 +103,18 @@ test('待审播客不进入公开查询和读取，公开后支持读取，隐�
   await audioJobRoute(event)
   event.method = 'GET'
   await expect(audioFileRoute(event)).rejects.toMatchObject({ statusCode: 404 })
+})
+test('自动生成关闭时可手动提交指定文章，缺少凭据时明确拒绝', async () => {
+  await login()
+  event.method = 'POST'
+  body = { paths: [manifest.articles[0]!.path], kinds: ['narration', 'podcast'] }
+  await fixture.repo.saveSettings({ ...audioSettings, enabled: false }, '', 1)
+  await expect(audioJobsRoute(event)).rejects.toMatchObject({ statusCode: 422 })
+  await fixture.repo.saveSettings({ ...audioSettings, enabled: false }, await encryptApiKey('test-key', btoa('a'.repeat(32))), 2)
+  await fixture.repo.query('DELETE FROM audio_articles')
+  await expect(audioJobsRoute(event)).resolves.toMatchObject({ message: expect.any(String) })
+  expect((await fixture.repo.jobs()).map(job => job.kind).sort()).toEqual(['narration', 'podcast'])
+  expect(await fixture.repo.claim()).toMatchObject({ status: 'running' })
 })
 test('部署同步拒绝普通会话和错误 SHA，密钥与供应商地址不出现在设置及任务视图', async () => {
   await login()

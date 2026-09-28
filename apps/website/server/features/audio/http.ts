@@ -1,5 +1,5 @@
 import type { H3Event } from 'h3'
-import type { AudioJob, AudioJobView, AudioKind, AudioSettingsView, PublicAudio } from '../../../shared/audio/model'
+import type { AudioJob, AudioJobView, AudioKind, AudioSettings, AudioSettingsView, PublicAudio } from '../../../shared/audio/model'
 import type { AudioEnv } from './cloudflare'
 import { z } from 'zod'
 import { openDatabase } from '#admin-driver'
@@ -29,6 +29,12 @@ export async function withAudio<T>(event: H3Event, action: (repo: ReturnType<typ
 }
 const articleFor = (job: AudioJob) => manifest.articles.find(article => article.path === job.path && article.inputHash === job.inputHash && article[`${job.kind}Enabled`])
 const secret = (event: H3Event) => String(useRuntimeConfig(event).aiEncryptionKey || '')
+function requireKindSettings(settings: AudioSettings, kind: AudioKind) {
+  if (kind === 'narration' && (!settings.narrationResource || !settings.narrationSpeaker || settings.dailyNarrationCharacters < 1))
+    throw new AdminError(422, '请配置朗读资源、音色和每日字符额度')
+  if (kind === 'podcast' && (!settings.podcastResource || !settings.podcastSpeaker1 || !settings.podcastSpeaker2 || settings.podcastSpeaker1 === settings.podcastSpeaker2 || settings.dailyPodcasts < 1))
+    throw new AdminError(422, '请配置播客资源、两个不同音色和每日任务额度')
+}
 export async function audioSettingsView(event: H3Event): Promise<AudioSettingsView> {
   const stored = await withAudio(event, repo => repo.settings())
   return { ...stored.settings, version: stored.version, keyConfigured: !!stored.encryptedKey, encryptionReady: await encryptionReady(secret(event)), executionReady: audioExecutionReady(audioEnv(event)) }
@@ -50,10 +56,10 @@ export async function audioSettingsRoute(event: H3Event) {
       if (!key || (settings.authMode === 'legacy' && !settings.appId) || (!settings.narrationEnabled && !settings.podcastEnabled))
         throw new AdminError(422, '请配置语音凭据并至少开启一种音频类型')
       await decryptApiKey(key, secret(event))
-      if (settings.narrationEnabled && (!settings.narrationResource || !settings.narrationSpeaker || settings.dailyNarrationCharacters < 1))
-        throw new AdminError(422, '请配置朗读资源、音色和每日字符额度')
-      if (settings.podcastEnabled && (!settings.podcastResource || !settings.podcastSpeaker1 || !settings.podcastSpeaker2 || settings.podcastSpeaker1 === settings.podcastSpeaker2 || settings.dailyPodcasts < 1))
-        throw new AdminError(422, '请配置播客资源、两个不同音色和每日任务额度')
+      if (settings.narrationEnabled)
+        requireKindSettings(settings, 'narration')
+      if (settings.podcastEnabled)
+        requireKindSettings(settings, 'podcast')
       if (!old.settings.enabled)
         await repo.synchronize(manifest, true)
     }
@@ -78,11 +84,20 @@ export async function audioJobsRoute(event: H3Event) {
   }
   const input = z.object({ paths: z.array(z.string()).min(1).max(50), kinds: z.array(audioKindSchema).min(1).max(2) }).strict().parse(await readAdminJson(event))
   await withAudio(event, async (repo) => {
-    const { settings } = await repo.settings()
-    if (!settings.enabled || !audioExecutionReady(audioEnv(event)))
-      throw new AdminError(422, '请先启用音频服务')
+    const { settings, encryptedKey } = await repo.settings()
+    if (!audioExecutionReady(audioEnv(event)))
+      throw new AdminError(422, '音频执行环境未配置')
+    if (!encryptedKey || (settings.authMode === 'legacy' && !settings.appId))
+      throw new AdminError(422, '请先配置语音凭据')
+    await decryptApiKey(encryptedKey, secret(event))
+    for (const kind of new Set(input.kinds)) {
+      if (!kindEnabled(settings, kind))
+        throw new AdminError(422, `请先启用${kind === 'narration' ? 'AI 朗读' : '双人播客'}`)
+      requireKindSettings(settings, kind)
+    }
     if (input.paths.some(path => !manifest.articles.some(article => article.path === path)))
       throw new AdminError(404, '仅能为当前已上线文章生成音频')
+    await repo.synchronize(manifest, true)
     for (const path of new Set(input.paths)) {
       const article = manifest.articles.find(article => article.path === path)!
       for (const kind of new Set(input.kinds)) await repo.enqueue(article, kind, settings)
