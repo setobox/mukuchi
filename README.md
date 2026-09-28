@@ -13,7 +13,10 @@ mukuchi（無口）取自萌属性「三无」——无心、无口、无表情�
 | AI 朗读 | 豆包语音合成大模型 2.0 |
 | 双人播客 | 豆包语音播客 API（websocket-v3） |
 | 数据存储 | SQLite、Cloudflare D1、Cloudflare R2 |
+| 账号登录 | GitHub / Google OAuth、邮箱统一账号、Resend 邮箱验证 |
 | 部署与发布 | Cloudflare Workers、GitHub Actions |
+
+账号配置、管理员邮箱白名单和迁移方法见 [账号系统说明](apps/website/AUTH.md)。
 
 ## 版权
 

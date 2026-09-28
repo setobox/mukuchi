@@ -1,8 +1,9 @@
-import { defineAdminHandler } from '../../features/admin/http'
+import { defineAuthHandler } from '../../features/auth/http'
+import { availableProviders } from '../../features/auth/providers'
 import { isLocal, session } from '../../features/auth/session'
+import { verificationInfo } from '../../features/auth/verification'
 
-export default defineAdminHandler(async (event) => {
+export default defineAuthHandler(async (event) => {
   const current = await session(event)
-  const config = useRuntimeConfig(event)
-  return { user: current?.user ?? null, csrf: current?.csrf ?? null, localAvailable: isLocal(event), loginAvailable: !!config.githubClientId && !!config.githubClientSecret }
+  return { user: current?.user ?? null, csrf: current?.csrf ?? null, localAvailable: isLocal(event), providers: availableProviders(event), linkedProviders: current?.linkedProviders ?? [], pendingVerification: await verificationInfo(event) }
 })

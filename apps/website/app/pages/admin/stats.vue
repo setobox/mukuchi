@@ -14,7 +14,7 @@ const busy = ref(false)
 let loadSequence = 0
 const enabled = statsEnabled(useRuntimeConfig().public.statsEnabled)
 async function load(reset = false) {
-  if (!enabled || !current.value.user?.owner)
+  if (!enabled || current.value.user?.role !== 'admin')
     return
   if (reset)
     page.value = 1
@@ -39,7 +39,7 @@ const maximum = computed(() => Math.max(1, ...report.value?.daily.flatMap(day =>
 function points(field: 'pageViews' | 'visitors') {
   return report.value?.daily.map((day, i, rows) => `${20 + i / Math.max(1, rows.length - 1) * 760},${180 - day[field] / maximum.value * 160}`).join(' ') ?? ''
 }
-watch(() => current.value.user?.owner, () => {
+watch(() => current.value.user?.role === 'admin', () => {
   void load()
 }, { immediate: true })
 async function changePage(change: number) {

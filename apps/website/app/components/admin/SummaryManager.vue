@@ -62,7 +62,7 @@ watch(pages, (value) => {
   page.value = Math.min(value, page.value)
 })
 async function load() {
-  if (!current.value.user?.owner)
+  if (current.value.user?.role !== 'admin')
     return
   const token = ++sequence
   loading.value = true
@@ -84,7 +84,7 @@ async function load() {
       loading.value = false
   }
 }
-watch(() => current.value.user?.owner, () => {
+watch(() => current.value.user?.role === 'admin', () => {
   void load()
 }, { immediate: true })
 watch(() => props.revision, () => {

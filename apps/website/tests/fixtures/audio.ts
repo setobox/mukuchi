@@ -11,6 +11,7 @@ export const audioSource = '---\ntitle: 测试文章\ndescription: 原简介\npu
 export function audioDatabase() {
   const sqlite = new DatabaseSync(':memory:')
   sqlite.exec(readFileSync(new URL('../../migrations/admin/0003_audio.sql', import.meta.url), 'utf8'))
+  sqlite.exec(readFileSync(new URL('../../migrations/admin/0004_auth.sql', import.meta.url), 'utf8'))
   const db: AdminDatabase = { close: () => sqlite.close(), async batch(statements) {
     sqlite.exec('BEGIN IMMEDIATE')
     try {

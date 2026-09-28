@@ -15,7 +15,7 @@ const error = ref('')
 const { notify } = useAdminFeedback()
 watch(message, value => value && notify(value))
 async function load() {
-  if (!current.value.user?.owner || loaded.value)
+  if (current.value.user?.role !== 'admin' || loaded.value)
     return
   try {
     form.value = await request<AiSettingsView>('ai/settings')
@@ -23,7 +23,7 @@ async function load() {
   }
   catch (cause) { error.value = adminError(cause) }
 }
-watch(() => current.value.user?.owner, load, { immediate: true })
+watch(() => current.value.user?.role === 'admin', load, { immediate: true })
 async function save() {
   busy.value = true
   error.value = message.value = ''

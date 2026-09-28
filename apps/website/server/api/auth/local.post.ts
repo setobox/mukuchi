@@ -6,6 +6,6 @@ export default defineAdminHandler(async (event) => {
   requireOrigin(event)
   if (!isLocal(event) || getHeader(event, 'x-admin-request') !== '1')
     throw new AdminError(403, '仅本机开发环境可使用此入口')
-  await createSession(event, { id: Number(useRuntimeConfig(event).adminOwnerId), login: '本地站主', avatar: '', local: true })
+  await createSession(event, null)
   return { ok: true }
 })

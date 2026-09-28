@@ -28,6 +28,7 @@
     "@vueuse/core": "catalog:",
     "@vueuse/nuxt": "catalog:",
     "gsap": "catalog:",
+    "jose": "catalog:",
     "nuxt": "catalog:",
     "reka-ui": "catalog:",
     "slugify": "catalog:",

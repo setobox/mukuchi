@@ -1,7 +1,7 @@
-import { defineAdminHandler } from '../../features/admin/http'
+import { defineAuthHandler } from '../../features/auth/http'
 import { logout } from '../../features/auth/session'
 
-export default defineAdminHandler(async (event) => {
+export default defineAuthHandler(async (event) => {
   await logout(event)
   return { ok: true }
 })

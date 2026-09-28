@@ -61,7 +61,7 @@ let summaryRequest = 0
 let operation: { id: string, version: number, action: 'publish' | 'unpublish' } | null = null
 
 async function load() {
-  if (!current.value.user?.owner || draft.value || loading.value)
+  if (current.value.user?.role !== 'admin' || draft.value || loading.value)
     return
   loading.value = true
   error.value = ''
@@ -77,7 +77,7 @@ async function load() {
   catch (cause) { error.value = adminError(cause) }
   finally { loading.value = false }
 }
-watch(() => current.value.user?.owner, () => {
+watch(() => current.value.user?.role === 'admin', () => {
   void load()
 }, { immediate: true })
 function changeSource(value: string) {

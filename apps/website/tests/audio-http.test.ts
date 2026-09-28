@@ -3,9 +3,11 @@ import type { AdminDatabase } from '../server/features/admin/database'
 import { afterEach, beforeEach, expect, test, vi } from 'vite-plus/test'
 import { audioArticle } from '../server/features/audio/content'
 import { audioFileRoute, audioJobRoute, audioJobsRoute, audioSettingsRoute, audioSyncRoute, publicAudioRoute } from '../server/features/audio/http'
+import { createAuthRepository } from '../server/features/auth/repository'
 import { createSession } from '../server/features/auth/session'
 import { audioBucket, audioDatabase, audioSettings, audioSource } from './fixtures/audio'
 import manifest from './fixtures/audio-manifest'
+import { githubProfile } from './fixtures/auth'
 
 const state = vi.hoisted(() => ({ db: null as AdminDatabase | null }))
 vi.mock('#admin-driver', () => ({ openDatabase: () => ({ batch: state.db!.batch, close() {} }), openStorage: vi.fn() }))
@@ -20,7 +22,6 @@ const event = { method: 'GET', context: { cloudflare: { env: { NUXT_AUDIO_ENABLE
 beforeEach(async () => {
   fixture = audioDatabase()
   state.db = fixture.db
-  await fixture.db.batch([{ sql: 'CREATE TABLE admin_sessions(token_hash TEXT PRIMARY KEY,user_id INTEGER,login TEXT,avatar TEXT,local INTEGER,csrf TEXT,expires_at INTEGER)' }])
   manifest.articles = [await audioArticle('a.md', audioSource)]
   await fixture.repo.saveSettings(audioSettings, '', 0)
   await fixture.repo.synchronize(manifest, true)
@@ -31,7 +32,7 @@ beforeEach(async () => {
   event.method = 'GET'
   headers.set('content-type', 'application/json')
   headers.set('origin', 'https://blog.test')
-  vi.stubGlobal('useRuntimeConfig', () => ({ aiEncryptionKey: btoa('a'.repeat(32)), audioSyncToken: 'sync-token-'.repeat(4), adminOwnerId: 1, app: { baseURL: '/' } }))
+  vi.stubGlobal('useRuntimeConfig', () => ({ aiEncryptionKey: btoa('a'.repeat(32)), audioSyncToken: 'sync-token-'.repeat(4), authAdminEmails: 'user1@example.com', app: { baseURL: '/' } }))
   vi.stubGlobal('getCookie', (_event: H3Event, name: string) => cookies.get(name))
   vi.stubGlobal('setCookie', (_event: H3Event, name: string, value: string) => cookies.set(name, value))
   vi.stubGlobal('getHeader', (_event: H3Event, name: string) => headers.get(name))
@@ -48,8 +49,9 @@ afterEach(() => {
   vi.clearAllMocks()
 })
 async function login(user = 1) {
-  await createSession(event, { id: user, login: 'user', avatar: '', local: false })
-  headers.set('x-csrf-token', String((await fixture.repo.query('SELECT csrf FROM admin_sessions WHERE user_id = ?', [user]))[0]!.csrf))
+  const account = await createAuthRepository(fixture.db).resolve({ ...githubProfile, subject: String(user), email: `user${user}@example.com` })
+  await createSession(event, account.id)
+  headers.set('x-csrf-token', String((await fixture.repo.query('SELECT csrf FROM auth_sessions WHERE user_id = ?', [account.id]))[0]!.csrf))
 }
 async function finishPodcast() {
   const queued = (await fixture.repo.enqueue(manifest.articles[0]!, 'podcast', audioSettings))!

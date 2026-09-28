@@ -1,5 +1,5 @@
 <script setup lang="ts">
-const { current, loaded, refresh, localLogin, endpoint } = useAdminSession()
+const { current, loaded, refresh, localLogin, loginOpen } = useAdminSession()
 const error = ref('')
 const open = ref(false)
 const route = useRoute()
@@ -38,7 +38,7 @@ watch(() => route.path, () => {
       </div>
     </header>
     <div class="mx-auto max-w-[1600px] lg:grid lg:grid-cols-[210px_minmax(0,1fr)]">
-      <nav v-if="current.user?.owner" :class="open ? 'block' : 'hidden lg:block'" class="border-b border-line p-5 lg:min-h-[calc(100dvh-68px)] lg:border-b-0 lg:border-r" aria-label="管理导航">
+      <nav v-if="current.user?.role === 'admin'" :class="open ? 'block' : 'hidden lg:block'" class="border-b border-line p-5 lg:min-h-[calc(100dvh-68px)] lg:border-b-0 lg:border-r" aria-label="管理导航">
         <NuxtLink v-for="item in navigation" :key="item.to" :to="item.to" class="control-quiet mb-2 min-h-11 flex items-center gap-3 px-4 py-3" :class="(item.to === '/admin' ? route.path === '/admin' || route.path.startsWith('/admin/editor/') : route.path === item.to) ? 'control-selected' : 'text-muted'">
           <span :class="item.icon" />{{ item.label }}
         </NuxtLink>
@@ -47,14 +47,16 @@ watch(() => route.path, () => {
         <p v-if="!loaded" role="status" class="text-muted">
           正在确认登录状态…
         </p>
-        <template v-else-if="!current.user?.owner">
+        <template v-else-if="current.user?.role !== 'admin'">
           <h1 class="mb-4 text-section text-heading">
             {{ current.user ? '无管理权限' : '登录管理后台' }}
           </h1>
           <p class="mb-6 text-muted">
-            {{ current.user ? '此账户不是站主，无法访问管理后台。' : '请使用站主 GitHub 账户登录。' }}
+            {{ current.user ? '此账号没有管理权限。' : '请使用管理员邮箱对应的账号登录。' }}
           </p>
-          <a v-if="current.loginAvailable" :href="endpoint('/api/auth/github')" class="text-link">使用 GitHub 登录</a>
+          <BaseButton v-if="!current.user && (current.providers.github || current.providers.google)" @click="loginOpen = true">
+            登录
+          </BaseButton>
           <p v-else-if="!current.localAvailable" class="text-muted">
             后台登录尚未配置。
           </p>

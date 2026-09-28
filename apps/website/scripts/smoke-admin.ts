@@ -10,6 +10,7 @@ const base = new URL(process.env.MUKUCHI_SMOKE_URL || 'http://localhost:3000')
 assert.ok(['localhost', '127.0.0.1', '[::1]'].includes(base.hostname), '后台写入验收仅允许本地地址')
 const origin = base.origin
 const worker = process.env.MUKUCHI_ADMIN_SMOKE_WORKER === 'true'
+const workerUser = randomUUID()
 const workerDraft = { id: randomUUID(), version: 1 }
 let cookie = ''
 let csrf = ''
@@ -17,11 +18,12 @@ if (worker) {
   const token = randomUUID()
   csrf = randomUUID()
   const hash = createHash('sha256').update(token).digest('hex')
-  writeFileSync('.data/admin-smoke-session.sql', `INSERT INTO admin_sessions (token_hash,user_id,login,avatar,local,csrf,expires_at) VALUES ('${hash}',83793448,'local-worker-test','',0,'${csrf}',${Date.now() + 300_000});\nINSERT INTO admin_drafts (id,path,source,updated_at) VALUES ('${workerDraft.id}','_worker-smoke-${workerDraft.id}.md','','${new Date().toISOString()}');`)
+  // The local preview must whitelist auth-smoke@example.invalid in its .dev.vars.
+  writeFileSync('.data/admin-smoke-session.sql', `INSERT INTO auth_users (id,email,name,avatar,created_at,updated_at) VALUES ('${workerUser}','auth-smoke@example.invalid','local-worker-test','',${Date.now()},${Date.now()}) ON CONFLICT(email) DO NOTHING;\nINSERT INTO auth_sessions (token_hash,user_id,local,csrf,expires_at) SELECT '${hash}',id,0,'${csrf}',${Date.now() + 300_000} FROM auth_users WHERE email='auth-smoke@example.invalid';\nINSERT INTO admin_drafts (id,path,source,updated_at) VALUES ('${workerDraft.id}','_worker-smoke-${workerDraft.id}.md','','${new Date().toISOString()}');`)
   const require = createRequire(import.meta.url)
   const wrangler = join(dirname(require.resolve('wrangler/package.json')), 'bin/wrangler.js')
   execFileSync(process.execPath, [wrangler, 'd1', 'execute', 'mukuchi-admin', '--local', '--config', 'wrangler.jsonc', '--persist-to', '.wrangler/state', '--file', '.data/admin-smoke-session.sql'], { stdio: 'pipe', windowsHide: true })
-  cookie = `mukuchi:session=${token}`
+  cookie = `mukuchi:session:v2=${token}`
 }
 async function call(path: string, options: { method?: string, body?: unknown, anonymous?: boolean, headers?: Record<string, string>, expected?: number } = {}) {
   const headers = { origin, ...(options.anonymous ? {} : { cookie, 'x-csrf-token': csrf }), ...options.headers }
@@ -31,13 +33,15 @@ async function call(path: string, options: { method?: string, body?: unknown, an
   return response
 }
 await call('/api/admin/articles', { anonymous: true, expected: 401 })
-await call('/api/auth/callback?state=invalid&code=invalid', { anonymous: true, expected: 400 })
+const invalidCallback = await fetch(new URL('/api/auth/callback?state=invalid&code=invalid', base), { redirect: 'manual' })
+assert.equal(invalidCallback.status, 302)
+assert.ok(invalidCallback.headers.get('location')?.includes('auth_error=expired'))
 await call('/api/auth/local', { method: 'POST', headers: { 'x-admin-request': '1', 'x-forwarded-for': '127.0.0.1' }, expected: 403 })
 const login = await call('/api/auth/local', { method: 'POST', headers: { 'x-admin-request': '1' }, expected: worker ? 403 : 200 })
 if (!worker)
   cookie = login.headers.get('set-cookie')!.split(';')[0]!
-const session = await (await call('/api/auth/session')).json() as { user: { owner: boolean }, csrf: string }
-assert.equal(session.user.owner, true)
+const session = await (await call('/api/auth/session')).json() as { user: { role: string }, csrf: string }
+assert.equal(session.user.role, 'admin')
 csrf = session.csrf
 if (!worker)
   await call('/api/admin/articles')

@@ -69,7 +69,7 @@ watch(pages, (value) => {
   page.value = Math.min(page.value, value)
 })
 async function loadJobs() {
-  if (!current.value.user?.owner)
+  if (current.value.user?.role !== 'admin')
     return
   const token = ++sequence
   loading.value = true
@@ -91,7 +91,7 @@ async function loadJobs() {
   }
 }
 async function load() {
-  if (!current.value.user?.owner || settingsLoading.value)
+  if (current.value.user?.role !== 'admin' || settingsLoading.value)
     return
   settingsLoading.value = true
   settingsError.value = ''
@@ -103,7 +103,7 @@ async function load() {
   catch (cause) { settingsError.value = adminError(cause) }
   finally { settingsLoading.value = false }
 }
-watch(() => current.value.user?.owner, () => {
+watch(() => current.value.user?.role === 'admin', () => {
   void load()
   void loadJobs()
 }, { immediate: true })

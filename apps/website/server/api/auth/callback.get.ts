@@ -1,4 +1,4 @@
-import { defineAdminHandler } from '../../features/admin/http'
+import { defineAuthHandler } from '../../features/auth/http'
 import { finishOAuth } from '../../features/auth/oauth'
 
-export default defineAdminHandler(finishOAuth)
+export default defineAuthHandler(event => finishOAuth(event, 'github'))

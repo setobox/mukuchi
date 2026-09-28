@@ -29,7 +29,7 @@ watch(pageCount, (count) => {
   page.value = Math.min(page.value, count)
 })
 async function load() {
-  if (!current.value.user?.owner)
+  if (current.value.user?.role !== 'admin')
     return
   const token = ++sequence
   loading.value = true
@@ -65,7 +65,7 @@ async function edit(path: string) {
 function date(value: string) {
   return value ? value.slice(0, 10) : '—'
 }
-watch(() => current.value.user?.owner, () => {
+watch(() => current.value.user?.role === 'admin', () => {
   void load()
 }, { immediate: true })
 </script>

@@ -11,7 +11,7 @@ const busy = ref(false)
 const retrying = ref<string[]>([])
 const { notify } = useAdminFeedback()
 async function load() {
-  if (!current.value.user?.owner || busy.value)
+  if (current.value.user?.role !== 'admin' || busy.value)
     return
   busy.value = true
   try {
@@ -38,7 +38,7 @@ async function retry(record: Publication) {
   catch (cause) { error.value = adminError(cause) }
   finally { retrying.value = retrying.value.filter(id => id !== record.id) }
 }
-watch(() => current.value.user?.owner, () => {
+watch(() => current.value.user?.role === 'admin', () => {
   void load()
 }, { immediate: true })
 const { pause, resume } = useIntervalFn(() => {

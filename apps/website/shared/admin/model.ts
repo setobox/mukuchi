@@ -36,8 +36,6 @@ export const publicationSchema = z.object({
 export type Publication = z.infer<typeof publicationSchema>
 export const assetSchema = z.object({ id: z.uuid(), draftId: z.uuid(), path: z.string(), mime: z.string(), size: z.number(), hash: z.string(), createdAt: z.string() })
 export type Asset = z.infer<typeof assetSchema>
-export interface Account { id: number, login: string, avatar: string, owner: boolean, local: boolean }
-export interface SessionInfo { user: Account | null, csrf: string | null, localAvailable: boolean, loginAvailable: boolean }
 export interface ArticlePublicationState { published: boolean, hasPublished: boolean, hasChanges: boolean }
 export interface ArticleEntry { path: string, title: string, hash: string, draft: Draft | null, publication: ArticlePublicationState }
 export function sameArticleSource(left: string, right: string) {

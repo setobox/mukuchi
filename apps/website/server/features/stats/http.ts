@@ -85,7 +85,7 @@ export async function requireStatsAdmin(event: H3Event) {
   const config = requireStats(event)
   if (adminEnabled(event) && !getHeader(event, 'authorization')) {
     const current = await session(event)
-    if (current?.user.owner)
+    if (current?.user.role === 'admin')
       return
     if (current)
       throw createError({ statusCode: 403, message: '仅站主可以查询统计数据' })
