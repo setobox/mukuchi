@@ -72,7 +72,7 @@ export type AudioJob = z.infer<typeof audioJobSchema>
 export type AudioJobView = Omit<AudioJob, 'config' | 'input' | 'resultUrl' | 'objectKey'> & { current: boolean, resumable: boolean }
 export interface PublicAudio { id: string, kind: AudioKind, url: string }
 export function kindEnabled(settings: AudioSettings, kind: AudioKind) {
-  return settings.enabled && (kind === 'narration' ? settings.narrationEnabled : settings.podcastEnabled)
+  return kind === 'narration' ? settings.narrationEnabled : settings.podcastEnabled
 }
 export async function audioConfigHash(settings: AudioSettings, kind: AudioKind) {
   return digest(JSON.stringify(['audio-v1', kind, settings.authMode, settings.appId, kind === 'narration'

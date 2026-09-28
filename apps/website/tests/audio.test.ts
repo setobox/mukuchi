@@ -60,6 +60,19 @@ test('建立基线不补齐历史；重复部署和重复提交去重，正文�
   expect(usage.podcasts + Number(usage.narrationCharacters > 0)).toBe(1)
 })
 
+test('关闭自动生成时仍能手动提交和执行两种音频，正文更新不自动建任务', async () => {
+  const repo = fixture()
+  const base = await manifest()
+  const manualSettings = { ...audioSettings, enabled: false }
+  await repo.saveSettings(manualSettings, '', 0)
+  await repo.synchronize(base, true)
+  for (const kind of ['narration', 'podcast'] as const)
+    expect(await repo.enqueue(base.articles[0]!, kind, manualSettings)).toMatchObject({ status: 'queued' })
+  expect(await repo.claim()).toMatchObject({ status: 'running' })
+  await repo.synchronize(await manifest(`${audioSource}正文更新`))
+  expect(await repo.jobs()).toHaveLength(2)
+})
+
 test('额度用尽保留排队，次日恢复；关闭音频和旧配置不会预占额度', async () => {
   const repo = fixture()
   const base = await manifest()

@@ -92,7 +92,8 @@ test('当前音频状态不受最近 500 条任务限制，并区分未上线、
     const jobs = await repo.statusJobs(hashes)
     expect(audioArticleState(article.path, 'podcast', manifest, audioSettings, hashes.podcast, jobs).status).toBe('review')
     expect(audioArticleState(article.path, 'podcast', manifest, audioSettings, 'new-config', jobs).status).toBe('stale')
-    expect(audioArticleState(article.path, 'podcast', manifest, { ...audioSettings, enabled: false }, hashes.podcast, jobs).status).toBe('disabled')
+    expect(audioArticleState(article.path, 'podcast', manifest, { ...audioSettings, enabled: false }, hashes.podcast, jobs).status).toBe('review')
+    expect(audioArticleState(article.path, 'podcast', manifest, { ...audioSettings, podcastEnabled: false }, hashes.podcast, jobs).status).toBe('disabled')
     expect(audioArticleState('/posts/new', 'podcast', manifest, audioSettings, hashes.podcast, jobs).status).toBe('unpublished')
   }
   finally { db.close() }

@@ -93,8 +93,6 @@ export function createAudioRepository(db: AdminDatabase) {
     },
     async claim(now = Date.now()): Promise<AudioJob | null> {
       const { settings } = await repo.settings()
-      if (!settings.enabled)
-        return null
       const running = (await query(`${selectJob} WHERE status = 'running' LIMIT 1`))[0]
       if (running)
         return audioJobSchema.parse(running)

@@ -167,7 +167,7 @@ useIntervalFn(() => {
       {{ label }}设置
     </h2>
     <p class="mb-5 text-sm text-muted">
-      {{ kind === 'narration' ? '文章上线及正文更新后自动生成，生成完成后公开。' : '文章上线及正文更新后自动生成，生成完成后需要试听并确认公开。' }}
+      {{ kind === 'narration' ? '可手动生成；开启自动生成后，文章上线及正文更新也会生成。朗读完成后公开。' : '可手动生成；开启自动生成后，文章上线及正文更新也会生成。播客完成后需要试听并确认公开。' }}
     </p>
     <p v-if="settingsError" role="alert" class="mb-4 text-error">
       {{ settingsError }}
@@ -184,6 +184,9 @@ useIntervalFn(() => {
           </summary>
           <div class="mt-5 space-y-5">
             <BaseSwitch v-model="form.enabled" label="启用音频自动生成" />
+            <p class="text-xs text-muted">
+              此开关只控制文章上线和正文更新时的自动生成；手动生成仍可在下方提交。
+            </p>
             <BaseSelect v-model="form.authMode" label="火山语音鉴权" :options="[{ value: 'apiKey', label: '新版 API Key' }, { value: 'legacy', label: '旧版 App ID + Access Token' }]" />
             <label v-if="form.authMode === 'legacy'" class="block text-sm text-muted">App ID<input v-model="form.appId" class="field-control mt-2 w-full px-3" autocomplete="off"></label>
             <label class="block text-sm text-muted">{{ form.authMode === 'apiKey' ? '语音 API Key' : '语音 Access Token' }}<input v-model="key" type="password" class="field-control mt-2 w-full px-3" autocomplete="new-password" :disabled="!form.encryptionReady" :placeholder="form.keyConfigured ? '已配置；留空保留密钥' : '请输入火山语音凭据'"></label>
@@ -192,7 +195,7 @@ useIntervalFn(() => {
             </p>
             <label v-if="form.keyConfigured" class="checkbox-field min-h-11 flex items-center gap-3 text-sm text-error"><input v-model="clearKey" type="checkbox" class="accent-error">删除已保存的语音密钥</label>
             <p class="text-xs text-muted">
-              启用总开关前，请分别保存所需的朗读、播客配置。不使用的类型可在对应页关闭。
+              启用自动生成前，请分别保存所需的朗读、播客配置。不使用的类型可在对应页关闭。
             </p>
           </div>
         </details>
@@ -225,6 +228,9 @@ useIntervalFn(() => {
       <p class="mb-5 text-xs text-muted">
         今日已预占 {{ kind === 'narration' ? `${list.usage.narrationCharacters} 字朗读` : `${list.usage.podcasts} 个播客任务` }}。仅为已上线文章生成，重复内容会复用已有任务。
       </p>
+      <p v-if="!savedForm.keyConfigured" class="mb-5 text-xs text-warn">
+        手动生成前请先保存语音凭据。
+      </p>
       <p v-if="error" role="alert" class="mb-4 text-error">
         {{ error }}
       </p>
@@ -239,7 +245,7 @@ useIntervalFn(() => {
         <BaseButton variant="ghost" :disabled="!!enqueueing.length || !selected[kind].length" @click="selected[kind] = []">
           清空选择
         </BaseButton>
-        <BaseButton :loading="!!enqueueing.length" :disabled="!selected[kind].length || selected[kind].length > 50 || !kindEnabled(savedForm, kind) || !savedForm.executionReady" @click="enqueue(selected[kind])">
+        <BaseButton :loading="!!enqueueing.length" :disabled="!selected[kind].length || selected[kind].length > 50 || !kindEnabled(savedForm, kind) || !savedForm.executionReady || !savedForm.keyConfigured" @click="enqueue(selected[kind])">
           生成所选（{{ selected[kind].length }} / 50）
         </BaseButton>
       </div>
@@ -258,7 +264,7 @@ useIntervalFn(() => {
             <BaseTag :tone="aiStatusTone(state(article))" class="text-xs">
               {{ aiStatusLabels[state(article)] }}
             </BaseTag>
-            <BaseButton variant="border" :loading="enqueueing.includes(article.path)" :disabled="!!enqueueing.length || state(article) === 'disabled' || !savedForm.executionReady" @click="enqueue([article.path])">
+            <BaseButton variant="border" :loading="enqueueing.includes(article.path)" :disabled="!!enqueueing.length || state(article) === 'disabled' || !savedForm.executionReady || !savedForm.keyConfigured" @click="enqueue([article.path])">
               生成 / 补齐
             </BaseButton>
           </div>
