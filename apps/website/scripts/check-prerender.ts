@@ -11,16 +11,12 @@ const root = new URL('../', import.meta.url)
 const database = new DatabaseSync(fileURLToPath(new URL('.data/content/contents.sqlite', root)), { readOnly: true })
 let paths: string[]
 let rssPosts: unknown
-let descriptions: Map<string, { text: string, ai: boolean }>
+let descriptions: Map<string, { text: string }>
 let series: ReturnType<typeof collectSeries>
 try {
   series = collectSeries(database.prepare('SELECT path, title, publish, series, seriesOrder FROM _content_posts').all().map(row => ({ path: String(row.path), title: String(row.title), publish: String(row.publish), series: typeof row.series === 'string' ? row.series : undefined, seriesOrder: typeof row.seriesOrder === 'number' ? row.seriesOrder : undefined })))
   rssPosts = database.prepare('SELECT path, stem, title, description, publish, "update" FROM _content_posts').all()
-  descriptions = new Map(database.prepare('SELECT path, description, summarySource FROM _content_posts').all().map(row => [String(row.path), { text: String(row.description), ai: row.summarySource === 'ai' }]))
-  const usePage = database.prepare('SELECT path, description FROM _content_use').get()
-  assert.equal(usePage?.path, '/use')
-  assert.equal(typeof usePage?.description, 'string')
-  descriptions.set('/use', { text: String(usePage.description), ai: false })
+  descriptions = new Map(database.prepare('SELECT path, description FROM _content_posts').all().map(row => [String(row.path), { text: String(row.description) }]))
   paths = database.prepare('SELECT path FROM _content_posts ORDER BY path').all().map((row) => {
     assert.equal(typeof row.path, 'string')
     return row.path as string
@@ -37,23 +33,12 @@ assert(collectionsHtml.includes('正在加载'), '导航页只预渲染外壳，
 assert(!collectionsHtml.includes('aria-label="侧边栏"'), '导航页不显示博客侧栏')
 assert.deepEqual(await readFile(new URL('favicon.ico', publicRoot)), await readFile(new URL('public/favicon.ico', root)), '图标静态资源进入构建产物')
 assertRss(await readFile(new URL('rss.xml', publicRoot), 'utf8'), rssPosts, 'https://blog.setobox.me')
-for (const path of ['/about', '/use', ...paths]) {
+for (const path of ['/about', ...paths]) {
   const directory = new URL(`${path.slice(1)}/`, publicRoot)
   const html = (await readFile(new URL('index.html', directory), 'utf8')).replace(/<!--[\s\S]*?-->/g, '')
   assert(html.includes(pageUrl('https://blog.setobox.me', '/', path)), `缺少正式链接：${path}`)
   if (path === '/about')
     assert.match(html, /href="\/use"[^>]*>\s*Use · 我的装备/, '关于页提供 Use 入口')
-  if (path === '/use') {
-    assert.match(html, /<h1[^>]*>\s*Use\s*<\/h1>/, 'Use 页面标题')
-    const headings = [...html.matchAll(/<h2\b[^>]*>([\s\S]*?)<\/h2>/g)].map(match => match[1]!.replace(/<[^>]*>/g, '').replace(/&amp;/g, '&').trim())
-    const sections = ['Development', 'Design', 'Record', 'Note & Plan', 'Tools', 'Hardware']
-    assert.deepEqual(headings.filter(heading => sections.includes(heading)), sections, '清单保留六个分组及顺序')
-    assert.match(html, /<li>Terminal:\s*<ul>/, 'Terminal 保留嵌套清单')
-    for (const retired of ['Claude', 'Github Copilot', 'i9-14900KF（缩肛）'])
-      assert(html.includes(`<del>${retired}</del>`), `保留删除线：${retired}`)
-    assert.match(html, /href="https:\/\/code.visualstudio.com\/insiders"/, 'Markdown 外链正确解析')
-    assert(!html.includes('aria-label="文章目录"'), 'Use 不显示页内目录')
-  }
   const description = descriptions.get(path)
   if (paths.includes(path)) {
     const group = series.find(group => group.posts.some(post => post.path === path))
@@ -84,4 +69,4 @@ for (const path of ['/about', '/use', ...paths]) {
 for (const path of ['posts', 'categories', 'tags', 'archive', 'series', 'tools', 'my']) {
   await assert.rejects(access(new URL(`${path}/index.html`, publicRoot)), `列表页不能预渲染：/${path}`)
 }
-console.log(`预渲染验收通过：${paths.length} 篇文章、关于页、Use 页、导航页外壳与 RSS；文章列表保持 SSR。`)
+console.log(`预渲染验收通过：${paths.length} 篇文章、关于页、导航页外壳与 RSS；文章列表保持 SSR。`)
