@@ -99,7 +99,7 @@ export async function verifyEmail(event: H3Event) {
       throw new AuthError(409, '此邮箱已有账号，请先使用原登录方式登录', 'link')
     throw new AuthError(400, '验证码错误、已过期或尝试次数过多，请重新发送')
   }
-  await createSession(event, user.id)
+  await createSession(event, user.id, pending.profile.provider)
   deleteCookie(event, verificationCookie, authCookieOptions(event, 0))
   return { returnTo: pending.return_to }
 }

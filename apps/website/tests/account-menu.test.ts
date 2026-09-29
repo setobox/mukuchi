@@ -27,7 +27,7 @@ function key(target: Element, value: string) {
 }
 function mount(role?: 'admin' | 'user', path = '/posts') {
   vi.spyOn(window, 'matchMedia').mockImplementation(query => ({ matches: query.includes('prefers-reduced-motion'), media: query, onchange: null, addEventListener: vi.fn(), removeEventListener: vi.fn(), addListener: vi.fn(), removeListener: vi.fn(), dispatchEvent: () => true }))
-  const current = ref<SessionInfo>({ ...emptySession(), providers: { github: true, google: true }, linkedProviders: ['github'], user: role ? { id: 'user', name: '测试用户', email: 'user@example.com', avatar: 'https://example.com/avatar.png', role, local: false } : null })
+  const current = ref<SessionInfo>({ ...emptySession(), providers: { github: true, google: true }, linkedProviders: ['github'], loginProvider: role ? 'github' : null, user: role ? { id: 'user', name: '测试用户', email: 'user@example.com', avatar: 'https://example.com/avatar.png', role, local: false } : null })
   const auth = { current, loaded: ref(true), loading: ref(false), busy: ref(false), error: ref(''), loginOpen: ref(false), refresh: vi.fn(), logout: vi.fn(async () => {
     current.value = { ...current.value, user: null }
   }), loginUrl: vi.fn(() => '/api/auth/github?returnTo=%2Fposts'), linkGoogle: vi.fn(async () => ({ url: 'https://accounts.google.com/' })), sendCode: vi.fn(), verifyCode: vi.fn(async () => ({ returnTo: '/posts' })) }
@@ -82,11 +82,14 @@ test('未登录打开登录弹窗，展示两平台与首次注册提示，关�
   expect(dialog.open).toBe(false)
   expect(document.activeElement).toBe(button())
 })
-test('已登录打开菜单显示邮箱与头像，普通用户没有后台项，Esc 返回触发器', async () => {
+test('已登录菜单无头像，导航头像显示登录平台，Esc 返回触发器', async () => {
   const { button, dialog, openMenu } = mount('user')
   const menu = await openMenu()
   expect(dialog.open).toBe(false)
   expect(menu.textContent).toContain('user@example.com')
+  expect(menu.querySelector('img')).toBeNull()
+  expect(button().getAttribute('aria-label')).toContain('GitHub')
+  expect(button().querySelector('.i-lucide-github')).not.toBeNull()
   expect(menu.textContent).not.toContain('前往后台')
   expect(menu.textContent).toContain('退出登录')
   expect(menu.textContent).toContain('关联 Google')
@@ -97,6 +100,13 @@ test('已登录打开菜单显示邮箱与头像，普通用户没有后台项�
   key(menu, 'Escape')
   await vi.waitFor(() => expect(document.querySelector('[role="menu"]')).toBeNull())
   await vi.waitFor(() => expect(document.activeElement).toBe(button()))
+})
+test('切换登录平台后导航徽标显示 Google', async () => {
+  const { auth, button } = mount('user')
+  auth.current.value.loginProvider = 'google'
+  await flush()
+  expect(button().getAttribute('aria-label')).toContain('Google')
+  expect(button().querySelector('.i-logos-google-icon')).not.toBeNull()
 })
 test('管理员菜单支持键盘选择，后台退出后返回文章列表', async () => {
   const { auth, openMenu, navigate } = mount('admin', '/admin')

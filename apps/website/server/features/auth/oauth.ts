@@ -75,11 +75,11 @@ export async function finishOAuth(event: H3Event, provider: AuthProvider = 'gith
     const existing = await withAuth(event, repo => repo.identity(provider, profile.subject))
     if (existing) {
       await withAuth(event, repo => repo.syncProfile(existing.id, profile))
-      await createSession(event, existing.id)
+      await createSession(event, existing.id, provider)
     }
     else if (profile.trustedEmail) {
       const user = await withAuth(event, repo => repo.resolve(profile))
-      await createSession(event, user.id)
+      await createSession(event, user.id, provider)
     }
     else {
       if (await withAuth(event, repo => repo.emailExists(profile.email)))

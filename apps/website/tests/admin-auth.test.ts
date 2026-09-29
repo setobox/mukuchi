@@ -112,7 +112,7 @@ test('GitHub 获取私有主邮箱，PKCE 与单次 state 绑定浏览器和原�
   const request = vi.fn<typeof fetch>().mockResolvedValueOnce(Response.json({ access_token: 'token' })).mockResolvedValueOnce(Response.json({ id: 123, login: 'owner' })).mockResolvedValueOnce(Response.json([{ email: 'Owner@example.com', primary: true, verified: true, visibility: 'private' }]))
   vi.stubGlobal('fetch', request)
   expect(await finishOAuth(event)).toBe('/posts/example?q=1#section')
-  expect(await session(event)).toMatchObject({ user: { role: 'admin', email: 'owner@example.com', avatar: '' } })
+  expect(await session(event)).toMatchObject({ user: { role: 'admin', email: 'owner@example.com', avatar: '' }, loginProvider: 'github' })
   expect(new URLSearchParams(String(request.mock.calls[0]![1]?.body)).get('code_verifier')).toHaveLength(64)
   expect(request.mock.calls.every(call => call[1]?.redirect === 'manual')).toBe(true)
   cookies.set('mukuchi:oauth:github', oauthState)
@@ -151,6 +151,7 @@ test('Google 首次登录自动注册；第三方邮箱碰撞要求原账号登�
   expect(target.searchParams.get('nonce')).toBeTruthy()
   query = { state: cookies.get('mukuchi:oauth:google')!, code: 'google-code' }
   await finishOAuth(event, 'google')
+  expect((await session(event))!.loginProvider).toBe('google')
   const googleUser = (await session(event))!.user
   await startOAuth(event, 'google')
   query = { state: cookies.get('mukuchi:oauth:google')!, code: 'again' }
@@ -216,6 +217,7 @@ test('Google 第三方邮箱回调进入待注册状态，验证码完成后返�
   expect(await verifyEmail(event)).toEqual({ returnTo: '/about' })
   expect(await fixture.repo.identity('google', 'external-new')).toMatchObject({ email: 'new@qq.com' })
   expect((await session(event))!.user.email).toBe('new@qq.com')
+  expect((await session(event))!.loginProvider).toBe('google')
 })
 test('验证码绑定浏览器与 CSRF，邮件只发给 OAuth 邮箱，验证成功后才创建账号；并发仅消费一次', async () => {
   const { hash, code, request } = await pending()

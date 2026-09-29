@@ -5,5 +5,5 @@ import { verificationInfo } from '../../features/auth/verification'
 
 export default defineAuthHandler(async (event) => {
   const current = await session(event)
-  return { user: current?.user ?? null, csrf: current?.csrf ?? null, localAvailable: isLocal(event), providers: availableProviders(event), linkedProviders: current?.linkedProviders ?? [], pendingVerification: await verificationInfo(event) }
+  return { user: current?.user ?? null, loginProvider: current?.loginProvider ?? null, csrf: current?.csrf ?? null, localAvailable: isLocal(event), providers: availableProviders(event), linkedProviders: current?.linkedProviders ?? [], pendingVerification: await verificationInfo(event) }
 })

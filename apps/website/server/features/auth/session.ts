@@ -1,5 +1,5 @@
 import type { H3Event } from 'h3'
-import type { Account } from '../../../shared/auth/model'
+import type { Account, AuthProvider } from '../../../shared/auth/model'
 import { AdminError, sha256 } from '../../../shared/admin/model'
 import { adminEmails, AuthError } from '../../../shared/auth/model'
 import { requireOrigin } from '../admin/http'
@@ -12,11 +12,11 @@ export function isLocal(event: H3Event) {
   const proof = useRuntimeConfig(event).adminLocalProof
   return !!proof && getHeader(event, 'x-mukuchi-local-proof') === proof
 }
-export async function createSession(event: H3Event, userId: string | null) {
+export async function createSession(event: H3Event, userId: string | null, loginProvider: AuthProvider | null = null) {
   const token = `${crypto.randomUUID()}${crypto.randomUUID()}`
   const csrf = crypto.randomUUID()
   const hash = await sha256(token)
-  await withAuth(event, repo => repo.saveSession(hash, userId, csrf, Date.now() + 7 * 86400_000))
+  await withAuth(event, repo => repo.saveSession(hash, userId, csrf, Date.now() + 7 * 86400_000, loginProvider))
   setCookie(event, sessionCookie, token, authCookieOptions(event, 7 * 86400))
 }
 export async function session(event: H3Event) {
@@ -30,13 +30,13 @@ export async function session(event: H3Event) {
       return null
     if (row.local === 1) {
       const user: Account = { id: 'local', name: '本地管理员', email: null, avatar: '', role: 'admin', local: true }
-      return { user, csrf: row.csrf, hash, linkedProviders: [] }
+      return { user, csrf: row.csrf, hash, loginProvider: null, linkedProviders: [] }
     }
     const record = row.user_id ? await repo.user(row.user_id) : null
     if (!record)
       return null
     const user: Account = { ...record, role: adminEmails(useRuntimeConfig(event).authAdminEmails).includes(record.email) ? 'admin' : 'user', local: false }
-    return { user, csrf: row.csrf, hash, linkedProviders: await repo.providers(user.id) }
+    return { user, csrf: row.csrf, hash, loginProvider: row.login_provider, linkedProviders: await repo.providers(user.id) }
   })
 }
 export async function requireAuthSession(event: H3Event) {

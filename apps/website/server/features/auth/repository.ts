@@ -1,4 +1,4 @@
-import type { AuthProfile } from '../../../shared/auth/model'
+import type { AuthProfile, AuthProvider } from '../../../shared/auth/model'
 import type { AdminDatabase, SqlValue } from '../admin/database'
 import { z } from 'zod'
 import { AuthError, profileSchema, providerSchema, userSchema } from '../../../shared/auth/model'
@@ -7,7 +7,7 @@ export const oauthSchema = z.object({ provider: providerSchema, verifier: z.stri
 export type OAuthState = z.infer<typeof oauthSchema>
 const verificationSchema = z.object({ token_hash: z.string(), user_id: z.uuid(), email: z.string(), profile: z.string().transform(value => profileSchema.parse(JSON.parse(value))), csrf: z.string(), return_to: z.string(), expires_at: z.number(), code_hash: z.string().nullable(), code_expires_at: z.number(), attempts: z.number(), send_after: z.number(), consumed_at: z.number().nullable() })
 export type Verification = z.infer<typeof verificationSchema>
-const sessionSchema = z.object({ user_id: z.string().nullable(), local: z.number(), csrf: z.string(), expires_at: z.number() })
+const sessionSchema = z.object({ user_id: z.string().nullable(), local: z.number(), login_provider: providerSchema.nullable(), csrf: z.string(), expires_at: z.number() })
 
 export function createAuthRepository(db: AdminDatabase) {
   const query = async (sql: string, params: SqlValue[] = []) => (await db.batch([{ sql, params }]))[0]!
@@ -52,14 +52,14 @@ export function createAuthRepository(db: AdminDatabase) {
       if (results[1]![0]?.user_id !== id)
         throw new AuthError(409, '此登录方式已关联其他账号', 'conflict')
     },
-    async saveSession(tokenHash: string, userId: string | null, csrf: string, expires: number) {
+    async saveSession(tokenHash: string, userId: string | null, csrf: string, expires: number, loginProvider: AuthProvider | null) {
       await db.batch([
         { sql: 'DELETE FROM auth_sessions WHERE expires_at <= ?', params: [Date.now()] },
-        { sql: 'INSERT INTO auth_sessions (token_hash,user_id,local,csrf,expires_at) VALUES (?,?,?,?,?)', params: [tokenHash, userId, userId === null ? 1 : 0, csrf, expires] },
+        { sql: 'INSERT INTO auth_sessions (token_hash,user_id,local,csrf,expires_at,login_provider) VALUES (?,?,?,?,?,?)', params: [tokenHash, userId, userId === null ? 1 : 0, csrf, expires, loginProvider] },
       ])
     },
     async session(tokenHash: string) {
-      const row = (await query('SELECT user_id,local,csrf,expires_at FROM auth_sessions WHERE token_hash = ? AND expires_at > ?', [tokenHash, Date.now()]))[0]
+      const row = (await query('SELECT user_id,local,csrf,expires_at,login_provider FROM auth_sessions WHERE token_hash = ? AND expires_at > ?', [tokenHash, Date.now()]))[0]
       return row ? sessionSchema.parse(row) : null
     },
     async removeSession(hash: string) { await query('DELETE FROM auth_sessions WHERE token_hash = ?', [hash]) },

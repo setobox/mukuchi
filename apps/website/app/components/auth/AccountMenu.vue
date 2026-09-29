@@ -56,22 +56,22 @@ async function linkGoogle() {
   <template v-if="enabled">
     <DropdownMenuRoot v-if="current.user" v-model:open="menuOpen" :modal="false">
       <DropdownMenuTrigger as-child>
-        <button type="button" class="icon-button" aria-label="账号菜单" title="账号菜单">
+        <button type="button" class="icon-button relative" :aria-label="current.loginProvider ? `账号菜单，使用 ${current.loginProvider === 'github' ? 'GitHub' : 'Google'} 登录` : '账号菜单'" title="账号菜单">
           <AccountAvatar :src="current.user.avatar" :name="current.user.name" class="size-8" />
+          <span v-if="current.loginProvider" class="absolute bottom-0.5 right-0.5 size-4 flex items-center justify-center border border-line rounded-full bg-canvas" aria-hidden="true">
+            <span :class="current.loginProvider === 'github' ? 'i-lucide-github' : 'i-logos-google-icon'" class="size-3" />
+          </span>
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuPortal>
         <DropdownMenuContent align="end" :side-offset="8" :collision-padding="12" class="z-[80] max-w-[calc(100vw-24px)] w-72 border border-line-strong rounded-panel bg-surface p-2 text-sm text-ink shadow-floating outline-none" aria-label="账号菜单">
-          <div class="flex items-center gap-3 p-3">
-            <AccountAvatar :src="current.user.avatar" :name="current.user.name" class="size-11" />
-            <div class="min-w-0 flex-1">
-              <p class="truncate text-heading font-medium">
-                {{ current.user.name }}
-              </p>
-              <p class="mt-1 break-all text-xs text-muted">
-                {{ current.user.email ?? '本地开发会话' }}
-              </p>
-            </div>
+          <div class="p-3">
+            <p class="truncate text-heading font-medium">
+              {{ current.user.name }}
+            </p>
+            <p class="mt-1 break-all text-xs text-muted">
+              {{ current.user.email ?? '本地开发会话' }}
+            </p>
           </div>
           <DropdownMenuSeparator class="my-1 h-px bg-line" />
           <DropdownMenuItem v-if="current.user.role === 'admin'" as-child>

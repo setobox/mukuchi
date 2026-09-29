@@ -26,6 +26,7 @@ export interface Account {
 export interface PendingVerification { email: string, expiresAt: number, resendAfter: number, csrf: string }
 export interface SessionInfo {
   user: Account | null
+  loginProvider: AuthProvider | null
   csrf: string | null
   localAvailable: boolean
   providers: Record<AuthProvider, boolean>
@@ -33,7 +34,7 @@ export interface SessionInfo {
   pendingVerification: PendingVerification | null
 }
 export function emptySession(): SessionInfo {
-  return { user: null, csrf: null, localAvailable: false, providers: { github: false, google: false }, linkedProviders: [], pendingVerification: null }
+  return { user: null, loginProvider: null, csrf: null, localAvailable: false, providers: { github: false, google: false }, linkedProviders: [], pendingVerification: null }
 }
 export class AuthError extends Error {
   constructor(public statusCode: number, message: string, public code = 'failed') { super(message) }
