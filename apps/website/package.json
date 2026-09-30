@@ -48,6 +48,7 @@
     "@unocss/nuxt": "catalog:",
     "@vitejs/plugin-vue": "catalog:",
     "@xmldom/xmldom": "catalog:",
+    "fake-indexeddb": "catalog:",
     "happy-dom": "catalog:",
     "typescript": "catalog:",
     "unocss": "catalog:",

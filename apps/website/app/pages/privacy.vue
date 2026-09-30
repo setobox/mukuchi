@@ -1,15 +1,15 @@
 <script setup lang="ts">
-definePageMeta({ section: 'about', pageKind: 'index', pageTitle: '账号隐私说明' })
-useSeoMeta({ title: '账号隐私说明', description: '本站账号登录、邮箱验证与个人资料的使用说明。' })
+definePageMeta({ section: 'about', pageKind: 'index', pageTitle: '隐私与存储说明' })
+useSeoMeta({ title: '隐私与存储说明', description: '本站账号、AI 助手与本地会话记录的使用说明。' })
 </script>
 
 <template>
   <div>
-    <PageHeading title="账号隐私说明" />
+    <PageHeading title="隐私与存储说明" />
     <SiteColumns>
       <article class="max-w-190 border-t border-line py-8 leading-8 lg:px-6">
         <p class="mb-8 text-muted">
-          更新日期：2026 年 9 月 28 日。本说明适用于 blog.setobox.me 的账号与登录服务。浏览公开文章无需注册账号。
+          更新日期：2026 年 9 月 30 日。本说明适用于 blog.setobox.me 的账号、登录与 AI 助手服务。浏览公开文章无需注册账号。
         </p>
         <h2 class="mb-3 text-section text-heading">
           收集哪些信息
@@ -34,6 +34,18 @@ useSeoMeta({ title: '账号隐私说明', description: '本站账号登录、邮
         </h2>
         <p class="mb-6">
           Google 用户数据仅用于上述账号功能，不出售、不用于广告画像或模型训练。本站使用 Google、GitHub 提供身份认证，使用 Cloudflare 托管网站和数据库，使用 Resend 发送验证码。网站运行日志和访问统计用于维护服务与排查故障；第三方服务也会按照各自政策处理其提供服务所需的数据。
+        </p>
+        <h2 class="mb-3 text-section text-heading">
+          AI 助手与本地历史
+        </h2>
+        <p class="mb-6">
+          助手启用后，聊天记录保存在当前浏览器的 IndexedDB 中，不自动过期，由你在会话列表中手动删除。匿名状态与不同账号分别显示本地记录，不自动合并、不跨设备同步。清除站点数据、浏览器存储清理或更换设备可能导致记录无法恢复；存储不可用时，界面会提示改用当前页面的内存。
+        </p>
+        <p class="mb-6">
+          发送问题时，本站会把本次问题、当前文章标识和必要的当前会话上下文交给已配置的模型供应商及阿里云安全审核服务处理；需要更早的记录时，仅读取当前会话指定范围，不上传其他会话列表。请不要发送密码、密钥或其他私密资料。第三方对这些请求的处理和保留方式取决于实际服务及其政策。
+        </p>
+        <p class="mb-6">
+          本站服务端不建立聊天正文库。为限制滥用和控制费用，保存请求标识、不可逆身份及 IP 摘要、时间、状态、用量和费用等运行信息；请求与操作明细在后续清理时删除超过 7 天的记录，按日用量保留 30 天。访客使用必要的 HttpOnly Cookie 识别额度，并由 Cloudflare Turnstile 进行人机验证。上述服务端保留期限不影响你手动管理的本地聊天。
         </p>
         <h2 class="mb-3 text-section text-heading">
           你的选择与联系

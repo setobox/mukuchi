@@ -9,6 +9,8 @@ export interface ActionButton {
   onClick: () => void | Promise<void>
   order?: number
   visible?: MaybeRefOrGetter<boolean>
+  compact?: boolean
+  unread?: MaybeRefOrGetter<boolean>
 }
 
 interface RegisteredActionButton extends ActionButton {

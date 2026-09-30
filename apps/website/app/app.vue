@@ -4,6 +4,7 @@ import BaseUiProvider from './components/base/BaseUiProvider.vue'
 
 useProvideActionButtons()
 useProvideCommandPalette()
+useProvideAssistant()
 useThemeHead()
 
 const { site } = useAppConfig()
@@ -26,6 +27,6 @@ useSeoMeta({ ogUrl: canonical })
   <BaseUiProvider>
     <NuxtRouteAnnouncer />
     <NuxtLayout><NuxtPage /></NuxtLayout>
-    <ClientOnly><CommandPalette /></ClientOnly>
+    <ClientOnly><CommandPalette /><AssistantPanel /></ClientOnly>
   </BaseUiProvider>
 </template>

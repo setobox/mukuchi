@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { toValue } from 'vue'
+
 const { actions } = useActionButtons()
 
 async function runAction(action: (typeof actions.value)[number]): Promise<void> {
@@ -24,12 +26,14 @@ async function runAction(action: (typeof actions.value)[number]): Promise<void> 
       v-for="action in actions"
       :key="action.id"
       type="button"
-      class="control-base control-quiet h-12 w-12 border border-line-strong bg-acrylic p-0 text-xl text-heading shadow-floating backdrop-blur-md hover:border-accent"
+      class="control-base control-quiet relative border border-line-strong bg-acrylic p-0 text-xl text-heading shadow-floating backdrop-blur-md hover:border-accent"
+      :class="action.compact ? 'h-10 min-h-10 w-10 self-end' : 'h-12 w-12'"
       :aria-label="action.label"
       :title="action.label"
       @click="runAction(action)"
     >
       <span :class="action.icon" aria-hidden="true" />
+      <span v-if="toValue(action.unread)" class="absolute right-0.5 top-0.5 h-2 w-2 rounded-full bg-accent" aria-label="有未读回复" />
     </button>
   </TransitionGroup>
 </template>
