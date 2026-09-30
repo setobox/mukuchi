@@ -2,6 +2,7 @@ import type { EventHandlerResponse, H3Event } from 'h3'
 import { ZodError } from 'zod'
 import { openDatabase, openStorage } from '#admin-driver'
 import { AdminError } from '../../../shared/admin/model'
+import { logApiError } from '../logging/api-error'
 import { readBoundedStream } from './body'
 import { createAdminRepository } from './repository'
 
@@ -36,7 +37,8 @@ export function defineAdminHandler<T extends EventHandlerResponse>(handler: (eve
         : error instanceof ZodError
           ? { statusCode: 400, message: error.issues.map(issue => issue.message).join('；') }
           : { statusCode: 503, message: '后台服务暂时不可用，请稍后重试' }
-      if (failure.statusCode === 503)
+      logApiError(event, error, failure.statusCode)
+      if (!import.meta.dev && failure.statusCode === 503)
         console.error('[admin] 请求处理失败')
       setResponseStatus(event, failure.statusCode)
       return failure

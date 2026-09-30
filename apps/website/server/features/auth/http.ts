@@ -4,6 +4,7 @@ import { openDatabase } from '#admin-driver'
 import { AuthError } from '../../../shared/auth/model'
 import { readBoundedStream } from '../admin/body'
 import { adminOptions } from '../admin/http'
+import { logApiError } from '../logging/api-error'
 import { createAuthRepository } from './repository'
 
 export function authEnabled(event: H3Event) {
@@ -20,6 +21,7 @@ export function defineAuthHandler<T extends EventHandlerResponse>(handler: (even
     }
     catch (cause) {
       const error = cause instanceof AuthError ? cause : cause instanceof z.ZodError ? new AuthError(400, '请求内容无效') : new AuthError(503, '账号服务暂时不可用，请稍后重试')
+      logApiError(event, cause, error.statusCode)
       setResponseStatus(event, error.statusCode)
       return { statusCode: error.statusCode, message: error.message }
     }

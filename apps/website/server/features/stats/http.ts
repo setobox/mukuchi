@@ -5,6 +5,7 @@ import { taxonomyPath } from '../../../shared/content/taxonomy'
 import { normalizeStatsPath, statsEnabled } from '../../../shared/stats/model'
 import { adminEnabled } from '../admin/http'
 import { session } from '../auth/session'
+import { logApiError } from '../logging/api-error'
 import { createStatsRepository, StatsEventConflict } from './repository'
 
 export function requireStats(event: H3Event) {
@@ -32,8 +33,9 @@ export async function withStats<T>(event: H3Event, action: (repository: ReturnTy
   catch (error) {
     if (error instanceof StatsEventConflict)
       throw createError({ statusCode: 409, message: error.message })
-    // Do not include SQL, cookie values or secrets in public errors or request logs.
-    console.error('[stats] 数据库操作失败')
+    logApiError(event, error, 503)
+    if (!import.meta.dev)
+      console.error('[stats] 数据库操作失败')
     throw createError({ statusCode: 503, message: '统计数据暂时不可用' })
   }
 }
@@ -57,7 +59,8 @@ export async function requireStatsPath(event: H3Event, input: unknown): Promise<
       || post.tags.some(tag => taxonomyPath('tag', tag) === path)
       || post.categories.some(category => taxonomyPath('category', category) === path))
   }
-  catch {
+  catch (error) {
+    logApiError(event, error, 503)
     throw createError({ statusCode: 503, message: '页面索引暂时不可用' })
   }
   if (!exists)
