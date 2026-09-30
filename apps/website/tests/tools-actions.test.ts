@@ -40,30 +40,28 @@ function mountTools(path = '/tools') {
   return { ...state, route, visible, child, isScrolled, scrollToTop, navigateTo, host }
 }
 
-test('工具页注册统一返回入口，回顶按钮随滚动显示并执行相应操作', async () => {
-  const { actions, isScrolled, navigateTo, scrollToTop } = mountTools()
-  expect(actions.value.map(action => action.label)).toEqual(['返回文章列表'])
-  await actions.value[0]!.onClick()
-  expect(navigateTo).toHaveBeenCalledWith('/posts')
+test('工具页不显示返回文章列表按钮，回顶按钮随滚动显示并执行操作', async () => {
+  const { actions, isScrolled, scrollToTop } = mountTools()
+  expect(actions.value).toEqual([])
   isScrolled.value = true
-  expect(actions.value.map(action => action.label)).toEqual(['返回文章列表', '回到页面顶部'])
-  await actions.value[1]!.onClick()
+  expect(actions.value.map(action => action.label)).toEqual(['回到页面顶部'])
+  await actions.value[0]!.onClick()
   expect(scrollToTop).toHaveBeenCalledOnce()
   isScrolled.value = false
-  expect(actions.value.map(action => action.id)).toEqual(['home'])
+  expect(actions.value).toEqual([])
 })
 
 test('工具子页提供返回工具列表，列表及尾斜杠路径隐藏自身入口', async () => {
   const { actions, route, navigateTo } = mountTools('/tools/cover')
-  expect(actions.value.map(action => action.label)).toEqual(['返回文章列表', '返回工具列表'])
-  await actions.value[1]!.onClick()
+  expect(actions.value.map(action => action.label)).toEqual(['返回工具列表'])
+  await actions.value[0]!.onClick()
   expect(navigateTo).toHaveBeenCalledWith('/tools')
   for (const path of ['/tools', '/tools/']) {
     route.path = path
-    expect(actions.value.map(action => action.id)).toEqual(['home'])
+    expect(actions.value).toEqual([])
   }
   route.path = '/tools/another-tool'
-  expect(actions.value.map(action => action.id)).toEqual(['home', 'back'])
+  expect(actions.value.map(action => action.id)).toEqual(['back'])
 })
 
 test('切换工具子页不重复注册，离开工具页清理，再次进入恢复', async () => {
@@ -74,12 +72,12 @@ test('切换工具子页不重复注册，离开工具页清理，再次进入�
     child.value = title
     await nextTick()
     expect(host.textContent).toBe(title)
-    expect(actions.value.map(action => action.id)).toEqual(path === '/tools' ? ['home', 'top'] : ['home', 'back', 'top'])
+    expect(actions.value.map(action => action.id)).toEqual(path === '/tools' ? ['top'] : ['back', 'top'])
   }
   visible.value = false
   await nextTick()
   expect(actions.value).toEqual([])
   visible.value = true
   await nextTick()
-  expect(actions.value.map(action => action.id)).toEqual(['home', 'back', 'top'])
+  expect(actions.value.map(action => action.id)).toEqual(['back', 'top'])
 })

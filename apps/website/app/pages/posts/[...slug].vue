@@ -69,15 +69,6 @@ const router = useRouter()
 const { isScrolled, scrollToTop } = useScrollToTop()
 
 useActionButton({
-  id: 'home',
-  icon: 'i-lucide-house',
-  label: '返回文章列表',
-  order: 10,
-  async onClick() {
-    await navigateTo('/posts')
-  },
-})
-useActionButton({
   id: 'back',
   icon: 'i-lucide-arrow-left',
   label: '返回上一页',

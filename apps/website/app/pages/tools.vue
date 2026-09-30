@@ -4,15 +4,6 @@ definePageMeta({ section: 'tools', pageKind: 'index', pageTitle: '工具' })
 const route = useRoute()
 const { isScrolled, scrollToTop } = useScrollToTop()
 useActionButton({
-  id: 'home',
-  icon: 'i-lucide-house',
-  label: '返回文章列表',
-  order: 10,
-  async onClick() {
-    await navigateTo('/posts')
-  },
-})
-useActionButton({
   id: 'back',
   icon: 'i-lucide-wrench',
   label: '返回工具列表',
