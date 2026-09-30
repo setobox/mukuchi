@@ -9,7 +9,7 @@ import './stats-environment.ts'
 function files(directory: string): string[] {
   return readdirSync(directory, { withFileTypes: true }).flatMap(entry => entry.isDirectory() ? files(join(directory, entry.name)) : [join(directory, entry.name)])
 }
-const build = z.object({ enabled: z.boolean(), authEnabled: z.boolean() }).parse(JSON.parse(readFileSync('.output/admin-build.json', 'utf8')))
+const build = z.object({ enabled: z.boolean(), authEnabled: z.boolean(), assistantEnabled: z.boolean().default(false) }).parse(JSON.parse(readFileSync('.output/admin-build.json', 'utf8')))
 const forbidden = ['NUXT_GITHUB_CLIENT_SECRET', 'NUXT_GOOGLE_CLIENT_SECRET', 'NUXT_AUTH_SECRET', 'NUXT_RESEND_API_KEY', 'NUXT_AUTH_ADMIN_EMAILS', 'NUXT_GITHUB_PUBLISH_TOKEN', 'NUXT_STATS_HASH_SECRET', 'NUXT_STATS_ADMIN_TOKEN', 'NUXT_AI_ENCRYPTION_KEY', 'NUXT_AUDIO_SYNC_TOKEN'].map(key => process.env[key]).filter((value): value is string => !!value)
 const filename = process.env.NUXT_ADMIN_DATABASE_PATH || '.data/admin.sqlite'
 if (existsSync(filename)) {
@@ -33,6 +33,10 @@ if (existsSync(filename)) {
       for (const row of database.prepare('SELECT encrypted_key FROM audio_settings WHERE encrypted_key != \'\'').all())
         forbidden.push(String(row.encrypted_key))
     }
+    if (database.prepare('SELECT name FROM sqlite_master WHERE name = \'assistant_settings\'').get()) {
+      for (const row of database.prepare('SELECT encrypted_credentials FROM assistant_settings WHERE encrypted_credentials != \'\'').all())
+        forbidden.push(String(row.encrypted_credentials))
+    }
   }
   finally { database.close() }
 }
@@ -47,10 +51,11 @@ for (const path of files('.output/public')) {
 }
 if (existsSync('.output/server/wrangler.json')) {
   const config = z.object({ d1_databases: z.array(z.object({ binding: z.string() })), r2_buckets: z.array(z.object({ binding: z.string() })).optional(), vars: z.record(z.string(), z.unknown()) }).parse(JSON.parse(readFileSync('.output/server/wrangler.json', 'utf8')))
-  assert.equal(config.d1_databases.some(db => db.binding === 'ADMIN_DB'), build.enabled || build.authEnabled)
+  assert.equal(config.d1_databases.some(db => db.binding === 'ADMIN_DB'), build.enabled || build.authEnabled || build.assistantEnabled)
   assert.equal(config.r2_buckets?.some(bucket => bucket.binding === 'ADMIN_ASSETS') ?? false, build.enabled)
   assert.equal(config.vars.NUXT_ADMIN_ENABLED, String(build.enabled))
   assert.equal(config.vars.NUXT_PUBLIC_AUTH_ENABLED, String(build.authEnabled))
+  assert.equal(config.vars.NUXT_ASSISTANT_ENABLED, String(build.assistantEnabled))
   for (const path of files('.output/server').filter(path => path.endsWith('.mjs'))) {
     const content = readFileSync(path, 'utf8')
     assert.ok(!forbidden.some(value => content.includes(value)), 'Workers 代码不得内嵌服务端密钥或私有数据')

@@ -18,6 +18,7 @@ export default defineNuxtConfig({
   runtimeConfig: {
     adminLocalProof: localDevProof,
     aiEncryptionKey: '',
+    assistantEnabled: false,
     audioEnabled: false,
     audioSyncToken: '',
     adminEnabled: false,
@@ -127,6 +128,7 @@ export default defineNuxtConfig({
     '/admin': { prerender: false, headers: { 'cache-control': 'private, no-store', 'x-robots-tag': 'noindex, nofollow' } },
     '/admin/**': { prerender: false, headers: { 'cache-control': 'private, no-store', 'x-robots-tag': 'noindex, nofollow' } },
     '/api/auth/**': { prerender: false, headers: { 'cache-control': 'no-store' } },
+    '/api/assistant/**': { prerender: false, headers: { 'cache-control': 'no-store' } },
     '/api/admin/**': { prerender: false, headers: { 'cache-control': 'no-store' } },
     '/api/internal/audio/**': { prerender: false, headers: { 'cache-control': 'no-store' } },
     '/api/audio/**': { prerender: false },
