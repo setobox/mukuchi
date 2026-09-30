@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import type { AiType } from '#shared/admin/articles'
 import { TabsContent, TabsList, TabsRoot, TabsTrigger } from 'reka-ui'
 import { aiTypeLabels, aiTypes } from '#shared/admin/articles'
 
@@ -7,8 +6,10 @@ definePageMeta({ layout: 'admin' })
 useSeoMeta({ title: 'AI 设置' })
 const route = useRoute()
 const router = useRouter()
-const tab = computed<AiType>({
-  get: () => aiTypes.find(value => value === route.query.tab) ?? 'summary',
+const settingsTabs = [...aiTypes, 'assistant'] as const
+const settingsLabels = { ...aiTypeLabels, assistant: '对话助手' }
+const tab = computed<(typeof settingsTabs)[number]>({
+  get: () => settingsTabs.find(value => value === route.query.tab) ?? 'summary',
   set: (value) => { void router.replace({ query: { ...route.query, tab: value } }) },
 })
 const audioTab = computed(() => tab.value === 'podcast' ? 'podcast' : 'narration')
@@ -26,16 +27,19 @@ const summaryBusy = ref(false)
     </p>
     <TabsRoot v-model="tab">
       <TabsList aria-label="AI 服务类型" class="mb-8 flex gap-2 border-b border-line pb-3">
-        <TabsTrigger v-for="kind in aiTypes" :key="kind" :value="kind" class="control-base control-quiet px-4 data-[state=active]:bg-accent-surface data-[state=active]:text-accent-soft">
-          {{ aiTypeLabels[kind] }}
+        <TabsTrigger v-for="kind in settingsTabs" :key="kind" :value="kind" class="control-base control-quiet px-4 data-[state=active]:bg-accent-surface data-[state=active]:text-accent-soft">
+          {{ settingsLabels[kind] }}
         </TabsTrigger>
       </TabsList>
       <TabsContent v-show="tab === 'summary'" value="summary" force-mount>
         <SummarySettings :locked="summaryBusy" @saved="summaryRevision++" />
         <SummaryManager :revision="summaryRevision" @busy="summaryBusy = $event" />
       </TabsContent>
-      <TabsContent v-show="tab !== 'summary'" :value="audioTab" force-mount>
-        <AudioSettings :kind="audioTab" :active="tab !== 'summary'" />
+      <TabsContent v-show="tab === 'narration' || tab === 'podcast'" :value="audioTab" force-mount>
+        <AudioSettings :kind="audioTab" :active="tab === 'narration' || tab === 'podcast'" />
+      </TabsContent>
+      <TabsContent value="assistant">
+        <AssistantSettings />
       </TabsContent>
     </TabsRoot>
   </div>
