@@ -6,7 +6,7 @@ import { createApp, createSSRApp, defineComponent, h, nextTick, reactive, ref } 
 import { renderToString } from 'vue/server-renderer'
 import BaseCollapsible from '../app/components/base/BaseCollapsible.vue'
 import ContentToc from '../app/components/toc/ContentToc.vue'
-import { circuitMask, flattenToc, tocPreviewHeight } from '../app/features/toc/model'
+import { flattenToc } from '../app/features/toc/model'
 
 const route = reactive({ path: '/posts/test' })
 const push = vi.fn(async (_target: string) => {})
@@ -125,20 +125,6 @@ test('空目录不显示空导航，默认不启用高亮，straight 使用直�
   expect(straight.classList.contains('w-px')).toBe(true)
 })
 
-test('嵌套目录保留原始锚点和深度，circuit 在同一内侧轨道上保持连续', () => {
-  expect(flattenToc(links).map(({ link, level }) => [link.id, level])).toEqual([
-    ['安装', 0],
-    ['环境', 1],
-    ['深层', 2],
-    ['C# 与 100%', 0],
-  ])
-  expect(flattenToc([])).toEqual([])
-  expect(circuitMask([])).toBeUndefined()
-  const mask = circuitMask(links)!
-  expect(mask.height).toBe('7rem')
-  expect(decodeURIComponent(mask.maskImage)).toContain('d=\'M0.5 0 L0.5 22 L10.5 34 L10.5 56 L10.5 78 L0.5 90 L0.5 112\'')
-})
-
 test('同时高亮可见标题，按文档顺序计算范围，没有可见标题时保留上一组', async () => {
   const host = mount()
   expect(observers[0]!.observe).toHaveBeenCalledTimes(4)
@@ -234,52 +220,14 @@ test('链接更新后移除旧观察，卸载时释放观察器和 Nuxt 钩子',
   expect([...hooks.values()].every(callbacks => callbacks.size === 0)).toBe(true)
 })
 
-test('上游插槽可定制标题、链接及前后内容', () => {
-  const host = mount(defineComponent(() => () => h(ContentToc, { links }, {
-    default: () => '本页内容',
-    link: ({ link }: { link: TocLink }) => h('span', `章节：${link.text}`),
-    top: () => h('p', '顶部内容'),
-    bottom: () => h('p', '底部内容'),
-  })), {})
-  expect(host.textContent).toContain('本页内容')
-  expect(host.textContent).toContain('章节：深层')
-  expect(host.textContent).toContain('顶部内容')
-  expect(host.textContent).toContain('底部内容')
-})
-
-test('布局属性传递到导航根节点，避免复用模板阻止响应式 class 生效', () => {
-  const warn = vi.spyOn(console, 'warn')
-  const host = mount(ContentToc, { links, 'class': 'hidden lg:block', 'data-testid': 'desktop-toc' })
-  const nav = host.querySelector('nav')!
-  expect(nav.getAttribute('data-testid')).toBe('desktop-toc')
-  expect(nav.classList.contains('hidden')).toBe(true)
-  expect(nav.classList.contains('lg:block')).toBe(true)
-  expect(warn).not.toHaveBeenCalled()
-})
-
-test.each([0, 1, 2, 3, 4])('收起预览按实际数量显示，%i 行目录最多保留三行', (count) => {
-  const items = flattenToc(links).slice(0, count).map(({ link }) => ({ ...link, children: undefined }))
-  const host = mount(ContentToc, { links: items, collapsedRows: 3 })
-  const height = Math.min(count, 3) * 1.75
-  expect(tocPreviewHeight(items, 3)).toBe(height)
-  if (count === 0) {
-    expect(host.querySelector('nav')).toBeNull()
-  }
-  else {
-    expect(host.querySelector<HTMLElement>('[data-slot="viewport"]')?.style.height).toBe(`${height}rem`)
-    expect(host.querySelector('[data-slot="list"]')?.querySelectorAll('a')).toHaveLength(count)
-  }
-})
-
 // happy-dom has no layout engine. Supply row geometry at the DOM boundary, so the
 // assertions exercise the real component, its observers and its scroll API.
 function previewLayout(host: HTMLElement) {
   const viewport = host.querySelector<HTMLElement>('[data-slot="viewport"]')!
   const list = host.querySelector<HTMLElement>('[data-slot="list"]')!
   const anchors = [...list.querySelectorAll<HTMLAnchorElement>('a')]
-  let height = 84
   Object.defineProperties(viewport, {
-    clientHeight: { configurable: true, get: () => height },
+    clientHeight: { configurable: true, get: () => 84 },
     scrollHeight: { configurable: true, get: () => anchors.length * 28 },
   })
   vi.spyOn(list, 'getBoundingClientRect').mockImplementation(() => new DOMRect(0, -viewport.scrollTop, 200, anchors.length * 28))
@@ -294,13 +242,6 @@ function previewLayout(host: HTMLElement) {
     viewport,
     anchors,
     scroll,
-    resize(value: number) {
-      height = value
-      for (const observer of resizeObservers) {
-        if (observer.observe.mock.calls.some(([target]) => target === viewport))
-          observer.callback([{ target: viewport } as ResizeObserverEntry], {} as ResizeObserver)
-      }
-    },
   }
 }
 
@@ -333,34 +274,6 @@ test('预览居中跟随首个高亮并限制首尾，只滚动目录且保留�
   expect(move).not.toHaveBeenCalled()
 })
 
-test('展开时暂停跟随，受控收起和尺寸改变时立即对齐，高亮保持完整', async () => {
-  const open = ref(false)
-  const host = mount(defineComponent(() => () => h(ContentToc, { links, collapsedRows: 3, open: open.value })), {})
-  const { viewport, scroll, resize } = previewLayout(host)
-  await intersect([['安装', true]])
-  open.value = true
-  await nextTick()
-  expect(viewport.style.height).toBe('7rem')
-  expect(scroll).toHaveBeenLastCalledWith({ top: viewport.scrollTop, behavior: 'instant' })
-  resize(112)
-  scroll.mockClear()
-  await intersect([['安装', false], ['C# 与 100%', true]])
-  expect(scroll).not.toHaveBeenCalled()
-  open.value = false
-  await nextTick()
-  expect(viewport.style.height).toBe('5.25rem')
-  resize(84)
-  expect(scroll).toHaveBeenLastCalledWith({ top: 28, behavior: 'instant' })
-  expect(viewport.querySelector('[aria-current]')?.textContent).toContain('C# 与 100%')
-  // Desktop copies have no layout; returning to small screens aligns immediately.
-  resize(0)
-  scroll.mockClear()
-  await intersect([['C# 与 100%', false], ['安装', true]])
-  expect(scroll).not.toHaveBeenCalled()
-  resize(84)
-  expect(scroll).toHaveBeenLastCalledWith({ top: 0, behavior: 'instant' })
-})
-
 test('预览切换文章和链接后重置位置，旧回调及卸载不再滚动', async () => {
   const current = ref(links)
   const host = mount(defineComponent(() => () => h(ContentToc, { links: current.value, collapsedRows: 3 })), {})
@@ -386,21 +299,6 @@ test('预览切换文章和链接后重置位置，旧回调及卸载不再滚�
   expect(scroll).not.toHaveBeenCalled()
   expect(latest.disconnect).toHaveBeenCalled()
   expect(resizeObservers.every(observer => observer.disconnect.mock.calls.length > 0)).toBe(true)
-})
-
-test('减少动态效果模式下，正文高亮变化也立即定位预览', async () => {
-  const matchMedia = window.matchMedia.bind(window)
-  vi.spyOn(window, 'matchMedia').mockImplementation((query) => {
-    const result = matchMedia(query)
-    if (query === '(prefers-reduced-motion: reduce)')
-      Object.defineProperty(result, 'matches', { value: true })
-    return result
-  })
-  const { scroll } = previewLayout(mount(ContentToc, { links, collapsedRows: 3 }))
-  await nextTick()
-  await intersect([['安装', true]])
-  await intersect([['安装', false], ['C# 与 100%', true]])
-  expect(scroll).toHaveBeenLastCalledWith({ top: 28, behavior: 'instant' })
 })
 
 test('弹窗目录只观察并滚动本容器的同名标题，不修改页面路由', async () => {

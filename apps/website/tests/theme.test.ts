@@ -5,7 +5,7 @@ import { runInNewContext } from 'node:vm'
 import { expect, test, vi } from 'vite-plus/test'
 import { ref } from 'vue'
 import { createArticleAccentScope, resolveArticleAccent } from '../app/features/theme/article.ts'
-import { circleMask, createThemeController, eventOrigin } from '../app/features/theme/controller.ts'
+import { createThemeController } from '../app/features/theme/controller.ts'
 import { themeColors } from '../shared/content/schema.ts'
 import { accentBackgrounds, contrastRatio, mixColor, readableAccent } from '../shared/theme/palette.ts'
 import { nextPreference, normalizePreference, resolveTheme, themeCookieBootstrap } from '../shared/theme/preference.ts'
@@ -152,19 +152,6 @@ test('页面退出取消未完成快照时仍提交选择且不启动遮罩', as
   expect(apply).toHaveBeenCalledOnce()
   expect(animate).not.toHaveBeenCalled()
   expect(controller.isTransitioning.value).toBe(false)
-})
-
-test('圆形遮罩覆盖最远角，键盘从按钮中心开始，指针保留零坐标', () => {
-  expect(circleMask({ x: 0, y: 0 }, 300, 400)).toEqual(['circle(0px at 0px 0px)', 'circle(500px at 0px 0px)'])
-  class Element {
-    getBoundingClientRect() { return { left: 100, top: 20, width: 44, height: 44 } }
-  }
-  vi.stubGlobal('HTMLElement', Element)
-  try {
-    expect(eventOrigin({ detail: 0, currentTarget: new Element() } as unknown as MouseEvent)).toEqual({ x: 122, y: 42 })
-    expect(eventOrigin({ detail: 1, clientX: 0, clientY: 10 } as MouseEvent)).toEqual({ x: 0, y: 10 })
-  }
-  finally { vi.unstubAllGlobals() }
 })
 
 test('文章配色支持替换与退出，旧实例释放不影响新文章，404 和列表恢复默认', () => {

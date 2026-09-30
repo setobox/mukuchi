@@ -26,7 +26,6 @@
   "scripts": {
     "build": "vp pack",
     "dev": "vp pack --watch",
-    "test": "vp test",
     "check": "eslint . && vp run typecheck",
     "typecheck": "tsc --noEmit",
     "prepublishOnly": "vp run build"

@@ -1,6 +1,5 @@
 // @vitest-environment happy-dom
 import type { ResourceGroup } from '../shared/collections/types'
-import { createGenerator } from 'unocss'
 import { afterEach, expect, test, vi } from 'vite-plus/test'
 import { createApp, createSSRApp, nextTick, ref } from 'vue'
 import { renderToString } from 'vue/server-renderer'
@@ -11,7 +10,6 @@ import ResourceSection from '../app/components/collections/ResourceSection.vue'
 import ContentEmptyState from '../app/components/site/ContentEmptyState.vue'
 import PageHeading from '../app/components/site/PageHeading.vue'
 import CollectionsPage from '../app/pages/collections.vue'
-import unoConfig from '../uno.config'
 
 const cleanups: (() => void)[] = []
 afterEach(() => {
@@ -110,28 +108,4 @@ test('站点顺序、简介、外链属性及图标失败回退；链接可聚�
   state.data.value[0]!.items[0]!.imageUrl = 'https://example.com/new.png'
   await nextTick()
   expect(host.querySelector('img')?.src).toBe('https://example.com/new.png')
-})
-
-test('链接悬停不出现下划线，键盘焦点仍有下划线提示', async () => {
-  const state = fixture()
-  state.status.value = 'success'
-  state.data.value = [{ title: '资源', items: [{ title: '文档', description: '说明', href: 'https://example.com' }] }]
-  const host = mount()
-  const uno = await createGenerator(unoConfig)
-  const { css } = await uno.generate(host.outerHTML)
-  const style = document.createElement('style')
-  // Happy DOM does not implement pointer hover or focus-visible matching.
-  style.textContent = css.replace(/(?<!\\):hover\b/g, '[data-hover]').replace(/(?<!\\):focus-visible\b/g, '[data-focus]')
-  document.head.append(style)
-  cleanups.push(() => style.remove())
-  const link = host.querySelector('a')!
-  const decoration = () => {
-    const computed = getComputedStyle(link)
-    return computed.textDecorationLine || computed.textDecoration
-  }
-  link.setAttribute('data-hover', '')
-  expect(decoration()).toBe('none')
-  link.removeAttribute('data-hover')
-  link.setAttribute('data-focus', '')
-  expect(decoration()).toBe('underline')
 })

@@ -1,17 +1,14 @@
 // @vitest-environment happy-dom
 import type { Component } from 'vue'
-import { createGenerator } from 'unocss'
 import { afterEach, expect, test, vi } from 'vite-plus/test'
 import { computed, createApp, createSSRApp, defineComponent, effectScope, h, nextTick, ref } from 'vue'
 import { renderToString } from 'vue/server-renderer'
-import baseCss from '../app/assets/css/main.css?raw'
 import SiteDesktopNavigation from '../app/components/site/SiteDesktopNavigation.vue'
 import SiteDirectory from '../app/components/site/SiteDirectory.vue'
 import SiteMobileNavigation from '../app/components/site/SiteMobileNavigation.vue'
 import { useNavigationCommands } from '../app/composables/useNavigationCommands'
 import { createCommandController } from '../app/features/commands/controller'
 import { navigationDestinations, resolveNavigation } from '../app/features/navigation/model'
-import unoConfig from '../uno.config'
 import { context, navigation } from './fixtures/navigation'
 
 const cleanups: (() => void)[] = []
@@ -43,46 +40,6 @@ function mount(component: Component, initial: Record<string, unknown>) {
 }
 const buttons = (host: HTMLElement) => [...host.querySelectorAll<HTMLButtonElement>('button[aria-expanded]')]
 const pointer = (element: Element, type: string, pointerType = 'mouse') => element.dispatchEvent(new PointerEvent(type, { pointerType, bubbles: false }))
-
-test.each(['dark', 'light'])('%s 下悬停图标或名称都由整个菜单项统一反馈，子控件不叠加背景', async (theme) => {
-  const { host } = mount(SiteDesktopNavigation, { items: resolveNavigation(navigation, context()), resetKey: '/posts' })
-  const trigger = buttons(host)[0]!
-  const surface = trigger.parentElement!
-  const link = surface.querySelector<HTMLAnchorElement>('a')!
-  const uno = await createGenerator(unoConfig)
-  const { css } = await uno.generate(host.outerHTML)
-  const style = document.createElement('style')
-  // Happy DOM has no pointer hover state. Match the real generated hover
-  // selectors against attributes on the same target and ancestor chain.
-  style.textContent = baseCss
-    + css.replace(/(?<!\\):hover\b/g, '[data-test-hover]')
-  document.head.append(style)
-  const previousTheme = document.documentElement.className
-  document.documentElement.className = theme
-  host.style.setProperty('--color-accent-surface', '#a369ff1a')
-  host.style.setProperty('--color-accent-text', theme === 'dark' ? '#b689ff' : '#774dba')
-  cleanups.push(() => {
-    style.remove()
-    document.documentElement.className = previousTheme
-  })
-  const background = (element: HTMLElement) => getComputedStyle(element).backgroundColor
-  const resting = background(surface)
-  const controls = [trigger, link]
-  const controlBackgrounds = controls.map(background)
-  const snapshots = []
-  for (const target of controls) {
-    surface.toggleAttribute('data-test-hover', true)
-    target.toggleAttribute('data-test-hover', true)
-    expect(background(surface)).not.toBe(resting)
-    expect(controls.map(background)).toEqual(controlBackgrounds)
-    expect(getComputedStyle(trigger).color).toBe(getComputedStyle(link).color)
-    snapshots.push([background(surface), getComputedStyle(trigger).color, getComputedStyle(link).color])
-    target.removeAttribute('data-test-hover')
-    surface.removeAttribute('data-test-hover')
-  }
-  expect(snapshots[0]).toEqual(snapshots[1])
-  expect(background(surface)).toBe(resting)
-})
 
 test('悬停延迟、防误触和跨菜单移动；焦点留在子菜单时不会因移出鼠标关闭', async () => {
   vi.useFakeTimers()

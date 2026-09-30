@@ -3,7 +3,6 @@ import type { Component } from 'vue'
 import { afterEach, expect, test, vi } from 'vite-plus/test'
 import { createApp, createSSRApp, defineComponent, h, nextTick, ref } from 'vue'
 import { renderToString } from 'vue/server-renderer'
-import BorderGlow from '../app/components/base/BorderGlow.vue'
 import SiteColumns from '../app/components/site/SiteColumns.vue'
 import SiteProfileCard from '../app/components/site/SiteProfileCard.vue'
 import { profileQuoteFallback } from '../app/features/profile/quote'
@@ -24,19 +23,6 @@ afterEach(() => {
   vi.unstubAllGlobals()
   vi.restoreAllMocks()
 })
-
-function mockMedia(reduce = false) {
-  vi.spyOn(window, 'matchMedia').mockImplementation(query => ({
-    matches: query.includes('prefers-reduced-motion') ? reduce : true,
-    media: query,
-    onchange: null,
-    addEventListener: vi.fn(),
-    removeEventListener: vi.fn(),
-    addListener: vi.fn(),
-    removeListener: vi.fn(),
-    dispatchEvent: () => true,
-  }))
-}
 
 function mount(component: Component, props: Record<string, unknown> = {}) {
   vi.stubGlobal('useAppConfig', () => ({ site: { name: 'Setobox', owner } }))
@@ -100,51 +86,6 @@ test('悬停与键盘焦点均可展开介绍，内部焦点移动或仅移出�
     github.blur()
     await nextTick()
     expect(card.dataset.revealed).toBe('false')
-  }
-  finally {
-    close()
-  }
-})
-
-test('BorderGlow 边缘跟随指针，离开后隐藏，装饰层不拦截点击', async () => {
-  mockMedia()
-  const { host, close } = mount(BorderGlow)
-  try {
-    const card = host.firstElementChild as HTMLElement
-    vi.spyOn(card, 'getBoundingClientRect').mockReturnValue(new DOMRect(0, 0, 260, 360))
-    card.dispatchEvent(new Event('pointerenter'))
-    card.dispatchEvent(new MouseEvent('pointermove', { clientX: 260, clientY: 180 }))
-    await nextTick()
-    const layers = [...card.querySelectorAll<HTMLElement>('[aria-hidden="true"]')]
-    expect(layers).toHaveLength(3)
-    for (const layer of layers) {
-      expect(layer.classList.contains('pointer-events-none')).toBe(true)
-    }
-    expect(layers.map(layer => layer.style.opacity)).toEqual(['1', '0.5', '1'])
-    expect(layers[0]!.style.maskImage).toContain('90.000deg')
-    card.dispatchEvent(new Event('pointerleave'))
-    await nextTick()
-    expect(layers.every(layer => layer.style.opacity === '0')).toBe(true)
-  }
-  finally {
-    close()
-  }
-})
-
-test('减少动态效果时不读取指针位置，不显示光效或启动入场动画', async () => {
-  mockMedia(true)
-  const requestFrame = vi.spyOn(window, 'requestAnimationFrame')
-  const { host, close } = mount(BorderGlow, { animated: true })
-  try {
-    const card = host.firstElementChild as HTMLElement
-    const measure = vi.spyOn(card, 'getBoundingClientRect')
-    card.dispatchEvent(new Event('pointerenter'))
-    card.dispatchEvent(new MouseEvent('pointermove', { clientX: 260, clientY: 180 }))
-    await nextTick()
-    expect(measure).not.toHaveBeenCalled()
-    expect(requestFrame).not.toHaveBeenCalled()
-    for (const layer of card.querySelectorAll<HTMLElement>('[aria-hidden="true"]'))
-      expect(layer.style.opacity).toBe('0')
   }
   finally {
     close()

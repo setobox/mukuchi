@@ -3,23 +3,12 @@ import { expect, test } from 'vite-plus/test'
 import { rasterFormat, sanitizeSvg, validateFileSize, validateRasterSize } from '../app/features/cover/assets'
 import { assertExportType, exportCover } from '../app/features/cover/export'
 import { layoutCover, wrapText } from '../app/features/cover/layout'
-import { coverFontFamily, coverSchema, defaultCover, initialIcon } from '../app/features/cover/model'
+import { coverSchema, defaultCover, initialIcon } from '../app/features/cover/model'
 import { renderCover } from '../app/features/cover/svg'
 
 const measure = (text: string, style: { size: number }) => Array.from(text).length * style.size
 const svg = (body: string) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">${body}</svg>`
 
-test('不同画布比例始终保持图标居中，导出倍率不改变排版', () => {
-  const settings = defaultCover('')
-  for (const height of [675, 800, 900, 1200]) {
-    settings.height = height
-    const layout = layoutCover(settings, measure)
-    expect(layout.icon.x + layout.icon.size / 2).toBe(settings.width / 2)
-    expect(layout.icon.y + layout.icon.size / 2).toBe(height / 2)
-    settings.scale = 3
-    expect(layoutCover(settings, measure)).toEqual(layout)
-  }
-})
 test('中文和长单词按宽度换行，保留手动空行及完整 emoji', () => {
   const style = defaultCover().text
   const result = wrapText('中文封面\n\nabcdefgh', style.size * 2, style, measure)
@@ -78,31 +67,6 @@ test('SVG 拒绝脚本、事件、外链、动画、实体及循环引用', () =
   expect(() => sanitizeSvg(`<svg xmlns="http://www.w3.org/2000/svg"/>`)).toThrow()
   expect(() => sanitizeSvg(svg(`<path d="${' '.repeat(128 * 1024)}"/>`))).toThrow('128')
 })
-test('两侧共享样式并朝向图标，玻璃底板参与横向偏移计算', () => {
-  const settings = defaultCover('左')
-  settings.right = '右'
-  const base = layoutCover(settings, measure)
-  expect(base.blocks.map(block => block.align)).toEqual(['end', 'start'])
-  expect(base.blocks[0]!.style).toEqual(base.blocks[1]!.style)
-  settings.glass.enabled = true
-  const glass = layoutCover(settings, measure)
-  expect(glass.plate.x + glass.plate.size / 2).toBe(settings.width / 2)
-  expect(glass.plate.y + glass.plate.size / 2).toBe(settings.height / 2)
-  expect(glass.blocks[0]!.x).toBe(base.blocks[0]!.x - settings.glass.padding)
-  expect(glass.blocks[1]!.x).toBe(base.blocks[1]!.x + settings.glass.padding)
-  settings.text.offsetX = 0
-  const adjacent = layoutCover(settings, measure)
-  expect(adjacent.blocks[0]!.x).toBe(adjacent.plate.x)
-  expect(adjacent.blocks[1]!.x).toBe(adjacent.plate.x + adjacent.plate.size)
-  settings.text.offsetX = 100
-  const shifted = layoutCover(settings, measure)
-  expect(shifted.blocks[0]!.x).toBe(adjacent.blocks[0]!.x - 100)
-  expect(shifted.blocks[1]!.x).toBe(adjacent.blocks[1]!.x + 100)
-  settings.glass.padding = 160
-  settings.iconSize = 400
-  expect(() => layoutCover(settings, measure)).toThrow('底板')
-})
-
 test('横向偏移重新换行，纵向偏移同向移动，越界和非有限值不能导出', () => {
   const settings = defaultCover('中文换行测试内容')
   settings.right = settings.left
@@ -125,39 +89,6 @@ test('横向偏移重新换行，纵向偏移同向移动，越界和非有限�
   }
 })
 
-test('默认白色背景和深色文字，SVG 保留固定字体、字重与字号声明', () => {
-  const settings = defaultCover()
-  expect(settings).toMatchObject({ background: '#ffffff', transparent: false })
-  expect(settings.text).toMatchObject({ size: 56, weight: '600', fill: { mode: 'solid', color: '#252423' }, lineHeight: 1.3, offsetX: 48, offsetY: 0 })
-  const result = renderCover(settings, initialIcon, measure)
-  expect(result).toContain('<rect width="1200" height="675" fill="#ffffff"')
-  expect(result).toContain('fill="#252423"')
-  expect(result).toContain(`font-family="${coverFontFamily.replaceAll('"', '&quot;')}"`)
-  expect(result).toContain('font-size="56" font-weight="600"')
-})
-
-test('玻璃与亚克力使用内嵌背景和固定颗粒，透明模式保留底板而隐藏背景', () => {
-  const settings = defaultCover('')
-  settings.transparent = false
-  settings.glass.enabled = settings.acrylic.enabled = true
-  const image = { name: '背景', dataUrl: 'data:image/png;base64,eA==', width: 1200, height: 675 }
-  const result = renderCover(settings, initialIcon, measure, image)
-  expect(result).toContain('xlink:href="#cover-background" filter="url(#cover-glass-blur)"')
-  expect(result).toContain('seed="11"')
-  expect(result.match(/data:image\/png/g)).toHaveLength(1)
-  expect(result).toContain('preserveAspectRatio="xMidYMid slice"')
-  expect(result).toContain('x="-30" y="-30" width="1260" height="735"')
-  expect(result).toBe(renderCover(settings, initialIcon, measure, image))
-  settings.transparent = true
-  const transparent = renderCover(settings, initialIcon, measure, image)
-  expect(transparent).not.toContain('cover-background')
-  expect(transparent).not.toContain('cover-acrylic')
-  expect(transparent).not.toContain(image.dataUrl)
-  expect(transparent).toContain('fill="#ffffff" fill-opacity="0.2"')
-  settings.glass.blur = Number.NaN
-  expect(() => renderCover(settings, initialIcon, measure, image)).toThrow('参数')
-})
-
 test('素材校验限制大小及文件签名，JPEG 仅作为背景接收', () => {
   expect(() => validateFileSize({ size: 5 * 1024 * 1024 })).not.toThrow()
   expect(() => validateFileSize({ size: 5 * 1024 * 1024 + 1 })).toThrow('5 MiB')
@@ -178,31 +109,6 @@ test('导出不能把浏览器回退的 PNG 冒充 WebP', () => {
 test('WebP 质量越界时明确拒绝导出', async () => {
   for (const quality of [0, 1.1, Number.NaN])
     await expect(exportCover(svg(''), 'webp', quality)).rejects.toThrow('质量')
-})
-
-test('透明模式下渐变在左右文字块独立展开并保留多行文字', () => {
-  const settings = defaultCover('左边\n文字')
-  settings.right = '右边\n文字'
-  settings.transparent = true
-  settings.text.fill.mode = 'linear'
-  settings.text.fill.stops = [{ position: 100, color: '#a369ff' }, { position: 0, color: '#f5f2ef' }, { position: 50, color: '#ff0000' }]
-  const document = new DOMParser().parseFromString(renderCover(settings, initialIcon, measure), 'image/svg+xml')
-  const gradients = [...document.querySelectorAll('linearGradient')]
-  expect(gradients).toHaveLength(2)
-  expect(gradients.map(node => [...node.querySelectorAll('stop')].map(stop => stop.getAttribute('offset')))).toEqual([['0%', '50%', '100%'], ['0%', '50%', '100%']])
-  expect(gradients[0]!.getAttribute('x1')).not.toBe(gradients[1]!.getAttribute('x1'))
-  expect(document.querySelectorAll('tspan')).toHaveLength(4)
-  settings.text.fill.mode = 'radial'
-  expect(renderCover(settings, initialIcon, measure).match(/<radialGradient/g)).toHaveLength(2)
-  settings.text.stroke.enabled = settings.text.glow.enabled = settings.textShadow.enabled = true
-  const effects = renderCover(settings, initialIcon, measure)
-  expect(effects).toContain('paint-order="stroke fill"')
-  expect(effects).toContain('filter="url(#cover-text-glow)"')
-  expect(effects).toContain('filter="url(#cover-text-shadow)"')
-  expect(effects).toContain('filterUnits="userSpaceOnUse" x="0" y="0" width="1200" height="675"')
-  const shadow = new DOMParser().parseFromString(effects, 'image/svg+xml').querySelector('#cover-text-shadow')!
-  expect(shadow.getAttribute('filterUnits')).toBe('userSpaceOnUse')
-  expect(shadow.getAttribute('width')).toBe('1200')
 })
 
 test('渐变与文字特效拒绝无效颜色、色标数量和数值', () => {

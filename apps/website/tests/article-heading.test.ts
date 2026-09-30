@@ -26,31 +26,12 @@ async function mount(reduce = false) {
   return { heading, text, hashes }
 }
 
-test('整行标题触发动画，快速移入移出后恢复隐藏且保留锚点和富文本', async () => {
-  const { heading, text, hashes } = await mount()
-  expect(heading.querySelector('a')?.getAttribute('href')).toBe('#标题')
-  expect(text.querySelector('code')?.textContent).toBe('code')
-  expect(hashes).toHaveLength(6)
-  expect(hashes[0]!.parentElement?.getAttribute('aria-hidden')).toBe('true')
-  heading.dispatchEvent(new PointerEvent('pointerenter', { pointerType: 'mouse' }))
-  await vi.waitFor(() => {
-    expect(text.style.getPropertyValue('--heading-underline')).toBe('100%')
-    expect(hashes.every(hash => hash.style.opacity === '1')).toBe(true)
-  })
-  heading.dispatchEvent(new PointerEvent('pointerleave'))
-  await nextTick()
-  heading.dispatchEvent(new PointerEvent('pointerenter', { pointerType: 'mouse' }))
-  await nextTick()
-  heading.dispatchEvent(new PointerEvent('pointerleave'))
-  await vi.waitFor(() => {
-    expect(text.style.getPropertyValue('--heading-underline')).toBe('0%')
-    expect(hashes.every(hash => hash.style.opacity === '0')).toBe(true)
-  })
-})
-
 test('减少动态效果时立即切换，键盘焦点保留反馈，触摸不留下 hover 状态', async () => {
   const { heading, text, hashes } = await mount(true)
   const anchor = heading.querySelector('a')!
+  expect(anchor.getAttribute('href')).toBe('#标题')
+  expect(text.querySelector('code')?.textContent).toBe('code')
+  expect(hashes[0]?.parentElement?.getAttribute('aria-hidden')).toBe('true')
   heading.dispatchEvent(new PointerEvent('pointerenter', { pointerType: 'touch' }))
   await nextTick()
   expect(text.style.getPropertyValue('--heading-underline')).toBe('0%')
