@@ -2,8 +2,7 @@ import { randomUUID } from 'node:crypto'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
 import githubSnapshots from './content/github/module'
-import { markdownWordCount } from './content/reading.ts'
-import { validateContentDirectory, validateFrontmatter } from './content/validation.ts'
+import contentImport from './content/module'
 import adminPreview from './modules/admin-preview/module'
 import audio from './modules/audio/module'
 import coverIcons from './modules/cover-icons/module'
@@ -50,7 +49,7 @@ export default defineNuxtConfig({
     prerender: { crawlLinks: false, failOnError: true, routes: ['/about', '/use', '/collections', rssPath] },
     cloudflare: { deployConfig: true, nodeCompat: true },
   },
-  modules: ['@nuxt/content', '@nuxtjs/color-mode', '@unocss/nuxt', '@vueuse/nuxt', '@nuxt/eslint', githubSnapshots, coverIcons, audio, adminPreview],
+  modules: [contentImport, '@nuxt/content', '@nuxtjs/color-mode', '@unocss/nuxt', '@vueuse/nuxt', '@nuxt/eslint', githubSnapshots, coverIcons, audio, adminPreview],
   colorMode: {
     preference: 'system',
     fallback: 'dark',
@@ -82,9 +81,6 @@ export default defineNuxtConfig({
         import.meta.url,
       ))
     },
-    // Nuxt Content skips parse errors by default. Preflight every start/build,
-    // including cached content, so invalid frontmatter cannot pass a build.
-    'modules:before': validateContentDirectory,
     'vite:configResolved': (config) => {
       // Content's rewrite runs before MDC adds its entries. Correct them after
       // all module extensions so pnpm can resolve MDC through its direct parent.
@@ -93,13 +89,6 @@ export default defineNuxtConfig({
           id.replace(/^@nuxtjs\/mdc > /, '@nuxt/content > @nuxtjs/mdc > '),
         )
       }
-    },
-    'content:file:afterParse': async ({ file, content, collection }) => {
-      if (collection.name !== 'posts' && collection.name !== 'about' && collection.name !== 'use')
-        return
-      Object.assign(content, validateFrontmatter(file.body, file.path, collection.name))
-      if (collection.name === 'posts')
-        content.wordCount = await markdownWordCount(file.body)
     },
   },
   components: [{ path: '~/components', pathPrefix: false }],

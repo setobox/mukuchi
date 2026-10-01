@@ -3,13 +3,16 @@ import { readdir, readFile } from 'node:fs/promises'
 import { isAbsolute, join, relative, resolve } from 'node:path'
 import process from 'node:process'
 import { addTemplate, defineNuxtModule, updateTemplates } from 'nuxt/kit'
-import { contentRoot, postsRoot } from '../validation'
+import { contentImportPolicy } from '../import-policy'
 import { collectRepositories } from './scan'
 import { createSnapshotCollector } from './snapshots'
 
 export default defineNuxtModule({
   meta: { name: 'mukuchi-github-snapshots' },
   setup(_, nuxt) {
+    const policy = contentImportPolicy(nuxt)
+    const contentRoot = policy.root
+    const postsRoot = join(contentRoot, 'posts')
     let snapshots: RepositorySnapshots = {}
     let pending = Promise.resolve()
     const enabled = !nuxt.options._prepare && !nuxt.options.test
@@ -39,7 +42,7 @@ export default defineNuxtModule({
         }
       }
       await walk(postsRoot)
-      const sources = await Promise.all(files.map(async filename => ({ filename, source: await readFile(filename, 'utf8') })))
+      const sources = await Promise.all(files.map(async filename => ({ filename, source: await policy.prepare(await readFile(filename, 'utf8'), filename, filename === join(contentRoot, 'about.md') ? 'about' : 'posts') })))
       const repos = await collectRepositories(sources)
       snapshots = await collect(repos)
     }

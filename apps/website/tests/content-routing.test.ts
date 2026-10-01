@@ -1,5 +1,5 @@
 import { execFile } from 'node:child_process'
-import { mkdtemp, rm } from 'node:fs/promises'
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import process from 'node:process'
@@ -14,6 +14,10 @@ const exec = promisify(execFile)
 
 async function setup(dev: boolean, collisionId?: string) {
   const directory = await mkdtemp(join(tmpdir(), 'newblog-content-routing-'))
+  const root = join(directory, 'content')
+  await mkdir(join(root, 'posts'), { recursive: true })
+  for (const kind of ['about', 'use'])
+    await writeFile(join(root, `${kind}.md`), '---\ntitle: 测试\ndescription: 测试\n---\n')
   const filename = join(directory, 'content.sqlite')
   const options = {
     cwd: fileURLToPath(new URL('./fixtures/content-routing', import.meta.url)),
@@ -21,6 +25,7 @@ async function setup(dev: boolean, collisionId?: string) {
     ready: false,
     overrides: {
       test: true,
+      contentImport: { root },
       buildDir: join(directory, '.nuxt'),
       content: { _localDatabase: { type: 'sqlite', filename } },
     },

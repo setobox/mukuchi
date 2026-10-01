@@ -48,7 +48,7 @@ export async function applySummarySnapshot(source: string, path: string, snapsho
   // This transformed string is hashed by Content before its parse cache lookup.
   return `---\n${yaml.toString()}---\n${parts.body}`
 }
-export function summaryContentSource(root: string) {
+export function summaryContentSource(root: string, prepare?: (source: string, filename: string) => Promise<string>) {
   const source = defineCollectionSource({
     getKeys: () => markdownFiles(root),
     async getItem(key) {
@@ -56,7 +56,8 @@ export function summaryContentSource(root: string) {
       const local = relative(root, path)
       if (local.startsWith('..') || isAbsolute(local))
         throw new Error('文章路径超出内容目录')
-      return applySummarySnapshot(await readFile(path, 'utf8'), key)
+      const original = await readFile(path, 'utf8')
+      return applySummarySnapshot(prepare ? await prepare(original, path) : original, key)
     },
   })
   return { ...source, cwd: root.replace(/\\/g, '/'), include: '**/*.md', prefix: '/posts' }
