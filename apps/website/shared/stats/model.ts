@@ -51,6 +51,8 @@ export function normalizeStatsPath(input: string): string {
   return `/${parts.join('/')}`
 }
 
+const statsNumberFormatter = new Intl.NumberFormat('zh-CN')
+
 export function statsNumber(value: number | undefined): string {
-  return value === undefined ? '—' : new Intl.NumberFormat('zh-CN').format(value)
+  return value === undefined ? '—' : statsNumberFormatter.format(value)
 }

@@ -1,0 +1,873 @@
+{
+  "title": "SSR partial optimization: local workerd measurements",
+  "date": "2026-10-02",
+  "scope": [
+    "Reuse article-date, Shanghai-date and number Intl instances",
+    "Reuse posts:catalog successful results and pending queries inside one Nuxt SSR request"
+  ],
+  "environment": {
+    "node": "v24.21.0",
+    "nuxt": "4.5.2",
+    "wrangler": "4.131.1",
+    "preset": "cloudflare_module",
+    "posts": 25,
+    "aiSnapshot": "frozen, original-description fallback, identical snapshot for both builds",
+    "stats": true,
+    "admin": false,
+    "audio": false,
+    "assistant": true,
+    "configSha256": "a2a90ec2fec114cea93c8b1c83f23558941bacea1ce4feef2d53a54fe59266e6",
+    "samplingIntervalUs": 100
+  },
+  "method": "Three worker restarts per build; each restart runs the same 20-case first sweep then warm sweep. Only the first case in each first sweep is isolate-cold; other routes are first visits in that isolate. V8 sampling interval 100us. Sampled active-stack durations exclude idle/program, include GC; these are profiler estimates, not Cloudflare billable CPU or HTTP durations. Classification is exclusive by matching stack ancestors, with formatting/catalog/serialization/runtime config before Vue. Async work outside those stacks can appear in other.",
+  "limitations": [
+    "V8 active-stack sampling is an estimate and includes profiler/local runtime overhead. It is not Cloudflare billed CPU and is not derived from HTTP elapsed time.",
+    "Each first sweep starts a new worker. Only its first case is isolate-cold. The first baseline round also initialized the persisted content database; cold totals are descriptive and cannot cleanly isolate the code change. Warm sweeps are the primary comparison.",
+    "Content inputs were unchanged and the AI snapshot was frozen. SQLite file hashes changed when rebuilding, so binary database identity is not asserted. Both builds used the same 25-post dataset and smoke used the database belonging to the final build.",
+    "Categories with fewer than 11 posts cannot exercise a real second page: page=2 requests cover the existing clamp behavior there. /posts has a real second page.",
+    "Only local results are measured for this patch. CI deployment and post-deployment Cloudflare cpuTime/exceededCpu/Ray ID verification remain pending."
+  ],
+  "results": {
+    "baseline": {
+      "httpStatusCounts": {
+        "200": 120
+      },
+      "first": {
+        "rounds": [
+          {
+            "round": 1,
+            "sampledActiveMs": 503.988,
+            "httpElapsedMs": 566.609
+          },
+          {
+            "round": 2,
+            "sampledActiveMs": 459.502,
+            "httpElapsedMs": 513.564
+          },
+          {
+            "round": 3,
+            "sampledActiveMs": 440.962,
+            "httpElapsedMs": 506.974
+          }
+        ],
+        "medianRoundSampledActiveMs": 459.502,
+        "hotspots": {
+          "formatting": {
+            "sampledMsAcrossThreeRounds": 60.788,
+            "percent": 4.328
+          },
+          "catalog": {
+            "sampledMsAcrossThreeRounds": 104.804,
+            "percent": 7.462
+          },
+          "serialization": {
+            "sampledMsAcrossThreeRounds": 40.132,
+            "percent": 2.857
+          },
+          "vue": {
+            "sampledMsAcrossThreeRounds": 475.182,
+            "percent": 33.834
+          },
+          "runtimeConfig": {
+            "sampledMsAcrossThreeRounds": 115.885,
+            "percent": 8.251
+          },
+          "gc": {
+            "sampledMsAcrossThreeRounds": 42.659,
+            "percent": 3.037
+          },
+          "other": {
+            "sampledMsAcrossThreeRounds": 565.002,
+            "percent": 40.229
+          }
+        },
+        "cases": [
+          {
+            "path": "/posts?tag=missing&category=missing&page=1",
+            "view": "list",
+            "sampledActiveMedianMs": 121.839,
+            "httpMedianMs": 126.4
+          },
+          {
+            "path": "/posts?tag=missing&category=missing&page=2",
+            "view": "list",
+            "sampledActiveMedianMs": 24.729,
+            "httpMedianMs": 26.828
+          },
+          {
+            "path": "/posts?tag=missing&category=missing&page=1",
+            "view": "grid",
+            "sampledActiveMedianMs": 23.274,
+            "httpMedianMs": 26.148
+          },
+          {
+            "path": "/posts?tag=missing&category=missing&page=2",
+            "view": "grid",
+            "sampledActiveMedianMs": 22.542,
+            "httpMedianMs": 24.347
+          },
+          {
+            "path": "/categories/%E6%96%87%E7%AB%A0%E7%A4%BA%E4%BE%8B?tag=missing&category=missing&page=1",
+            "view": "list",
+            "sampledActiveMedianMs": 19.781,
+            "httpMedianMs": 22.94
+          },
+          {
+            "path": "/categories/%E6%96%87%E7%AB%A0%E7%A4%BA%E4%BE%8B?tag=missing&category=missing&page=2",
+            "view": "list",
+            "sampledActiveMedianMs": 20.062,
+            "httpMedianMs": 22.564
+          },
+          {
+            "path": "/categories/%E6%96%87%E7%AB%A0%E7%A4%BA%E4%BE%8B?tag=missing&category=missing&page=1",
+            "view": "grid",
+            "sampledActiveMedianMs": 18.462,
+            "httpMedianMs": 21.027
+          },
+          {
+            "path": "/categories/%E6%96%87%E7%AB%A0%E7%A4%BA%E4%BE%8B?tag=missing&category=missing&page=2",
+            "view": "grid",
+            "sampledActiveMedianMs": 16.886,
+            "httpMedianMs": 19.295
+          },
+          {
+            "path": "/categories/Blender?tag=missing&category=missing&page=1",
+            "view": "list",
+            "sampledActiveMedianMs": 16.906,
+            "httpMedianMs": 19.717
+          },
+          {
+            "path": "/categories/Blender?tag=missing&category=missing&page=2",
+            "view": "list",
+            "sampledActiveMedianMs": 17.31,
+            "httpMedianMs": 19.814
+          },
+          {
+            "path": "/categories/Blender?tag=missing&category=missing&page=1",
+            "view": "grid",
+            "sampledActiveMedianMs": 14.615,
+            "httpMedianMs": 18.346
+          },
+          {
+            "path": "/categories/Blender?tag=missing&category=missing&page=2",
+            "view": "grid",
+            "sampledActiveMedianMs": 16.073,
+            "httpMedianMs": 18.648
+          },
+          {
+            "path": "/tags/AI?tag=missing&category=missing&page=1",
+            "view": "list",
+            "sampledActiveMedianMs": 18.152,
+            "httpMedianMs": 20.874
+          },
+          {
+            "path": "/tags/AI?tag=missing&category=missing&page=2",
+            "view": "list",
+            "sampledActiveMedianMs": 16.524,
+            "httpMedianMs": 18.966
+          },
+          {
+            "path": "/tags/AI?tag=missing&category=missing&page=1",
+            "view": "grid",
+            "sampledActiveMedianMs": 15.904,
+            "httpMedianMs": 17.826
+          },
+          {
+            "path": "/tags/AI?tag=missing&category=missing&page=2",
+            "view": "grid",
+            "sampledActiveMedianMs": 16.786,
+            "httpMedianMs": 18.472
+          },
+          {
+            "path": "/categories",
+            "view": "list",
+            "sampledActiveMedianMs": 15.536,
+            "httpMedianMs": 17.157
+          },
+          {
+            "path": "/tags",
+            "view": "list",
+            "sampledActiveMedianMs": 12.568,
+            "httpMedianMs": 15.694
+          },
+          {
+            "path": "/archive",
+            "view": "list",
+            "sampledActiveMedianMs": 14.963,
+            "httpMedianMs": 17.28
+          },
+          {
+            "path": "/series",
+            "view": "list",
+            "sampledActiveMedianMs": 12.877,
+            "httpMedianMs": 16.529
+          }
+        ]
+      },
+      "warm": {
+        "rounds": [
+          {
+            "round": 1,
+            "sampledActiveMs": 307.682,
+            "httpElapsedMs": 378.333
+          },
+          {
+            "round": 2,
+            "sampledActiveMs": 305.734,
+            "httpElapsedMs": 366.731
+          },
+          {
+            "round": 3,
+            "sampledActiveMs": 324.225,
+            "httpElapsedMs": 377.18
+          }
+        ],
+        "medianRoundSampledActiveMs": 307.682,
+        "hotspots": {
+          "formatting": {
+            "sampledMsAcrossThreeRounds": 36.799,
+            "percent": 3.925
+          },
+          "catalog": {
+            "sampledMsAcrossThreeRounds": 98.32,
+            "percent": 10.486
+          },
+          "serialization": {
+            "sampledMsAcrossThreeRounds": 23.586,
+            "percent": 2.515
+          },
+          "vue": {
+            "sampledMsAcrossThreeRounds": 360.443,
+            "percent": 38.441
+          },
+          "runtimeConfig": {
+            "sampledMsAcrossThreeRounds": 115.022,
+            "percent": 12.267
+          },
+          "gc": {
+            "sampledMsAcrossThreeRounds": 31.154,
+            "percent": 3.323
+          },
+          "other": {
+            "sampledMsAcrossThreeRounds": 272.317,
+            "percent": 29.043
+          }
+        },
+        "cases": [
+          {
+            "path": "/posts?tag=missing&category=missing&page=1",
+            "view": "list",
+            "sampledActiveMedianMs": 16.556,
+            "httpMedianMs": 19.643
+          },
+          {
+            "path": "/posts?tag=missing&category=missing&page=2",
+            "view": "list",
+            "sampledActiveMedianMs": 17.641,
+            "httpMedianMs": 21.074
+          },
+          {
+            "path": "/posts?tag=missing&category=missing&page=1",
+            "view": "grid",
+            "sampledActiveMedianMs": 19.656,
+            "httpMedianMs": 21.736
+          },
+          {
+            "path": "/posts?tag=missing&category=missing&page=2",
+            "view": "grid",
+            "sampledActiveMedianMs": 17.084,
+            "httpMedianMs": 19.52
+          },
+          {
+            "path": "/categories/%E6%96%87%E7%AB%A0%E7%A4%BA%E4%BE%8B?tag=missing&category=missing&page=1",
+            "view": "list",
+            "sampledActiveMedianMs": 15.463,
+            "httpMedianMs": 19.341
+          },
+          {
+            "path": "/categories/%E6%96%87%E7%AB%A0%E7%A4%BA%E4%BE%8B?tag=missing&category=missing&page=2",
+            "view": "list",
+            "sampledActiveMedianMs": 13.951,
+            "httpMedianMs": 18.513
+          },
+          {
+            "path": "/categories/%E6%96%87%E7%AB%A0%E7%A4%BA%E4%BE%8B?tag=missing&category=missing&page=1",
+            "view": "grid",
+            "sampledActiveMedianMs": 17.79,
+            "httpMedianMs": 19.723
+          },
+          {
+            "path": "/categories/%E6%96%87%E7%AB%A0%E7%A4%BA%E4%BE%8B?tag=missing&category=missing&page=2",
+            "view": "grid",
+            "sampledActiveMedianMs": 17.434,
+            "httpMedianMs": 20.619
+          },
+          {
+            "path": "/categories/Blender?tag=missing&category=missing&page=1",
+            "view": "list",
+            "sampledActiveMedianMs": 14.069,
+            "httpMedianMs": 17.445
+          },
+          {
+            "path": "/categories/Blender?tag=missing&category=missing&page=2",
+            "view": "list",
+            "sampledActiveMedianMs": 15.568,
+            "httpMedianMs": 17.563
+          },
+          {
+            "path": "/categories/Blender?tag=missing&category=missing&page=1",
+            "view": "grid",
+            "sampledActiveMedianMs": 12.958,
+            "httpMedianMs": 17.231
+          },
+          {
+            "path": "/categories/Blender?tag=missing&category=missing&page=2",
+            "view": "grid",
+            "sampledActiveMedianMs": 15.517,
+            "httpMedianMs": 18.594
+          },
+          {
+            "path": "/tags/AI?tag=missing&category=missing&page=1",
+            "view": "list",
+            "sampledActiveMedianMs": 15.8,
+            "httpMedianMs": 18.714
+          },
+          {
+            "path": "/tags/AI?tag=missing&category=missing&page=2",
+            "view": "list",
+            "sampledActiveMedianMs": 17.197,
+            "httpMedianMs": 20.454
+          },
+          {
+            "path": "/tags/AI?tag=missing&category=missing&page=1",
+            "view": "grid",
+            "sampledActiveMedianMs": 16.925,
+            "httpMedianMs": 18.655
+          },
+          {
+            "path": "/tags/AI?tag=missing&category=missing&page=2",
+            "view": "grid",
+            "sampledActiveMedianMs": 15.802,
+            "httpMedianMs": 18.27
+          },
+          {
+            "path": "/categories",
+            "view": "list",
+            "sampledActiveMedianMs": 11.361,
+            "httpMedianMs": 14.101
+          },
+          {
+            "path": "/tags",
+            "view": "list",
+            "sampledActiveMedianMs": 13.026,
+            "httpMedianMs": 17.595
+          },
+          {
+            "path": "/archive",
+            "view": "list",
+            "sampledActiveMedianMs": 14.256,
+            "httpMedianMs": 16.568
+          },
+          {
+            "path": "/series",
+            "view": "list",
+            "sampledActiveMedianMs": 12.066,
+            "httpMedianMs": 14.076
+          }
+        ]
+      }
+    },
+    "optimized": {
+      "httpStatusCounts": {
+        "200": 120
+      },
+      "first": {
+        "rounds": [
+          {
+            "round": 1,
+            "sampledActiveMs": 417.302,
+            "httpElapsedMs": 478.608
+          },
+          {
+            "round": 2,
+            "sampledActiveMs": 425.244,
+            "httpElapsedMs": 491.111
+          },
+          {
+            "round": 3,
+            "sampledActiveMs": 449.119,
+            "httpElapsedMs": 521.097
+          }
+        ],
+        "medianRoundSampledActiveMs": 425.244,
+        "hotspots": {
+          "formatting": {
+            "sampledMsAcrossThreeRounds": 2.036,
+            "percent": 0.158
+          },
+          "catalog": {
+            "sampledMsAcrossThreeRounds": 94.235,
+            "percent": 7.296
+          },
+          "serialization": {
+            "sampledMsAcrossThreeRounds": 31.491,
+            "percent": 2.438
+          },
+          "vue": {
+            "sampledMsAcrossThreeRounds": 495.396,
+            "percent": 38.353
+          },
+          "runtimeConfig": {
+            "sampledMsAcrossThreeRounds": 111.887,
+            "percent": 8.662
+          },
+          "gc": {
+            "sampledMsAcrossThreeRounds": 41.443,
+            "percent": 3.208
+          },
+          "other": {
+            "sampledMsAcrossThreeRounds": 515.177,
+            "percent": 39.885
+          }
+        },
+        "cases": [
+          {
+            "path": "/posts?tag=missing&category=missing&page=1",
+            "view": "list",
+            "sampledActiveMedianMs": 132.731,
+            "httpMedianMs": 137.037
+          },
+          {
+            "path": "/posts?tag=missing&category=missing&page=2",
+            "view": "list",
+            "sampledActiveMedianMs": 21.294,
+            "httpMedianMs": 24.475
+          },
+          {
+            "path": "/posts?tag=missing&category=missing&page=1",
+            "view": "grid",
+            "sampledActiveMedianMs": 20.532,
+            "httpMedianMs": 25.202
+          },
+          {
+            "path": "/posts?tag=missing&category=missing&page=2",
+            "view": "grid",
+            "sampledActiveMedianMs": 18.989,
+            "httpMedianMs": 20.778
+          },
+          {
+            "path": "/categories/%E6%96%87%E7%AB%A0%E7%A4%BA%E4%BE%8B?tag=missing&category=missing&page=1",
+            "view": "list",
+            "sampledActiveMedianMs": 19.348,
+            "httpMedianMs": 23.337
+          },
+          {
+            "path": "/categories/%E6%96%87%E7%AB%A0%E7%A4%BA%E4%BE%8B?tag=missing&category=missing&page=2",
+            "view": "list",
+            "sampledActiveMedianMs": 17.957,
+            "httpMedianMs": 20.216
+          },
+          {
+            "path": "/categories/%E6%96%87%E7%AB%A0%E7%A4%BA%E4%BE%8B?tag=missing&category=missing&page=1",
+            "view": "grid",
+            "sampledActiveMedianMs": 15.355,
+            "httpMedianMs": 17.675
+          },
+          {
+            "path": "/categories/%E6%96%87%E7%AB%A0%E7%A4%BA%E4%BE%8B?tag=missing&category=missing&page=2",
+            "view": "grid",
+            "sampledActiveMedianMs": 15.606,
+            "httpMedianMs": 17.743
+          },
+          {
+            "path": "/categories/Blender?tag=missing&category=missing&page=1",
+            "view": "list",
+            "sampledActiveMedianMs": 12.61,
+            "httpMedianMs": 17.756
+          },
+          {
+            "path": "/categories/Blender?tag=missing&category=missing&page=2",
+            "view": "list",
+            "sampledActiveMedianMs": 14.798,
+            "httpMedianMs": 16.869
+          },
+          {
+            "path": "/categories/Blender?tag=missing&category=missing&page=1",
+            "view": "grid",
+            "sampledActiveMedianMs": 15.556,
+            "httpMedianMs": 18.279
+          },
+          {
+            "path": "/categories/Blender?tag=missing&category=missing&page=2",
+            "view": "grid",
+            "sampledActiveMedianMs": 13.251,
+            "httpMedianMs": 15.385
+          },
+          {
+            "path": "/tags/AI?tag=missing&category=missing&page=1",
+            "view": "list",
+            "sampledActiveMedianMs": 14.81,
+            "httpMedianMs": 17.605
+          },
+          {
+            "path": "/tags/AI?tag=missing&category=missing&page=2",
+            "view": "list",
+            "sampledActiveMedianMs": 14.599,
+            "httpMedianMs": 17.103
+          },
+          {
+            "path": "/tags/AI?tag=missing&category=missing&page=1",
+            "view": "grid",
+            "sampledActiveMedianMs": 12.878,
+            "httpMedianMs": 14.722
+          },
+          {
+            "path": "/tags/AI?tag=missing&category=missing&page=2",
+            "view": "grid",
+            "sampledActiveMedianMs": 13.579,
+            "httpMedianMs": 15.788
+          },
+          {
+            "path": "/categories",
+            "view": "list",
+            "sampledActiveMedianMs": 13.367,
+            "httpMedianMs": 15.597
+          },
+          {
+            "path": "/tags",
+            "view": "list",
+            "sampledActiveMedianMs": 12.497,
+            "httpMedianMs": 14.659
+          },
+          {
+            "path": "/archive",
+            "view": "list",
+            "sampledActiveMedianMs": 16.057,
+            "httpMedianMs": 18.389
+          },
+          {
+            "path": "/series",
+            "view": "list",
+            "sampledActiveMedianMs": 12.608,
+            "httpMedianMs": 14.675
+          }
+        ]
+      },
+      "warm": {
+        "rounds": [
+          {
+            "round": 1,
+            "sampledActiveMs": 249.542,
+            "httpElapsedMs": 314.235
+          },
+          {
+            "round": 2,
+            "sampledActiveMs": 269.913,
+            "httpElapsedMs": 324.42
+          },
+          {
+            "round": 3,
+            "sampledActiveMs": 272.996,
+            "httpElapsedMs": 329.968
+          }
+        ],
+        "medianRoundSampledActiveMs": 269.913,
+        "hotspots": {
+          "formatting": {
+            "sampledMsAcrossThreeRounds": 0.797,
+            "percent": 0.101
+          },
+          "catalog": {
+            "sampledMsAcrossThreeRounds": 38.224,
+            "percent": 4.824
+          },
+          "serialization": {
+            "sampledMsAcrossThreeRounds": 15.212,
+            "percent": 1.92
+          },
+          "vue": {
+            "sampledMsAcrossThreeRounds": 346.02,
+            "percent": 43.665
+          },
+          "runtimeConfig": {
+            "sampledMsAcrossThreeRounds": 128.631,
+            "percent": 16.232
+          },
+          "gc": {
+            "sampledMsAcrossThreeRounds": 21.893,
+            "percent": 2.763
+          },
+          "other": {
+            "sampledMsAcrossThreeRounds": 241.674,
+            "percent": 30.497
+          }
+        },
+        "cases": [
+          {
+            "path": "/posts?tag=missing&category=missing&page=1",
+            "view": "list",
+            "sampledActiveMedianMs": 15.018,
+            "httpMedianMs": 17.194
+          },
+          {
+            "path": "/posts?tag=missing&category=missing&page=2",
+            "view": "list",
+            "sampledActiveMedianMs": 14.894,
+            "httpMedianMs": 17.241
+          },
+          {
+            "path": "/posts?tag=missing&category=missing&page=1",
+            "view": "grid",
+            "sampledActiveMedianMs": 13.73,
+            "httpMedianMs": 16.087
+          },
+          {
+            "path": "/posts?tag=missing&category=missing&page=2",
+            "view": "grid",
+            "sampledActiveMedianMs": 13.466,
+            "httpMedianMs": 16.054
+          },
+          {
+            "path": "/categories/%E6%96%87%E7%AB%A0%E7%A4%BA%E4%BE%8B?tag=missing&category=missing&page=1",
+            "view": "list",
+            "sampledActiveMedianMs": 12.592,
+            "httpMedianMs": 15.972
+          },
+          {
+            "path": "/categories/%E6%96%87%E7%AB%A0%E7%A4%BA%E4%BE%8B?tag=missing&category=missing&page=2",
+            "view": "list",
+            "sampledActiveMedianMs": 13.482,
+            "httpMedianMs": 16.125
+          },
+          {
+            "path": "/categories/%E6%96%87%E7%AB%A0%E7%A4%BA%E4%BE%8B?tag=missing&category=missing&page=1",
+            "view": "grid",
+            "sampledActiveMedianMs": 12.67,
+            "httpMedianMs": 17.342
+          },
+          {
+            "path": "/categories/%E6%96%87%E7%AB%A0%E7%A4%BA%E4%BE%8B?tag=missing&category=missing&page=2",
+            "view": "grid",
+            "sampledActiveMedianMs": 16.485,
+            "httpMedianMs": 18.904
+          },
+          {
+            "path": "/categories/Blender?tag=missing&category=missing&page=1",
+            "view": "list",
+            "sampledActiveMedianMs": 12.007,
+            "httpMedianMs": 15.718
+          },
+          {
+            "path": "/categories/Blender?tag=missing&category=missing&page=2",
+            "view": "list",
+            "sampledActiveMedianMs": 13.77,
+            "httpMedianMs": 16.16
+          },
+          {
+            "path": "/categories/Blender?tag=missing&category=missing&page=1",
+            "view": "grid",
+            "sampledActiveMedianMs": 12.272,
+            "httpMedianMs": 14.614
+          },
+          {
+            "path": "/categories/Blender?tag=missing&category=missing&page=2",
+            "view": "grid",
+            "sampledActiveMedianMs": 13.639,
+            "httpMedianMs": 16.043
+          },
+          {
+            "path": "/tags/AI?tag=missing&category=missing&page=1",
+            "view": "list",
+            "sampledActiveMedianMs": 12.552,
+            "httpMedianMs": 15.221
+          },
+          {
+            "path": "/tags/AI?tag=missing&category=missing&page=2",
+            "view": "list",
+            "sampledActiveMedianMs": 12.29,
+            "httpMedianMs": 17.795
+          },
+          {
+            "path": "/tags/AI?tag=missing&category=missing&page=1",
+            "view": "grid",
+            "sampledActiveMedianMs": 12.106,
+            "httpMedianMs": 14.702
+          },
+          {
+            "path": "/tags/AI?tag=missing&category=missing&page=2",
+            "view": "grid",
+            "sampledActiveMedianMs": 13.308,
+            "httpMedianMs": 15.491
+          },
+          {
+            "path": "/categories",
+            "view": "list",
+            "sampledActiveMedianMs": 11.448,
+            "httpMedianMs": 13.333
+          },
+          {
+            "path": "/tags",
+            "view": "list",
+            "sampledActiveMedianMs": 11.586,
+            "httpMedianMs": 14.563
+          },
+          {
+            "path": "/archive",
+            "view": "list",
+            "sampledActiveMedianMs": 12.539,
+            "httpMedianMs": 14.928
+          },
+          {
+            "path": "/series",
+            "view": "list",
+            "sampledActiveMedianMs": 11.584,
+            "httpMedianMs": 13.539
+          }
+        ]
+      }
+    },
+    "warmMedianReductionPercent": 12.275
+  },
+  "queryCounts": {
+    "source": "Wrangler local observability spans, joined by trace_id; exactly 120 root GET traces matched each sampling window, in request order",
+    "warmPages": [
+      {
+        "path": "/posts?tag=missing&category=missing&page=1",
+        "baseline": [
+          3,
+          3,
+          3
+        ],
+        "optimized": [
+          1,
+          1,
+          1
+        ]
+      },
+      {
+        "path": "/categories/%E6%96%87%E7%AB%A0%E7%A4%BA%E4%BE%8B?tag=missing&category=missing&page=1",
+        "baseline": [
+          3,
+          3,
+          3
+        ],
+        "optimized": [
+          1,
+          1,
+          1
+        ]
+      },
+      {
+        "path": "/categories/Blender?tag=missing&category=missing&page=1",
+        "baseline": [
+          3,
+          3,
+          3
+        ],
+        "optimized": [
+          1,
+          1,
+          1
+        ]
+      },
+      {
+        "path": "/tags/AI?tag=missing&category=missing&page=1",
+        "baseline": [
+          3,
+          3,
+          3
+        ],
+        "optimized": [
+          1,
+          1,
+          1
+        ]
+      },
+      {
+        "path": "/categories",
+        "baseline": [
+          2,
+          2,
+          2
+        ],
+        "optimized": [
+          1,
+          1,
+          1
+        ]
+      },
+      {
+        "path": "/tags",
+        "baseline": [
+          2,
+          2,
+          2
+        ],
+        "optimized": [
+          1,
+          1,
+          1
+        ]
+      },
+      {
+        "path": "/archive",
+        "baseline": [
+          2,
+          2,
+          2
+        ],
+        "optimized": [
+          1,
+          1,
+          1
+        ]
+      },
+      {
+        "path": "/series",
+        "baseline": [
+          2,
+          2,
+          2
+        ],
+        "optimized": [
+          1,
+          1,
+          1
+        ]
+      }
+    ],
+    "nuxtFixture": {
+      "serialInitializers": {
+        "before": 4,
+        "after": 1
+      },
+      "concurrentInitializers": {
+        "before": 5,
+        "after": 1
+      },
+      "manualRefreshAfter": 2,
+      "initialFailureRetryAfter": 2,
+      "failedRefreshRetryAfter": 3,
+      "independentConcurrentRequests": true,
+      "note": "Only queryCollection is replaced in the fixture; Nuxt useAsyncData and SSR are real."
+    }
+  },
+  "validation": {
+    "check": "passed",
+    "tests": {
+      "files": 83,
+      "passed": 574
+    },
+    "cloudflareProductionBuild": "passed",
+    "prerender": "passed: 25 posts, about, collections shell and RSS; listing routes still SSR",
+    "fullLocalSmoke": "passed: matching build database, all taxonomy routes, cookie list/grid, unknown taxonomy 404",
+    "browser": "passed: direct page 2, grid/list cookie after reload, page 3, back/forward, Blender and Nuxt Content tag navigation; no browser warnings/errors observed",
+    "existingVueRegression": "passed: direct page 2 SSR/hydration, SEO, pagination, filtering and history",
+    "preserved": [
+      "Existing FloatingActions.vue workspace changes",
+      "Smoke error summary and cf-ray diagnostics",
+      "Strict CI checks"
+    ]
+  },
+  "rawArtifacts": ".data/ssr-profile/{baseline,optimized}: results.json, *.cpuprofile, analysis.json and traces.json; .data/ssr-profile/profile.mjs and analyze.mjs reproduce the local sampling/aggregation."
+}

@@ -6,7 +6,13 @@ import { DatabaseSync } from 'node:sqlite'
 import { afterEach, expect, test } from 'vite-plus/test'
 import { openStatsDatabase } from '../server/features/stats/drivers/node'
 import { createStatsRepository, StatsEventConflict } from '../server/features/stats/repository'
-import { contentCounts, normalizeStatsPath, pageviewSchema, parseStatsRange, shanghaiDay } from '../shared/stats/model'
+import { contentCounts, normalizeStatsPath, pageviewSchema, parseStatsRange, shanghaiDay, statsNumber } from '../shared/stats/model'
+
+test('统计数字区分未加载与零值，大数按千位分组', () => {
+  expect(statsNumber(undefined)).toBe('—')
+  expect(statsNumber(0)).toBe('0')
+  expect(statsNumber(1_234_567)).toBe('1,234,567')
+})
 
 const fixtures: { close: () => void }[] = []
 afterEach(() => fixtures.splice(0).forEach(fixture => fixture.close()))

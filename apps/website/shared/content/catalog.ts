@@ -3,6 +3,13 @@ import type { TaxonomyFilter } from './taxonomy'
 
 type PostOrder = Pick<PostSummary, 'publish' | 'path' | 'stem'>
 
+const postDateFormatter = new Intl.DateTimeFormat('zh-CN', {
+  timeZone: 'Asia/Shanghai',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+})
+
 function postSequence(stem?: string): bigint | undefined {
   // Content's normalized URL drops numeric prefixes; only the source filename
   // supplies the article sequence, not any numbered parent directories.
@@ -56,12 +63,7 @@ export function aggregateTerms(posts: readonly PostSummary[], field: 'tags' | 'c
     .sort((a, b) => compare(a.name, b.name))
 }
 export function formatPostDate(value: string): string {
-  return new Intl.DateTimeFormat('zh-CN', {
-    timeZone: 'Asia/Shanghai',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  })
+  return postDateFormatter
     .format(new Date(`${value}T00:00:00+08:00`))
     .replaceAll('/', '-')
 }

@@ -22,7 +22,17 @@ export function usePostCatalog() {
         'theme',
       )
       .all()
-      .then(sortPosts))
+      .then(sortPosts), import.meta.server
+    ? {
+        dedupe: 'defer',
+        getCachedData(key, nuxtApp, context) {
+          // SSR's default cache reads static.data, not completed request data.
+          // Explicit refreshes and failed refreshes must query again.
+          if (context.cause === 'initial' && !nuxtApp.payload._errors[key])
+            return nuxtApp.payload.data[key]
+        },
+      }
+    : undefined)
   return {
     ready: query,
     data: query.data,
