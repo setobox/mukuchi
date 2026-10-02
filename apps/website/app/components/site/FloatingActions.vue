@@ -32,7 +32,7 @@ async function runAction(action: (typeof actions.value)[number]): Promise<void> 
       :title="action.label"
       @click="runAction(action)"
     >
-      <span :class="action.icon" aria-hidden="true" />
+      <span :class="[action.icon, action.id === 'assistant' && 'text-[1.125rem]']" aria-hidden="true" />
       <span v-if="toValue(action.unread)" class="absolute right-0.5 top-0.5 h-2 w-2 rounded-full bg-accent" aria-label="有未读回复" />
     </button>
   </TransitionGroup>
