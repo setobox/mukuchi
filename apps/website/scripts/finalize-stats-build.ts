@@ -1,18 +1,13 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
-import process from 'node:process'
-import { statsEnabled } from '../shared/stats/model.ts'
-import { statsWranglerSchema } from '../shared/stats/release.ts'
+import { z } from 'zod'
 import './stats-environment.ts'
 
-const enabled = statsEnabled(process.env.NUXT_PUBLIC_STATS_ENABLED)
-writeFileSync('.output/stats-build.json', JSON.stringify({ enabled }))
-const configFile = '.output/server/wrangler.json'
-if (existsSync(configFile)) {
-  const config = statsWranglerSchema.parse(JSON.parse(readFileSync(configFile, 'utf8')))
-  // Avoid provisioning an unused remote database on a stats-disabled release.
-  if (!enabled)
-    config.d1_databases = config.d1_databases.filter(binding => binding.binding !== 'STATS_DB')
-  config.vars = { ...config.vars, NUXT_PUBLIC_STATS_ENABLED: String(enabled) }
-  writeFileSync(configFile, JSON.stringify(config, null, 2))
+writeFileSync('.output/stats-build.json', JSON.stringify({ available: true }))
+const path = '.output/server/wrangler.json'
+if (existsSync(path)) {
+  const config = z.object({ vars: z.record(z.string(), z.unknown()).optional() }).passthrough().parse(JSON.parse(readFileSync(path, 'utf8')))
+  config.vars ||= {}
+  for (const key of ['NUXT_PUBLIC_STATS_ENABLED']) delete config.vars[key]
+  writeFileSync(path, JSON.stringify(config, null, 2))
 }
-console.log(`统计构建配置：${enabled ? '已启用' : '已关闭'}。`)
+console.log('stats 构建完成：资源绑定固定保留，功能由后台管理。')

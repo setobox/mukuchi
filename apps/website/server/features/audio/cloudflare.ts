@@ -9,7 +9,6 @@ export interface AudioEnv {
   AUDIO_ASSETS?: R2Bucket
   ARTICLE_AUDIO_WORKFLOW?: Workflow<AudioWorkflowPayload>
   NUXT_AI_ENCRYPTION_KEY?: string
-  NUXT_AUDIO_ENABLED?: string
 }
 export function cloudflareAudioRepository(env: AudioEnv) {
   if (!env.ADMIN_DB)
@@ -23,7 +22,10 @@ export function cloudflareAudioRepository(env: AudioEnv) {
   } })
 }
 export function audioExecutionReady(env: AudioEnv) {
-  return env.NUXT_AUDIO_ENABLED === 'true' && !!env.ADMIN_DB && !!env.AUDIO_ASSETS && !!env.ARTICLE_AUDIO_WORKFLOW && !!env.NUXT_AI_ENCRYPTION_KEY
+  return missingAudioResources(env).length === 0
+}
+export function missingAudioResources(env: AudioEnv): string[] {
+  return (['ADMIN_DB', 'AUDIO_ASSETS', 'ARTICLE_AUDIO_WORKFLOW', 'NUXT_AI_ENCRYPTION_KEY'] as const).filter(key => !env[key])
 }
 export async function dispatchAudio(env: AudioEnv, manifest: AudioManifest) {
   if (!audioExecutionReady(env))

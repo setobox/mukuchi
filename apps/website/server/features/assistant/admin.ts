@@ -5,7 +5,6 @@ import { assistantUsageSchema, resetBudgetSchema } from '../../../shared/assista
 import { AssistantError, assistantLimits } from '../../../shared/assistant/model'
 import { assistantCredentialsSchema, assistantSettingsSchema, configurationReady } from '../../../shared/assistant/settings'
 import { toolInputs } from '../../../shared/assistant/tools'
-import { adminEnabled } from '../admin/http'
 import { encryptApiKey, encryptionReady } from '../ai/crypto'
 import { requireOwner } from '../auth/session'
 import { digest } from './crypto'
@@ -17,8 +16,6 @@ import { billingDay } from './repository'
 const credentialNames = ['modelKey', 'aliyunKeyId', 'aliyunKeySecret', 'turnstileSecret'] as const
 const saveSchema = z.object({ settings: assistantSettingsSchema, version: z.number().int().nonnegative(), credentials: assistantCredentialsSchema.partial().default({}), clearCredentials: z.array(z.enum(credentialNames)).max(4).default([]) }).strict()
 async function owner(event: H3Event) {
-  if (!adminEnabled(event))
-    throw new AssistantError(404, 'disabled', '后台功能未启用')
   return requireOwner(event)
 }
 export async function assistantSettingsRoute(event: H3Event) {

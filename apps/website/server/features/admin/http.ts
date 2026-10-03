@@ -19,16 +19,11 @@ export function adminOptions(event: H3Event) {
     bucket: env.ADMIN_ASSETS,
   }
 }
-export function adminEnabled(event: H3Event) {
-  const value: unknown = useRuntimeConfig(event).adminEnabled
-  return import.meta.dev || value === true || value === 'true'
-}
+
 export function defineAdminHandler<T extends EventHandlerResponse>(handler: (event: H3Event) => T | Promise<T>) {
   return defineEventHandler(async (event) => {
     setResponseHeader(event, 'cache-control', 'no-store')
     try {
-      if (!adminEnabled(event))
-        throw new AdminError(404, '后台功能未启用')
       return await handler(event)
     }
     catch (error) {

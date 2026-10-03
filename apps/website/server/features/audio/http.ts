@@ -10,7 +10,7 @@ import { audioConfigHash, audioKindSchema, audioSettingsSchema, kindEnabled } fr
 import { adminOptions, readAdminJson } from '../admin/http'
 import { decryptApiKey, encryptApiKey, encryptionReady } from '../ai/crypto'
 import { requireOwner } from '../auth/session'
-import { audioExecutionReady, dispatchAudio } from './cloudflare'
+import { audioExecutionReady, dispatchAudio, missingAudioResources } from './cloudflare'
 import { canResumeAudio, createAudioRepository } from './repository'
 import { audioResponse } from './storage'
 
@@ -37,7 +37,7 @@ function requireKindSettings(settings: AudioSettings, kind: AudioKind) {
 }
 export async function audioSettingsView(event: H3Event): Promise<AudioSettingsView> {
   const stored = await withAudio(event, repo => repo.settings())
-  return { ...stored.settings, version: stored.version, keyConfigured: !!stored.encryptedKey, encryptionReady: await encryptionReady(secret(event)), executionReady: audioExecutionReady(audioEnv(event)) }
+  return { ...stored.settings, version: stored.version, keyConfigured: !!stored.encryptedKey, encryptionReady: await encryptionReady(secret(event)), executionReady: audioExecutionReady(audioEnv(event)), missingResources: missingAudioResources(audioEnv(event)) }
 }
 export async function audioSettingsRoute(event: H3Event) {
   await requireOwner(event)
@@ -52,7 +52,7 @@ export async function audioSettingsRoute(event: H3Event) {
     const settings = audioSettingsSchema.parse(Object.fromEntries(Object.keys(audioSettingsSchema.shape).map(key => [key, input[key as keyof typeof input]])))
     if (settings.enabled) {
       if (!audioExecutionReady(audioEnv(event)))
-        throw new AdminError(422, '请先配置 Cloudflare 音频任务、私有存储和服务端功能开关')
+        throw new AdminError(422, `音频执行环境缺少：${missingAudioResources(audioEnv(event)).join('、')}`)
       if (!key || (settings.authMode === 'legacy' && !settings.appId) || (!settings.narrationEnabled && !settings.podcastEnabled))
         throw new AdminError(422, '请配置语音凭据并至少开启一种音频类型')
       await decryptApiKey(key, secret(event))
@@ -86,7 +86,7 @@ export async function audioJobsRoute(event: H3Event) {
   await withAudio(event, async (repo) => {
     const { settings, encryptedKey } = await repo.settings()
     if (!audioExecutionReady(audioEnv(event)))
-      throw new AdminError(422, '音频执行环境未配置')
+      throw new AdminError(422, `音频执行环境缺少：${missingAudioResources(audioEnv(event)).join('、')}`)
     if (!encryptedKey || (settings.authMode === 'legacy' && !settings.appId))
       throw new AdminError(422, '请先配置语音凭据')
     await decryptApiKey(encryptedKey, secret(event))

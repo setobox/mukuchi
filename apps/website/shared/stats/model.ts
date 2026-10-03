@@ -3,7 +3,6 @@ import { z } from 'zod'
 export const visitorCookie = 'mukuchi:visitor'
 export const uuid = z.uuid()
 export const counter = z.number().int().nonnegative().safe()
-export const statsEnabled = (value: unknown): boolean => value === true || value === 'true'
 export const pageviewSchema = z.object({ eventId: uuid, path: z.string().min(1).max(2048) }).strict()
 export const summarySchema = z.object({ pageViews: counter, visitors: counter, startedAt: z.string().datetime().nullable() })
 export const pageStatsSchema = z.object({ path: z.string(), pageViews: counter })

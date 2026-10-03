@@ -20,7 +20,7 @@ test('实际插件只采集成功页面，忽略参数变化并在缓存恢复�
       restore = callback
   })
   vi.stubGlobal('defineNuxtPlugin', (initialize: (context: typeof app) => unknown) => initialize(app))
-  vi.stubGlobal('useVisitStats', () => ({ enabled: true, endpoint: (path: string) => `/api/stats/${path}`, accept: vi.fn(), fail: vi.fn() }))
+  vi.stubGlobal('useVisitStats', () => ({ enabled: true, refreshSettings: async () => true, endpoint: (path: string) => `/api/stats/${path}`, accept: vi.fn(), fail: vi.fn() }))
   vi.stubGlobal('useRuntimeConfig', () => ({ app: { baseURL: '/' } }))
   vi.stubGlobal('useError', () => error)
   vi.stubGlobal('nextTick', nextTick)
@@ -31,13 +31,16 @@ test('实际插件只采集成功页面，忽略参数变化并在缓存恢复�
   error.value = null
   hooks.get('page:loading:end')?.()
   await nextTick()
+  await nextTick()
   expect(send).toHaveBeenCalledTimes(1)
   currentRoute.value.fullPath = '/posts?tag=Vue#section'
   hooks.get('page:loading:end')?.()
   await nextTick()
+  await nextTick()
   expect(send).toHaveBeenCalledTimes(1)
   currentRoute.value.path = '/about'
   hooks.get('page:loading:end')?.()
+  await nextTick()
   await nextTick()
   expect(send).toHaveBeenCalledTimes(2)
   const restorePage = (persisted: boolean) => {
@@ -49,6 +52,7 @@ test('实际插件只采集成功页面，忽略参数变化并在缓存恢复�
   restorePage(false)
   expect(send).toHaveBeenCalledTimes(2)
   restorePage(true)
+  await nextTick()
   expect(send).toHaveBeenCalledTimes(3)
   const events = send.mock.calls.map(call => call[1].body.eventId)
   expect(new Set(events).size).toBe(3)

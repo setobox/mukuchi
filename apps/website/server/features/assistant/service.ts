@@ -5,13 +5,11 @@ import { AssistantError, assistantLimits, continueRequestSchema, turnRequestSche
 import { publicContent } from './content-source'
 import { signValue, verifyHistory } from './crypto'
 import { createAssistantEngine } from './engine'
-import { assistantConfiguration, assistantEnabled, assistantIdentity, assistantJson, trustedClientIp, withAssistant } from './http'
+import { assistantConfiguration, assistantIdentity, assistantJson, trustedClientIp, withAssistant } from './http'
 import { verifyTurnstile } from './turnstile'
 
 export async function sessionRoute(event: H3Event) {
   const disabled = { enabled: false, namespace: '', csrf: '', authenticated: false, turnstileSiteKey: '', remaining: 0, inputLimit: assistantLimits.inputLength }
-  if (!assistantEnabled(event))
-    return disabled
   return withAssistant(event, async (repository) => {
     const config = await assistantConfiguration(event, repository, false)
     if (!config.settings.enabled || !config.ready)
@@ -21,8 +19,6 @@ export async function sessionRoute(event: H3Event) {
   })
 }
 export async function turnsRoute(event: H3Event, continuing = false): Promise<TurnResponse> {
-  if (!assistantEnabled(event))
-    throw new AssistantError(503, 'disabled', '助手暂未开放')
   const identity = await assistantIdentity(event, true)
   const value = await assistantJson(event)
   return withAssistant(event, async (repository) => {

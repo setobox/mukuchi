@@ -93,7 +93,7 @@ async function testCapabilities() {
       <fieldset :disabled="busy" class="space-y-6">
         <BaseSwitch v-model="view.settings.enabled" label="启用对话助手" />
         <p class="text-xs text-muted">
-          {{ view.verified ? '已保存配置通过能力测试。' : '请先关闭开关保存配置，再测试能力，最后启用。' }}部署环境还需设置 NUXT_ASSISTANT_ENABLED=true 并保留 ADMIN_DB。
+          {{ view.verified ? '已保存配置通过能力测试。' : '请先关闭开关保存配置，再测试能力，最后启用。' }}
         </p>
         <label class="block text-sm text-muted">Chat Completions 兼容服务地址<input v-model="view.settings.baseUrl" type="url" autocomplete="off" placeholder="https://服务地址/v1" class="field-control mt-2 w-full px-3"></label>
         <label class="block text-sm text-muted">模型名称<input v-model="view.settings.model" autocomplete="off" class="field-control mt-2 w-full px-3"></label>

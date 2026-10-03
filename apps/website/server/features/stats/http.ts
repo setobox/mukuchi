@@ -2,8 +2,7 @@ import type { H3Event } from 'h3'
 import { queryCollection } from '@nuxt/content/server'
 import { openStatsDatabase } from '#stats-driver'
 import { taxonomyPath } from '../../../shared/content/taxonomy'
-import { normalizeStatsPath, statsEnabled } from '../../../shared/stats/model'
-import { adminEnabled } from '../admin/http'
+import { normalizeStatsPath } from '../../../shared/stats/model'
 import { session } from '../auth/session'
 import { logApiError } from '../logging/api-error'
 import { createStatsRepository, StatsEventConflict } from './repository'
@@ -11,8 +10,6 @@ import { createStatsRepository, StatsEventConflict } from './repository'
 export function requireStats(event: H3Event) {
   setResponseHeader(event, 'cache-control', 'no-store')
   const config = useRuntimeConfig(event)
-  if (!statsEnabled(config.public.statsEnabled))
-    throw createError({ statusCode: 404, message: '统计功能未启用' })
   return config
 }
 
@@ -86,7 +83,7 @@ export async function visitorDigest(id: string, secret: string): Promise<string>
 
 export async function requireStatsAdmin(event: H3Event) {
   const config = requireStats(event)
-  if (adminEnabled(event) && !getHeader(event, 'authorization')) {
+  if (!getHeader(event, 'authorization')) {
     const current = await session(event)
     if (current?.user.role === 'admin')
       return

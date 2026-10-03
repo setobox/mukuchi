@@ -6,12 +6,11 @@ const props = defineProps<{ path: string }>()
 const config = useRuntimeConfig()
 const items = ref<PublicAudio[]>([])
 const visibility = useDocumentVisibility()
-const enabled = config.public.audioEnabled === true || String(config.public.audioEnabled) === 'true'
 let pending = false
 let disposed = false
 let controller: AbortController | undefined
 async function refresh() {
-  if (!enabled || pending || visibility.value === 'hidden')
+  if (pending || visibility.value === 'hidden')
     return
   pending = true
   const path = props.path
@@ -34,7 +33,7 @@ watch(() => props.path, () => {
   items.value = []
   void refresh()
 }, { flush: 'sync' })
-useIntervalFn(refresh, 30_000, { immediate: enabled })
+useIntervalFn(refresh, 30_000, { immediate: true })
 onBeforeUnmount(() => {
   disposed = true
   controller?.abort()

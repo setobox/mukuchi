@@ -3,8 +3,6 @@ import { createPageviewTracker, ensureVisitorCookie } from '~/features/stats/tra
 
 export default defineNuxtPlugin((nuxtApp) => {
   const stats = useVisitStats()
-  if (!stats.enabled)
-    return
   const config = useRuntimeConfig()
   const error = useError()
   let mounted = false
@@ -24,14 +22,20 @@ export default defineNuxtPlugin((nuxtApp) => {
     publish: stats.accept,
     fail: stats.fail,
   })
-  function complete(force = false) {
+  async function complete(force = false) {
     const route = nuxtApp.$router.currentRoute.value
     if (route.path === '/admin' || route.path.startsWith('/admin/') || route.path.startsWith('/api/')) {
       tracker.leave()
       return
     }
-    if (mounted && !error.value && route.matched.length && route.path !== '/')
-      void tracker.open(route.path, force)
+    if (mounted && !error.value && route.matched.length && route.path !== '/') {
+      const enabled = await stats.refreshSettings()
+      if (nuxtApp.$router.currentRoute.value.path !== route.path || error.value)
+        return
+      if (enabled)
+        void tracker.open(route.path, force)
+      else tracker.leave()
+    }
   }
   nuxtApp.hook('app:mounted', () => {
     mounted = true

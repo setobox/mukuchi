@@ -2,9 +2,13 @@ import { pageviewSchema, uuid, visitorCookie } from '../../../shared/stats/model
 import { defineStatsHandler } from '../../features/stats/handler'
 import { requireStats, requireStatsOrigin, requireStatsPath, visitorDigest, withStats } from '../../features/stats/http'
 
+import { statsSettings } from '../../features/stats/settings'
+
 export default defineStatsHandler(async (event) => {
   const config = requireStats(event)
   requireStatsOrigin(event)
+  if (!(await statsSettings(event)).enabled)
+    throw createError({ statusCode: 409, message: '统计采集已关闭' })
   const contentType = getHeader(event, 'content-type')?.split(';', 1)[0]
   if (contentType !== 'application/json')
     throw createError({ statusCode: 415, message: '需要 JSON 请求' })

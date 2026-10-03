@@ -7,16 +7,10 @@ import { adminOptions } from '../admin/http'
 import { logApiError } from '../logging/api-error'
 import { createAuthRepository } from './repository'
 
-export function authEnabled(event: H3Event) {
-  const value: unknown = useRuntimeConfig(event).public.authEnabled
-  return import.meta.dev || value === true || value === 'true'
-}
 export function defineAuthHandler<T extends EventHandlerResponse>(handler: (event: H3Event) => T | Promise<T>) {
   return defineEventHandler(async (event) => {
     setResponseHeader(event, 'cache-control', 'no-store')
     try {
-      if (!authEnabled(event))
-        throw new AuthError(404, '账号功能未启用')
       return await handler(event)
     }
     catch (cause) {

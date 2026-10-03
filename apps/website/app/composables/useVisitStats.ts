@@ -1,5 +1,5 @@
 import type { RecordedStats, StatsSummary } from '#shared/stats/model'
-import { normalizeStatsPath, pageStatsSchema, statsEnabled, summarySchema } from '#shared/stats/model'
+import { normalizeStatsPath, pageStatsSchema, summarySchema } from '#shared/stats/model'
 
 interface VisitStatsState {
   summary: StatsSummary | null
@@ -9,9 +9,16 @@ interface VisitStatsState {
 
 export function useVisitStats() {
   const config = useRuntimeConfig()
-  const enabled = statsEnabled(config.public.statsEnabled)
-  const state = useState<VisitStatsState>('stats:visits', () => ({ summary: null, pages: {}, errors: {} }))
   const endpoint = (suffix: string) => `${config.app.baseURL}api/stats/${suffix}`
+  const availability = useState<boolean | null>('stats:enabled', () => null)
+  async function refreshSettings() {
+    try {
+      availability.value = (await $fetch<{ enabled: boolean }>(endpoint('settings'), { retry: 0 })).enabled === true
+    }
+    catch { availability.value = false }
+    return availability.value
+  }
+  const state = useState<VisitStatsState>('stats:visits', () => ({ summary: null, pages: {}, errors: {} }))
   function accept(result: RecordedStats) {
     if (!state.value.summary || result.summary.pageViews >= state.value.summary.pageViews)
       state.value.summary = result.summary
@@ -24,12 +31,13 @@ export function useVisitStats() {
     state.value.errors.summary = true
   }
   async function loadPage(path: string) {
-    if (!import.meta.client || !enabled)
+    if (!import.meta.client || !await refreshSettings())
       return
     const normalized = normalizeStatsPath(path)
     try {
       const result = pageStatsSchema.parse(await $fetch(endpoint('page'), { query: { path: normalized }, retry: 0 }))
-      // GET may have started before a successful POST; never replace newer counters.
+      // GET may have started before a successful POST;
+      // Never replace newer counters.
       state.value.pages[normalized] = Math.max(state.value.pages[normalized] ?? 0, result.pageViews)
       delete state.value.errors[normalized]
     }
@@ -38,7 +46,7 @@ export function useVisitStats() {
     }
   }
   async function loadSummary() {
-    if (!import.meta.client || !enabled)
+    if (!import.meta.client || !await refreshSettings())
       return
     try {
       const result = summarySchema.parse(await $fetch(endpoint('summary'), { retry: 0 }))
@@ -50,5 +58,7 @@ export function useVisitStats() {
       state.value.errors.summary = true
     }
   }
-  return { enabled, state, endpoint, accept, fail, loadPage, loadSummary }
+  return { get enabled() {
+    return availability.value === true
+  }, refreshSettings, state, endpoint, accept, fail, loadPage, loadSummary }
 }

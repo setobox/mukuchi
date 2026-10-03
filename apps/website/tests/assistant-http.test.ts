@@ -1,6 +1,6 @@
 import type { H3Event } from 'h3'
 import { afterEach, beforeEach, expect, test, vi } from 'vite-plus/test'
-import { assistantEnabled, assistantIdentity, assistantJson, defineAssistantHandler, trustedClientIp } from '../server/features/assistant/http'
+import { assistantIdentity, assistantJson, defineAssistantHandler, trustedClientIp } from '../server/features/assistant/http'
 
 const current = vi.hoisted(() => ({ session: null as null | { user: { id: string }, csrf: string } }))
 vi.mock('../server/features/auth/session', () => ({ session: async () => current.session }))
@@ -81,7 +81,5 @@ test('Node 不信任代理头，Worker 使用平台 IP；助手开关独立于�
   headers.set('cf-connecting-ip', '198.51.100.1')
   expect(trustedClientIp(event)).toBe('127.0.0.1')
   expect(trustedClientIp({ ...event, context: { cloudflare: {} } } as unknown as H3Event)).toBe('198.51.100.1')
-  expect(assistantEnabled(event)).toBe(true)
   config.assistantEnabled = false
-  expect(assistantEnabled(event)).toBe(false)
 })

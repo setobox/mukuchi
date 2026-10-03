@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-export const statsBuildSchema = z.object({ enabled: z.boolean() })
+export const statsBuildSchema = z.object({ available: z.literal(true) })
 export const statsWranglerSchema = z.object({
   d1_databases: z.array(z.object({ binding: z.string(), database_id: z.string().optional() }).passthrough()),
   vars: z.record(z.string(), z.unknown()).optional(),

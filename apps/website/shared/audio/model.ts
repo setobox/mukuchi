@@ -33,7 +33,7 @@ export const defaultAudioSettings: AudioSettings = {
   dailyNarrationCharacters: 0,
   dailyPodcasts: 0,
 }
-export interface AudioSettingsView extends AudioSettings { version: number, keyConfigured: boolean, encryptionReady: boolean, executionReady: boolean }
+export interface AudioSettingsView extends AudioSettings { version: number, keyConfigured: boolean, encryptionReady: boolean, executionReady: boolean, missingResources?: string[] }
 export const audioArticleSchema = z.object({
   path: z.string().startsWith('/posts/'),
   title: z.string(),

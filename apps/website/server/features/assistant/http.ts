@@ -8,17 +8,13 @@ import { assistantCredentialsSchema, configurationReady } from '../../../shared/
 import { AuthError } from '../../../shared/auth/model'
 import { adminOptions, readLimitedBody, requireOrigin } from '../admin/http'
 import { decryptApiKey } from '../ai/crypto'
-import { authCookieOptions, authEnabled } from '../auth/http'
+import { authCookieOptions } from '../auth/http'
 import { session } from '../auth/session'
 import { logApiError } from '../logging/api-error'
 import { canonicalJson, digest, signValue, verifyValue } from './crypto'
 import { createAssistantRepository } from './repository'
 
 const anonymousCookie = 'setobox:assistant:v1'
-export function assistantEnabled(event: H3Event) {
-  const value: unknown = useRuntimeConfig(event).assistantEnabled
-  return value === true || value === 'true'
-}
 export function assistantSecret(event: H3Event) {
   return String(useRuntimeConfig(event).aiEncryptionKey || '')
 }
@@ -54,13 +50,13 @@ export async function assistantConfiguration(event: H3Event, repository: Assista
   const secret = assistantSecret(event)
   const credentials = stored.encryptedCredentials ? assistantCredentialsSchema.parse(JSON.parse(await decryptApiKey(stored.encryptedCredentials, secret))) : assistantCredentialsSchema.parse({})
   const ready = configurationReady(stored.settings, credentials) && stored.verifiedHash === await configurationHash(stored.settings, credentials)
-  if (requireEnabled && (!assistantEnabled(event) || !stored.settings.enabled || !ready))
+  if (requireEnabled && (!stored.settings.enabled || !ready))
     throw new AssistantError(503, 'disabled', '助手暂未开放')
   return { ...stored, credentials, ready, secret }
 }
 export async function assistantIdentity(event: H3Event, write = false) {
   const secret = assistantSecret(event)
-  const current = authEnabled(event) ? await session(event) : null
+  const current = await session(event)
   if (current) {
     if (write) {
       requireOrigin(event)
