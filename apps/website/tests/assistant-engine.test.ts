@@ -26,6 +26,7 @@ async function setup(model: EngineDependencies['model'], moderation: EngineDepen
   databases.push(db)
   db.exec(readFileSync(new URL('../migrations/admin/0006_assistant.sql', import.meta.url), 'utf8'))
   db.exec(readFileSync(new URL('../migrations/admin/0007_assistant_budget.sql', import.meta.url), 'utf8'))
+  db.exec(readFileSync(new URL('../migrations/admin/0008_runtime_settings_tasks.sql', import.meta.url), 'utf8'))
   const connection: AdminDatabase = {
     async batch(statements) {
       db.exec('BEGIN IMMEDIATE')
@@ -42,7 +43,7 @@ async function setup(model: EngineDependencies['model'], moderation: EngineDepen
     close: () => {},
   }
   const repository = createAssistantRepository(connection)
-  const settings = { ...defaultAssistantSettings, inputPriceMicrosPerMillion: 100_000, outputPriceMicrosPerMillion: 300_000, moderationPriceMicros: 100 }
+  const settings = { ...defaultAssistantSettings }
   const content = createPublicContent({ sections: async () => prepareSearchDocuments([document]), siteInfo: async () => ({ name: 'Setobox' }) })
   const request: TurnRequest = { requestId: crypto.randomUUID(), conversationId: crypto.randomUUID(), text, page: { path: document.path }, history: [] }
   await repository.admit({ id: request.requestId, actor, ipHash: 'ip', conversationId: request.conversationId, fingerprint: 'x', authenticated: false }, settings, timestamp)
@@ -67,6 +68,10 @@ test('每次实际模型输入、工具提案和最终全部可见内容均通�
   expect(moderation.mock.calls[3]?.[0]).toContain('Vue 入门')
   expect(moderation.mock.calls[3]?.[0]).toContain('/posts/vue')
   expect((await repository.request(request.requestId, actor))?.status).toBe('completed')
+  const task = await repository.tasks.detail(request.requestId)
+  expect(task).toMatchObject({ status: 'completed', stage: 'done', modelCalls: 2, toolCalls: 1 })
+  expect(JSON.stringify(task)).not.toContain(request.text)
+  expect(JSON.stringify(task)).not.toContain(final.intent.text)
 })
 test('审核阻断工具提案时不读取正文，不生成签名回复', async () => {
   const model = vi.fn<NonNullable<EngineDependencies['model']>>(async () => ({ kind: 'tools', calls: [readCall], usage: undefined }))
@@ -79,16 +84,16 @@ test('审核阻断工具提案时不读取正文，不生成签名回复', async
   expect((await repository.request(request.requestId, actor))?.status).toBe('failed')
 })
 
-test('明确未计费的审核权限错误释放预留；网络结果未知仍保守结算，不调用模型', async () => {
+test('审核权限及网络错误记录失败阶段，不调用模型', async () => {
   for (const failure of [new AliyunModerationError(403, { Code: 'NoPermission' }), new Error('network error')]) {
     const model = vi.fn<NonNullable<EngineDependencies['model']>>(async () => final)
     const { engine, request, repository } = await setup(model, async () => {
       throw failure
     })
     await expect(engine.start(request)).rejects.toThrow()
-    const usage = await repository.usage(new Date(timestamp + 28_800_000).toISOString().slice(0, 10))
-    expect(usage.reserved_micros).toBe(0)
-    expect(usage.spent_micros).toBe(failure instanceof AliyunModerationError ? 0 : 100)
+    const task = await repository.tasks.detail(request.requestId)
+    expect(task.status).toBe('failed')
+    expect(task.steps.at(-1)?.status).toBe('failed')
     expect(model).not.toHaveBeenCalled()
   }
 })
@@ -102,7 +107,7 @@ test('伪造引用与任意工具文章路径被阻止', async () => {
 test('本地历史通过加密续传继续，凭据不能重复使用或跨身份使用', async () => {
   const historyCall = { id: 'history_1', type: 'function' as const, function: { name: 'get_history' as const, arguments: '{"limit":2}' } }
   const model = vi.fn<NonNullable<EngineDependencies['model']>>().mockResolvedValueOnce({ kind: 'tools', calls: [historyCall], usage: undefined }).mockResolvedValueOnce(final)
-  const { engine, request } = await setup(model)
+  const { engine, request, repository } = await setup(model)
   const previous = await signTurn(secret, actor, { id: crypto.randomUUID(), conversationId: request.conversationId, createdAt: timestamp - 100, user: 'Vue 好用吗', assistant: { id: crypto.randomUUID(), role: 'assistant', blocks: [{ type: 'text', text: '可以读入门文章。' }], references: [] } })
   const response = await engine.start(request)
   expect(response.kind).toBe('needs_history')
@@ -112,6 +117,8 @@ test('本地历史通过加密续传继续，凭据不能重复使用或跨身�
   expect((await engine.resume(response.continuation, [previous])).kind).toBe('completed')
   await expect(engine.resume(response.continuation, [previous])).rejects.toMatchObject({ code: 'invalid_continuation' })
   expect(model).toHaveBeenCalledTimes(2)
+  expect((await repository.tasks.list({ page: 1, pageSize: 20 })).total).toBe(1)
+  expect(await repository.remaining(actor, 10, timestamp)).toBe(9)
 })
 test('完整消息在上下文窗口边界被移除，不截断后伪装为完整历史', async () => {
   const record = await signTurn(secret, actor, { id: crypto.randomUUID(), conversationId: crypto.randomUUID(), createdAt: timestamp - 100, user: '上次的问题', assistant: { id: crypto.randomUUID(), role: 'assistant', blocks: [{ type: 'text', text: '长'.repeat(1800) }], references: [] } })
@@ -144,9 +151,31 @@ test('历史续传遵守条数限制并移动游标，同时保留最近上下�
   expect((await engine.resume(second.continuation, [records[0]!])).kind).toBe('completed')
   expect(model.mock.calls[2]?.[2].messages.find(message => message.role === 'user')?.content).toContain('问题2')
 })
-test('无限工具循环触及上限终止，不继续收费调用', async () => {
+test('无限工具循环触及单轮调用上限后终止', async () => {
   const model = vi.fn<NonNullable<EngineDependencies['model']>>(async () => ({ kind: 'tools', calls: [{ id: 'site', type: 'function', function: { name: 'get_site_info', arguments: '{"scope":"site"}' } }], usage: undefined }))
   const { engine, request } = await setup(model)
   await expect(engine.start(request)).rejects.toMatchObject({ code: 'call_limit' })
   expect(model).toHaveBeenCalledTimes(5)
+})
+
+test('审核拒绝停留审核阶段，取消后迟到模型响应不会完成任务，失败仍计一次', async () => {
+  const blocked = await setup(vi.fn(async () => final), async () => false)
+  await expect(blocked.engine.start(blocked.request)).rejects.toMatchObject({ code: 'moderation_rejected' })
+  expect(await blocked.repository.tasks.detail(blocked.request.requestId)).toMatchObject({ status: 'failed', stage: 'review', modelCalls: 0 })
+  expect(await blocked.repository.remaining(actor, 10, timestamp)).toBe(9)
+  const response = Promise.withResolvers<typeof final>()
+  const started = Promise.withResolvers<void>()
+  const model = vi.fn(async () => {
+    started.resolve()
+    return response.promise
+  })
+  const cancelled = await setup(model)
+  const pending = cancelled.engine.start(cancelled.request)
+  const assertion = expect(pending).rejects.toMatchObject({ code: 'request_inactive' })
+  await started.promise
+  await cancelled.repository.end(cancelled.request.requestId, actor, 'cancelled', null, timestamp + 100)
+  response.resolve(final)
+  await assertion
+  expect(await cancelled.repository.tasks.detail(cancelled.request.requestId)).toMatchObject({ status: 'cancelled', stage: 'reply', finishedAt: timestamp + 100 })
+  expect(await cancelled.repository.remaining(actor, 10, timestamp)).toBe(9)
 })

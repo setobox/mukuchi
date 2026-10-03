@@ -23,10 +23,6 @@ export const assistantSettingsSchema = z.object({
   queryService: z.string().regex(/^query_security_check(?:_pro)?(?:_[a-z0-9]+)*$/).default('query_security_check_pro'),
   responseService: z.string().regex(/^response_security_check(?:_pro)?(?:_[a-z0-9]+)*$/).default('response_security_check_pro'),
   turnstileSiteKey: z.string().trim().max(200).default(''),
-  dailyBudgetMicros: z.number().int().min(1).max(1_000_000_000).default(5_000_000),
-  inputPriceMicrosPerMillion: z.number().int().min(0).max(1_000_000_000).nullable().default(null),
-  outputPriceMicrosPerMillion: z.number().int().min(0).max(1_000_000_000).nullable().default(null),
-  moderationPriceMicros: z.number().int().min(1).max(1_000_000).nullable().default(null),
   guestMinute: count(60).default(3),
   guestDay: count(10_000).default(10),
   userMinute: count(60).default(6),
@@ -54,6 +50,9 @@ export const settingsViewSchema = z.object({
 export type AssistantSettingsView = z.infer<typeof settingsViewSchema>
 
 export function configurationReady(settings: AssistantSettings, credentials: AssistantCredentials): boolean {
-  return !!(settings.baseUrl && settings.model && settings.turnstileSiteKey && credentials.modelKey && credentials.aliyunKeyId && credentials.aliyunKeySecret && credentials.turnstileSecret
-    && settings.inputPriceMicrosPerMillion !== null && settings.outputPriceMicrosPerMillion !== null && settings.moderationPriceMicros !== null)
+  return missingAssistantConfiguration(settings, credentials).length === 0
+}
+
+export function missingAssistantConfiguration(settings: AssistantSettings, credentials: Record<keyof AssistantCredentials, string | boolean>): string[] {
+  return Object.entries({ '模型服务地址': settings.baseUrl, '模型名称': settings.model, 'Turnstile Site Key': settings.turnstileSiteKey, '模型 API 密钥': credentials.modelKey, '阿里云 AccessKey ID': credentials.aliyunKeyId, '阿里云 AccessKey Secret': credentials.aliyunKeySecret, 'Turnstile Secret Key': credentials.turnstileSecret }).filter(([, value]) => !value).map(([label]) => label)
 }

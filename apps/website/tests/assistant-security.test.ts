@@ -20,6 +20,7 @@ function setup() {
   db.exec('PRAGMA foreign_keys = ON')
   db.exec(readFileSync(new URL('../migrations/admin/0006_assistant.sql', import.meta.url), 'utf8'))
   db.exec(readFileSync(new URL('../migrations/admin/0007_assistant_budget.sql', import.meta.url), 'utf8'))
+  db.exec(readFileSync(new URL('../migrations/admin/0008_runtime_settings_tasks.sql', import.meta.url), 'utf8'))
   const connection: AdminDatabase = {
     async batch(statements) {
       db.exec('BEGIN IMMEDIATE')
@@ -107,34 +108,13 @@ test('IP 额度不能用不同匿名身份绕过，每日额度按上海自然�
   expect(billingDay(midnight - 1)).toBe('2026-09-30')
   expect(billingDay(midnight)).toBe('2026-10-01')
 })
-test('并发预留不超预算；未知 usage 全额计费；重复预留与结算不重复计费', async () => {
-  const { repository } = setup()
-  const request = await admit(repository)
-  const makeCharge = () => ({ id: crypto.randomUUID(), requestId: request.id, actor: request.actor, kind: 'model' as const, amount: 60 })
-  const one = makeCharge()
-  const two = makeCharge()
-  const results = await Promise.allSettled([repository.reserve(one, 100, now), repository.reserve(two, 100, now)])
-  expect(results.map(r => r.status)).toEqual(['fulfilled', 'rejected'])
-  await expect(repository.reserve(one, 100, now)).rejects.toThrow()
-  expect(await repository.usage(billingDay(now))).toEqual({ reserved_micros: 60, spent_micros: 0 })
-  await repository.settle(one.id, null)
-  await repository.settle(one.id, 0)
-  expect(await repository.usage(billingDay(now))).toEqual({ reserved_micros: 0, spent_micros: 60 })
-  await repository.reserve({ ...two, amount: 40 }, 100, now)
-  await repository.settle(two.id, 20)
-  expect(await repository.usage(billingDay(now))).toEqual({ reserved_micros: 0, spent_micros: 80 })
-})
-test('模型计费超过配置上界立即清除验证状态，设置版本冲突不覆盖', async () => {
+test('设置版本冲突不覆盖已保存的配置', async () => {
   const { repository } = setup()
   await repository.saveSettings(defaultAssistantSettings, 'encrypted', 0, 'verified')
   await expect(repository.saveSettings(defaultAssistantSettings, 'other', 0, 'verified')).rejects.toThrow()
-  const request = await admit(repository)
-  const id = crypto.randomUUID()
-  await repository.reserve({ id, requestId: request.id, actor: request.actor, kind: 'model', amount: 10 }, 100, now)
-  await repository.settle(id, 11)
-  expect((await repository.settings()).verifiedHash).toBe('')
-  expect(await repository.usage(billingDay(now))).toEqual({ reserved_micros: 0, spent_micros: 11 })
+  expect((await repository.settings()).verifiedHash).toBe('verified')
 })
+
 test('历史续传单次消费且绑定身份，请求到期后不能续传或追加收费调用', async () => {
   const { repository } = setup()
   const request = await admit(repository)
@@ -146,7 +126,7 @@ test('历史续传单次消费且绑定身份，请求到期后不能续传或�
   const second = crypto.randomUUID()
   await repository.waitForHistory(request.id, request.actor, second, now + 1)
   await expect(repository.resume(request.id, request.actor, second, now + 60_002)).rejects.toThrow()
-  await expect(repository.reserve({ id: crypto.randomUUID(), requestId: request.id, actor: request.actor, kind: 'moderation', amount: 1 }, 100, now + assistantLimits.turnMs)).rejects.toThrow()
+  await expect(repository.countCall(request.id, request.actor, 'model', now + assistantLimits.turnMs)).rejects.toThrow()
 })
 test('导航领取单次、跨会话隔离，新操作撤销旧操作；只有客户端回执改变成功状态', async () => {
   const { repository } = setup()
@@ -165,15 +145,13 @@ test('导航领取单次、跨会话隔离，新操作撤销旧操作；只有�
   await repository.createAction({ ...input, id: crypto.randomUUID() }, now)
   expect((await repository.action(pending.id, input.actor, input.conversationId, now))?.status).toBe('cancelled')
 })
-test('元数据清理保留聚合费用，表结构不允许聊天正文持久化', async () => {
+test('元数据清理保留任务历史，表结构不允许聊天正文持久化', async () => {
   const { repository, db } = setup()
   const request = await admit(repository)
-  const id = crypto.randomUUID()
-  await repository.reserve({ id, requestId: request.id, actor: request.actor, kind: 'model', amount: 90 }, 100, now)
   await repository.clean(now + 8 * 86_400_000)
   expect(await repository.request(request.id, request.actor)).toBeNull()
-  expect(await repository.usage(billingDay(now))).toEqual({ reserved_micros: 0, spent_micros: 90 })
-  for (const table of ['assistant_requests', 'assistant_charges', 'assistant_actions', 'assistant_continuations']) {
+  expect((await repository.tasks.detail(request.id)).status).toBe('failed')
+  for (const table of ['assistant_requests', 'assistant_tasks', 'assistant_task_steps', 'assistant_actions', 'assistant_continuations']) {
     const columns = db.prepare(`PRAGMA table_info(${table})`).all().map(row => row.name)
     for (const column of ['prompt', 'response', 'content', 'text']) expect(columns).not.toContain(column)
   }

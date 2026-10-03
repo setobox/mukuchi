@@ -2,10 +2,10 @@ import type { Fetch } from '../server/features/assistant/network'
 import { describe, expect, test, vi } from 'vite-plus/test'
 import { aliyunAuthorization, AliyunModerationError, moderate, moderationPassed } from '../server/features/assistant/moderation'
 import { boundedJson } from '../server/features/assistant/network'
-import { callModel, modelBody, modelCharge, modelReservation, ModelResponseError } from '../server/features/assistant/provider'
+import { callModel, modelBody, ModelResponseError } from '../server/features/assistant/provider'
 import { assistantCredentialsSchema, defaultAssistantSettings } from '../shared/assistant/settings'
 
-const settings = { ...defaultAssistantSettings, baseUrl: 'https://model.example.com/v1', model: 'fixture', inputPriceMicrosPerMillion: 100_000, outputPriceMicrosPerMillion: 300_000 }
+const settings = { ...defaultAssistantSettings, baseUrl: 'https://model.example.com/v1', model: 'fixture' }
 const credentials = assistantCredentialsSchema.parse({ modelKey: 'test-key', aliyunKeyId: 'test-id', aliyunKeySecret: 'test-secret' })
 const signal = new AbortController().signal
 // Fixed vendor response: sensitiveData is not enabled and is absent from Detail.
@@ -49,14 +49,13 @@ test('审核整个文本、拒绝超长内容，不跟随重定向或自动重�
   await expect(moderate('test', 'output', settings, credentials, signal, fetcher)).rejects.toMatchObject({ message: '服务暂不可用，请稍后重试' })
   expect(fetcher).toHaveBeenCalledTimes(2)
 })
-test('模型只接受有界工具调用或最终 JSON，计费预留包括系统与工具定义', async () => {
+test('模型只接受有界工具调用或最终 JSON，请求包含系统与工具定义', async () => {
   const body = modelBody(settings, [{ role: 'user', content: '问题' }])
   const intent = { text: '你好', articles: [], references: [], taxonomy: null }
   const fetcher = vi.fn<Fetch>(async () => Response.json({ choices: [{ finish_reason: 'stop', message: { role: 'assistant', content: JSON.stringify(intent) } }], usage: { prompt_tokens: 100, completion_tokens: 10 } }))
   expect(await callModel(settings, credentials, body, signal, fetcher)).toMatchObject({ kind: 'final', intent, usage: { prompt_tokens: 100, completion_tokens: 10 } })
   expect(fetcher.mock.calls[0]?.[1]).toMatchObject({ redirect: 'error', headers: { authorization: 'Bearer test-key' } })
   expect(body.messages[0]?.content).toContain(JSON.stringify(body.response_format.json_schema.schema))
-  expect(modelReservation(settings, body)).toBeGreaterThan(modelCharge(settings, 1, 1024))
   expect(() => modelBody(settings, [{ role: 'user', content: 'x'.repeat(2000) }])).toThrow()
 })
 
@@ -75,22 +74,22 @@ test.each([
   expect(fetcher).toHaveBeenCalledTimes(1)
 })
 
-test('阿里云 403 NoPermission 提供固定授权诊断，明确不计费且不返回原始错误正文', async () => {
+test('阿里云 403 NoPermission 提供固定授权诊断，不返回原始错误正文', async () => {
   const fetcher = vi.fn<Fetch>(async () => Response.json({ Code: 'NoPermission', Message: 'PRIVATE_SECRET', Recommend: 'https://example.com?token=PRIVATE_SECRET', RequestId: 'PRIVATE_SECRET' }, { status: 403 }))
   const error: unknown = await moderate('安全测试文本', 'output', settings, credentials, signal, fetcher).catch(cause => cause)
   expect(error).toBeInstanceOf(AliyunModerationError)
-  expect(error).toMatchObject({ code: 'moderation_permission_denied', unbilled: true, upstreamStatus: 403, adminStatusCode: 422, adminMessage: expect.stringContaining('AliyunYundunGreenWebFullAccess') })
+  expect(error).toMatchObject({ code: 'moderation_permission_denied', upstreamStatus: 403, adminStatusCode: 422, adminMessage: expect.stringContaining('AliyunYundunGreenWebFullAccess') })
   expect(JSON.stringify(error)).not.toContain('PRIVATE_SECRET')
   expect(fetcher).toHaveBeenCalledTimes(1)
 })
 
-test('阿里云未知或超长错误正文也受读取上限约束；HTTP 200 业务失败不当作免费', async () => {
+test('阿里云未知或超长错误正文也受读取上限约束；HTTP 200 业务失败同样拒绝执行', async () => {
   for (const response of [Response.json({ Code: 'PRIVATE_SECRET', Message: 'PRIVATE_SECRET' }, { status: 500 }), new Response('PRIVATE_SECRET'.repeat(1000), { status: 500 })]) {
     const error: unknown = await moderate('test', 'input', settings, credentials, signal, async () => response).catch(cause => cause)
-    expect(error).toMatchObject({ code: 'moderation_unavailable', unbilled: true, adminStatusCode: 503 })
+    expect(error).toMatchObject({ code: 'moderation_unavailable', adminStatusCode: 503 })
     expect(JSON.stringify(error)).not.toContain('PRIVATE_SECRET')
   }
-  await expect(moderate('test', 'input', settings, credentials, signal, async () => Response.json({ Code: 500, Message: 'PRIVATE_SECRET' }))).rejects.toMatchObject({ unbilled: false })
+  await expect(moderate('test', 'input', settings, credentials, signal, async () => Response.json({ Code: 500, Message: 'PRIVATE_SECRET' }))).rejects.toMatchObject({ code: 'moderation_unavailable' })
 })
 describe.each([
   { finish_reason: 'length', message: { role: 'assistant', content: '{}' } },

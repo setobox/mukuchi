@@ -15,6 +15,7 @@ import { canonicalJson, digest, signValue, verifyValue } from './crypto'
 import { createAssistantRepository } from './repository'
 
 const anonymousCookie = 'setobox:assistant:v1'
+
 export function assistantSecret(event: H3Event) {
   return String(useRuntimeConfig(event).aiEncryptionKey || '')
 }
@@ -42,17 +43,20 @@ export async function withAssistant<T>(event: H3Event, operation: (repository: A
 }
 export async function configurationHash(settings: unknown, credentials: unknown) {
   const parsed = z.record(z.string(), z.unknown()).parse(settings)
-  // Toggling the switch alone does not invalidate a successful capability test.
-  return digest(canonicalJson({ settings: { ...parsed, enabled: false }, credentials }))
+  const capability = Object.fromEntries(['baseUrl', 'model', 'style', 'region', 'queryService', 'responseService', 'turnstileSiteKey'].map(key => [key, parsed[key]]))
+  return digest(canonicalJson({ settings: capability, credentials }))
 }
 export async function assistantConfiguration(event: H3Event, repository: AssistantRepository, requireEnabled = true) {
   const stored = await repository.settings()
   const secret = assistantSecret(event)
   const credentials = stored.encryptedCredentials ? assistantCredentialsSchema.parse(JSON.parse(await decryptApiKey(stored.encryptedCredentials, secret))) : assistantCredentialsSchema.parse({})
-  const ready = configurationReady(stored.settings, credentials) && stored.verifiedHash === await configurationHash(stored.settings, credentials)
+  const hash = await configurationHash(stored.settings, credentials)
+  const legacyHash = await digest(canonicalJson({ settings: { ...z.record(z.string(), z.unknown()).parse(stored.legacySettings), enabled: false }, credentials }))
+  const verified = !!stored.verifiedHash && (stored.verifiedHash === hash || stored.verifiedHash === legacyHash)
+  const ready = configurationReady(stored.settings, credentials) && verified
   if (requireEnabled && (!stored.settings.enabled || !ready))
     throw new AssistantError(503, 'disabled', '助手暂未开放')
-  return { ...stored, credentials, ready, secret }
+  return { ...stored, verifiedHash: verified ? hash : stored.verifiedHash, credentials, ready, secret }
 }
 export async function assistantIdentity(event: H3Event, write = false) {
   const secret = assistantSecret(event)

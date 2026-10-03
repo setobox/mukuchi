@@ -1,8 +1,11 @@
 import type { AssistantSettings } from '../../../shared/assistant/settings'
+import type { TaskError } from '../../../shared/assistant/tasks'
 import type { AdminDatabase, SqlValue, Statement } from '../admin/database'
 import { z } from 'zod'
 import { AssistantError, assistantLimits } from '../../../shared/assistant/model'
+
 import { assistantSettingsSchema, defaultAssistantSettings } from '../../../shared/assistant/settings'
+import { createTaskRepository } from './tasks'
 
 const requestSchema = z.object({
   id: z.string(),
@@ -44,12 +47,17 @@ export function createAssistantRepository(db: AdminDatabase) {
     const [row] = await query('SELECT * FROM assistant_requests WHERE id = ? AND actor = ?', [id, actor])
     return row ? requestSchema.parse(row) : null
   }
+  const tasks = createTaskRepository(db)
   return {
+    tasks,
     async settings() {
       const [row] = await query('SELECT config, encrypted_credentials, version, verified_hash FROM assistant_settings WHERE id = 1')
+      const legacySettings: unknown = row ? JSON.parse(z.string().parse(row.config)) : { ...defaultAssistantSettings }
+      const raw = z.record(z.string(), z.unknown()).parse(legacySettings)
+      const { dailyBudgetMicros: _budget, inputPriceMicrosPerMillion: _input, outputPriceMicrosPerMillion: _output, moderationPriceMicros: _moderation, ...settings } = raw
       return row
-        ? { settings: assistantSettingsSchema.parse(JSON.parse(z.string().parse(row.config))), encryptedCredentials: z.string().parse(row.encrypted_credentials), version: z.number().int().positive().parse(row.version), verifiedHash: z.string().parse(row.verified_hash) }
-        : { settings: { ...defaultAssistantSettings }, encryptedCredentials: '', version: 0, verifiedHash: '' }
+        ? { legacySettings, settings: assistantSettingsSchema.parse(settings), encryptedCredentials: z.string().parse(row.encrypted_credentials), version: z.number().int().positive().parse(row.version), verifiedHash: z.string().parse(row.verified_hash) }
+        : { legacySettings, settings: { ...defaultAssistantSettings }, encryptedCredentials: '', version: 0, verifiedHash: '' }
     },
     async saveSettings(settings: AssistantSettings, encryptedCredentials: string, version: number, verifiedHash: string) {
       const config = JSON.stringify(assistantSettingsSchema.parse(settings))
@@ -64,11 +72,11 @@ export function createAssistantRepository(db: AdminDatabase) {
         throw new AssistantError(409, 'settings_conflict', '助手设置已改变，请重新测试')
     },
     request,
-    async admit(input: { id: string, actor: string, ipHash: string, conversationId: string, fingerprint: string, authenticated: boolean }, settings: AssistantSettings, now: number) {
+    async admit(input: { id: string, actor: string, ipHash: string, conversationId: string, fingerprint: string, authenticated: boolean, kind?: 'conversation' | 'test', configVersion?: number }, settings: AssistantSettings, now: number) {
       const day = billingDay(now)
       const minute = input.authenticated ? settings.userMinute : settings.guestMinute
       const daily = input.authenticated ? settings.userDay : settings.guestDay
-      const [inserted, existing] = await db.batch([
+      const [inserted, , , existing] = await db.batch([
         {
           sql: `INSERT INTO assistant_requests (id,actor,ip_hash,conversation_id,fingerprint,day,created_at,lease_until,status)
             SELECT ?,?,?,?,?,?,?,?,'active'
@@ -81,16 +89,19 @@ export function createAssistantRepository(db: AdminDatabase) {
             ON CONFLICT DO NOTHING RETURNING id`,
           params: [input.id, input.actor, input.ipHash, input.conversationId, input.fingerprint, day, now, now + assistantLimits.turnMs + 5000, input.actor, now - 60_000, minute, input.actor, day, daily, input.ipHash, now - 60_000, settings.ipMinute, input.ipHash, day, settings.ipDay, input.actor, now, now, settings.concurrency],
         },
+        { sql: `INSERT INTO assistant_tasks(id,kind,config_version,created_at,updated_at,deadline) SELECT ?,?,?,?,?,? WHERE changes() = 1`, params: [input.id, input.kind ?? 'conversation', input.configVersion ?? 0, now, now, now + assistantLimits.turnMs + 5000] },
+        { sql: `INSERT INTO assistant_task_steps(id,task_id,stage,label,status,started_at,finished_at) SELECT ?,?,'task','请求校验与次数检查','completed',?,? WHERE changes() = 1`, params: [crypto.randomUUID(), input.id, now, now] },
         { sql: 'SELECT * FROM assistant_requests WHERE id = ? AND actor = ?', params: [input.id, input.actor] },
       ])
-      if (inserted?.length)
+      if (inserted?.length) {
         return requestSchema.parse(existing?.[0])
+      }
       if (existing?.length) {
         if (existing[0]?.fingerprint !== input.fingerprint)
           throw new AssistantError(409, 'request_conflict', '请求标识已使用，请重新提问')
         throw new AssistantError(409, 'duplicate_request', '该请求已处理或正在处理，请勿重复发送')
       }
-      throw new AssistantError(429, 'request_limit', '当前请求较多或已达使用额度，请稍后再试')
+      throw new AssistantError(429, 'request_limit', '当前请求较多或已达提问次数上限，请稍后再试')
     },
     async remaining(actor: string, limit: number, now: number) {
       const [row] = await query('SELECT COUNT(*) AS used FROM assistant_requests WHERE actor = ? AND day = ?', [actor, billingDay(now)])
@@ -109,63 +120,13 @@ export function createAssistantRepository(db: AdminDatabase) {
       const rows = await query(`UPDATE assistant_requests SET ${column} = ${column} + 1 WHERE id = ? AND actor = ? AND status = 'active' AND created_at > ? AND ${column} < ? RETURNING *`, [id, actor, now - assistantLimits.turnMs, limits[kind]])
       if (!rows.length)
         throw new AssistantError(429, 'call_limit', '本次处理达到上限，请缩小问题范围后重试')
+      await tasks.count(id, kind)
       return requestSchema.parse(rows[0])
     },
-    async end(id: string, actor: string, status: 'completed' | 'cancelled' | 'failed') {
-      await query('UPDATE assistant_requests SET status = ? WHERE id = ? AND actor = ? AND status IN (\'active\',\'waiting\')', [status, id, actor])
-    },
-    async reserve(input: { id: string, requestId: string, actor: string, kind: 'model' | 'moderation', amount: number }, budget: number, now: number) {
-      const amount = integer(input.amount)
-      const day = billingDay(now)
-      const results = await db.batch([
-        { sql: 'INSERT INTO assistant_daily_usage(day) VALUES (?) ON CONFLICT DO NOTHING', params: [day] },
-        {
-          sql: `INSERT INTO assistant_charges(id,request_id,day,kind,reserved_micros,created_at)
-            SELECT ?,?,?,?,?,? WHERE EXISTS (SELECT 1 FROM assistant_requests WHERE id = ? AND actor = ? AND status = 'active' AND created_at > ?)
-            AND EXISTS (SELECT 1 FROM assistant_daily_usage WHERE day = ? AND spent_micros - reset_micros + reserved_micros + ? <= ?)
-            ON CONFLICT DO NOTHING RETURNING id`,
-          params: [input.id, input.requestId, day, input.kind, amount, now, input.requestId, input.actor, now - assistantLimits.turnMs, day, amount, integer(budget)],
-        },
-        { sql: 'UPDATE assistant_daily_usage SET reserved_micros = reserved_micros + ? WHERE day = ? AND changes() = 1', params: [amount, day] },
-      ])
-      if (!results[1]?.length)
-        throw new AssistantError(429, 'budget_limit', '本次请求无法继续，可能已达今日预算或请求已结束')
-    },
-    async settle(id: string, actual: number | null) {
-      if (actual !== null)
-        integer(actual)
-      // If usage is unknown, keep the entire reserved cost. Settlement is idempotent.
-      await db.batch([
-        {
-          sql: `UPDATE assistant_daily_usage SET
-            reserved_micros = reserved_micros - (SELECT reserved_micros FROM assistant_charges WHERE id = ?),
-            spent_micros = spent_micros + COALESCE(?, (SELECT reserved_micros FROM assistant_charges WHERE id = ?))
-            WHERE day = (SELECT day FROM assistant_charges WHERE id = ? AND spent_micros IS NULL)`,
-          params: [id, actual, id, id],
-        },
-        { sql: 'UPDATE assistant_settings SET verified_hash = \'\' WHERE ? > (SELECT reserved_micros FROM assistant_charges WHERE id = ? AND spent_micros IS NULL)', params: [actual, id] },
-        { sql: 'UPDATE assistant_charges SET spent_micros = COALESCE(?, reserved_micros) WHERE id = ? AND spent_micros IS NULL', params: [actual, id] },
-      ])
-    },
-    async usage(day: string) {
-      const [row] = await query('SELECT reserved_micros, spent_micros - reset_micros AS spent_micros FROM assistant_daily_usage WHERE day = ?', [day])
-      return row ? z.object({ reserved_micros: z.number(), spent_micros: z.number() }).parse(row) : { reserved_micros: 0, spent_micros: 0 }
-    },
-    async budget(day: string) {
-      const [row] = await query('SELECT reserved_micros, spent_micros, reset_micros FROM assistant_daily_usage WHERE day = ?', [day])
-      const amount = z.number().int().nonnegative().safe()
-      return row ? z.object({ reserved_micros: amount, spent_micros: amount, reset_micros: amount }).parse(row) : { reserved_micros: 0, spent_micros: 0, reset_micros: 0 }
-    },
-    async resetBudget(day: string, previousReset: number, actor: string, now: number) {
-      if (day !== billingDay(now))
-        throw new AssistantError(409, 'budget_day_changed', '日期已变化，请刷新今日额度后重试')
-      const baseline = integer(previousReset)
-      const results = await db.batch([
-        { sql: 'UPDATE assistant_daily_usage SET reset_micros = spent_micros WHERE day = ? AND reset_micros = ? AND spent_micros > reset_micros RETURNING day', params: [day, baseline] },
-        { sql: 'INSERT INTO assistant_budget_resets(id,day,actor,released_micros,created_at) SELECT ?,day,?,reset_micros - ?,? FROM assistant_daily_usage WHERE day = ? AND changes() = 1', params: [crypto.randomUUID(), actor, baseline, now, day] },
-      ])
-      if (!results[0]?.length)
-        throw new AssistantError(409, 'budget_reset_conflict', '没有可重置的已结算额度，或额度已被重置，请刷新后重试')
+    async end(id: string, actor: string, status: 'completed' | 'cancelled' | 'failed', error: TaskError | null = null, now = Date.now()) {
+      const rows = await query('UPDATE assistant_requests SET status = ? WHERE id = ? AND actor = ? AND status IN (\'active\',\'waiting\') RETURNING id', [status, id, actor])
+      if (rows.length)
+        await tasks.finish(id, status, now, error)
     },
     async waitForHistory(id: string, actor: string, nonce: string, now: number) {
       const results = await db.batch([
@@ -174,6 +135,7 @@ export function createAssistantRepository(db: AdminDatabase) {
       ])
       if (!results[0]?.length)
         throw new AssistantError(409, 'request_inactive', '本次回答已停止')
+      await tasks.waiting(id, true, now)
     },
     async resume(id: string, actor: string, nonce: string, now: number) {
       const results = await db.batch([
@@ -182,6 +144,7 @@ export function createAssistantRepository(db: AdminDatabase) {
       ])
       if (!results[0]?.length)
         throw new AssistantError(409, 'invalid_continuation', '继续对话的凭据已使用或失效，请重新提问')
+      await tasks.waiting(id, false, now)
     },
     async createAction(input: { id: string, actor: string, conversationId: string, messageId: string, articleId: string, authorized: boolean }, now: number) {
       await db.batch([
@@ -211,10 +174,9 @@ export function createAssistantRepository(db: AdminDatabase) {
       await query('UPDATE assistant_actions SET status = ? WHERE id = ? AND actor = ? AND conversation_id = ? AND status = \'claimed\'', [status, id, actor, conversationId])
     },
     async clean(now: number) {
+      await tasks.maintain(now)
       const cutoff = now - 7 * 86_400_000
       const statements: Statement[] = [
-        // Unknown abandoned charges stay charged when detailed records are removed.
-        { sql: 'UPDATE assistant_daily_usage SET spent_micros = spent_micros + reserved_micros, reserved_micros = 0 WHERE day < ?', params: [billingDay(cutoff)] },
         { sql: 'DELETE FROM assistant_continuations WHERE request_id IN (SELECT id FROM assistant_requests WHERE created_at < ?)', params: [cutoff] },
         { sql: 'DELETE FROM assistant_charges WHERE request_id IN (SELECT id FROM assistant_requests WHERE created_at < ?)', params: [cutoff] },
         { sql: 'DELETE FROM assistant_requests WHERE created_at < ?', params: [cutoff] },

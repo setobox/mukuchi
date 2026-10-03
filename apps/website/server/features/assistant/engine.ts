@@ -8,8 +8,10 @@ import { z as schema } from 'zod'
 import { AssistantError, assistantLimits, assistantMessageSchema, historyText, referenceSchema, turnRequestSchema, visibleText } from '../../../shared/assistant/model'
 import { modelMessageSchema, toolCallSchema, toolInputs } from '../../../shared/assistant/tools'
 import { digest, seal, signTurn, unseal, verifyHistory } from './crypto'
-import { AliyunModerationError, moderate } from './moderation'
-import { callModel, modelBody, modelCharge, modelReservation } from './provider'
+import { moderate } from './moderation'
+import { callModel, modelBody } from './provider'
+
+import { taskFailure } from './tasks'
 
 const stateSchema = schema.object({
   request: turnRequestSchema.omit({ turnstileToken: true }),
@@ -73,30 +75,19 @@ export function createAssistantEngine(dependencies: EngineDependencies) {
     }
     return repository.assertActive(requestId, actor, now())
   }
-  async function bill<T>(requestId: string, kind: 'model' | 'moderation', amount: number, operation: () => Promise<{ value: T, actual: number | null }>): Promise<T> {
+  async function tracked<T>(requestId: string, label: string, stage: 'review' | 'reply', operation: () => Promise<T>): Promise<T> {
     await active(requestId)
-    const id = crypto.randomUUID()
-    await repository.reserve({ id, requestId, actor, kind, amount }, settings.dailyBudgetMicros, now())
-    let actual: number | null = null
-    try {
-      const result = await operation()
-      actual = result.actual
-      await active(requestId)
-      return result.value
-    }
-    catch (error) {
-      if (kind === 'moderation' && error instanceof AliyunModerationError && error.unbilled)
-        actual = 0
-      throw error
-    }
-    finally { await repository.settle(id, actual) }
+    const step = await repository.tasks.begin(requestId, label, stage, now())
+    const value = await operation()
+    await active(requestId)
+    await repository.tasks.finishStep(step, now())
+    return value
   }
   async function check(requestId: string, text: string, direction: 'input' | 'output') {
-    if (settings.moderationPriceMicros === null)
-      throw new AssistantError(503, 'missing_prices', '安全检查价格尚未配置')
-    const allowed = await bill(requestId, 'moderation', settings.moderationPriceMicros, async () => ({ value: await moderation(text, direction, settings, credentials, signal), actual: settings.moderationPriceMicros }))
-    if (!allowed)
-      throw new AssistantError(400, 'moderation_rejected', '本次内容未通过安全检查，请调整问题后重试')
+    await tracked(requestId, direction === 'input' ? '输入审核' : '输出审核', 'review', async () => {
+      if (!await moderation(text, direction, settings, credentials, signal))
+        throw new AssistantError(400, 'moderation_rejected', '本次内容未通过安全检查，请调整问题后重试')
+    })
   }
   function known(state: EngineState, articleId: string) {
     if (!state.knownArticles.includes(articleId))
@@ -161,10 +152,7 @@ export function createAssistantEngine(dependencies: EngineDependencies) {
         await check(request.requestId, JSON.stringify(context.messages), 'input')
         await repository.countCall(request.requestId, actor, 'model', now())
         const body = modelBody(settings, context.messages)
-        const result = await bill(request.requestId, 'model', modelReservation(settings, body), async () => {
-          const value = await model(settings, credentials, body, signal)
-          return { value, actual: value.usage ? modelCharge(settings, value.usage.prompt_tokens, value.usage.completion_tokens) : null }
-        })
+        const result = await tracked(request.requestId, '模型调用', 'reply', () => model(settings, credentials, body, signal))
         if (result.kind === 'tools') {
           // Audit the complete proposal before running any tool, including read-only tools.
           const proposal = JSON.stringify(result.calls)
@@ -196,7 +184,7 @@ export function createAssistantEngine(dependencies: EngineDependencies) {
           const group: ModelMessage[] = [{ role: 'assistant', content: null, tool_calls: result.calls }]
           for (const call of result.calls) {
             await active(request.requestId)
-            group.push({ role: 'tool', tool_call_id: call.id, content: JSON.stringify(await execute(state, call)) })
+            group.push({ role: 'tool', tool_call_id: call.id, content: JSON.stringify(await tracked(request.requestId, `工具：${call.function.name}`, 'reply', () => execute(state, call))) })
           }
           state.groups.push(group)
           continue
@@ -249,12 +237,13 @@ export function createAssistantEngine(dependencies: EngineDependencies) {
         if (actionId && state.navigation)
           await repository.createAction({ id: actionId, actor, conversationId: request.conversationId, messageId: id, articleId: state.navigation, authorized }, now())
         const record = await signTurn(secret, actor, { id: request.requestId, conversationId: request.conversationId, user: request.text, createdAt: now(), assistant: message })
-        await repository.end(request.requestId, actor, 'completed')
+        await active(request.requestId)
+        await repository.end(request.requestId, actor, 'completed', null, now())
         return { kind: 'completed', record, contextLimited: state.contextLimited, ...(authorized && actionId ? { navigate: actionId } : {}) }
       }
     }
     catch (error) {
-      await repository.end(request.requestId, actor, 'failed')
+      await repository.end(request.requestId, actor, 'failed', taskFailure(error, Object.values(credentials)), now())
       throw error
     }
   }
@@ -274,11 +263,13 @@ export function createAssistantEngine(dependencies: EngineDependencies) {
           ] })
           const context = contextMessages({ request, groups: [] })
           await check(request.requestId, JSON.stringify(context.messages), 'input')
+          await tracked(request.requestId, '生成导航确认回复', 'reply', async () => {})
           await check(request.requestId, visibleText(message), 'output')
           if (!await repository.authorizeAction(action.id, actor, request.conversationId, now()))
             throw new AssistantError(409, 'action_expired', '操作已失效，请重新选择')
           const record = await signTurn(secret, actor, { id: request.requestId, conversationId: request.conversationId, user: request.text, createdAt: now(), assistant: message })
-          await repository.end(request.requestId, actor, 'completed')
+          await active(request.requestId)
+          await repository.end(request.requestId, actor, 'completed', null, now())
           return { kind: 'completed', record, contextLimited: context.limited, navigate: action.id }
         }
       }
@@ -295,15 +286,25 @@ export function createAssistantEngine(dependencies: EngineDependencies) {
     },
     async resume(token: string, values: SignedTurn[]): Promise<TurnResponse> {
       const payload = await unseal(secret, actor, 'continuation', token, continuationSchema)
-      if (payload.expiresAt <= now())
-        throw new AssistantError(409, 'invalid_continuation', '继续对话的凭据已过期，请重新提问')
       const { state } = payload
-      const older = await verifyHistory(secret, actor, state.request.conversationId, values, now())
-      const first = state.historyCursor
       const limit = toolInputs.get_history.parse(JSON.parse(payload.call.function.arguments)).limit
-      if (older.length > limit || older.some(turn => state.request.history.some(existing => existing.id === turn.id) || (first && turn.createdAt >= first.createdAt)))
-        throw new AssistantError(400, 'invalid_history', '历史消息顺序无法验证')
-      await repository.resume(state.request.requestId, actor, payload.nonce, now())
+      const step = await repository.tasks.begin(state.request.requestId, '历史续传校验', 'reply', now())
+      let older: SignedTurn[]
+      try {
+        if (payload.expiresAt <= now())
+          throw new AssistantError(409, 'invalid_continuation', '继续对话的凭据已过期，请重新提问')
+        older = await verifyHistory(secret, actor, state.request.conversationId, values, now())
+        const first = state.historyCursor
+        if (older.length > limit || older.some(turn => state.request.history.some(existing => existing.id === turn.id) || (first && turn.createdAt >= first.createdAt)))
+          throw new AssistantError(400, 'invalid_history', '历史消息顺序无法验证')
+        await repository.resume(state.request.requestId, actor, payload.nonce, now())
+        await repository.tasks.finishStep(step, now())
+      }
+      catch (error) {
+        // A rejected continuation can be corrected; never end another in-flight replay.
+        await repository.tasks.finishStep(step, now(), taskFailure(error, Object.values(credentials)))
+        throw error
+      }
       state.historyExhausted = older.length < limit
       state.groups.push([{ role: 'assistant', content: null, tool_calls: [payload.call] }, { role: 'tool', tool_call_id: payload.call.id, content: JSON.stringify({ history: older.map(historyText), hasMore: !state.historyExhausted }) }])
       // Older records live in the tool result; keep recent conversation context intact.

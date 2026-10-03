@@ -6,6 +6,7 @@ import { publicContent } from './content-source'
 import { signValue, verifyHistory } from './crypto'
 import { createAssistantEngine } from './engine'
 import { assistantConfiguration, assistantIdentity, assistantJson, trustedClientIp, withAssistant } from './http'
+import { taskFailure } from './tasks'
 import { verifyTurnstile } from './turnstile'
 
 export async function sessionRoute(event: H3Event) {
@@ -37,12 +38,12 @@ export async function turnsRoute(event: H3Event, continuing = false): Promise<Tu
       if (!identity.authenticated)
         await verifyTurnstile({ secret: config.credentials.turnstileSecret, token: request.turnstileToken, hostname: getRequestURL(event).hostname, ip }, controller.signal)
       await repository.clean(Date.now())
-      await repository.admit({ id: request.requestId, actor: identity.actor, ipHash: await signValue(config.secret, 'ip', ip), conversationId: request.conversationId, fingerprint: await engine.fingerprint(request), authenticated: identity.authenticated }, config.settings, Date.now())
+      await repository.admit({ id: request.requestId, actor: identity.actor, ipHash: await signValue(config.secret, 'ip', ip), conversationId: request.conversationId, fingerprint: await engine.fingerprint(request), authenticated: identity.authenticated, configVersion: config.version }, config.settings, Date.now())
       try {
         return await engine.start(request)
       }
       catch (error) {
-        await repository.end(request.requestId, identity.actor, 'failed')
+        await repository.end(request.requestId, identity.actor, 'failed', taskFailure(error, Object.values(config.credentials)))
         throw error
       }
     }

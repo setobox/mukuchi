@@ -10,17 +10,8 @@ const loaded = ref(false)
 const busy = ref(false)
 const error = ref('')
 const message = ref('')
-const budgetRefreshKey = ref(0)
-const budgetInput = ref<HTMLInputElement | null>(null)
-function editBudget() {
-  budgetInput.value?.scrollIntoView({ block: 'center' })
-  budgetInput.value?.focus({ preventScroll: true })
-}
 const keyLabels: Record<keyof AssistantCredentials, string> = { modelKey: '模型 API 密钥', aliyunKeyId: '阿里云 AccessKey ID', aliyunKeySecret: '阿里云 AccessKey Secret', turnstileSecret: 'Turnstile Secret Key' }
 const numericFields = [
-  { key: 'inputPriceMicrosPerMillion', label: '模型每百万输入 token 的价格上界（微元）' },
-  { key: 'outputPriceMicrosPerMillion', label: '模型每百万输出 token 的价格上界（微元）' },
-  { key: 'moderationPriceMicros', label: '单次审核全部维度合计价格上界（微元）' },
   { key: 'guestMinute', label: '访客每分钟提问次数' },
   { key: 'guestDay', label: '访客每日提问次数' },
   { key: 'userMinute', label: '账号每分钟提问次数' },
@@ -35,7 +26,6 @@ async function load() {
   try {
     view.value = settingsViewSchema.parse(await request<unknown>('assistant/settings'))
     loaded.value = true
-    budgetRefreshKey.value++
   }
   catch (cause) { error.value = adminError(cause) }
 }
@@ -49,7 +39,6 @@ async function save() {
     credentials.value = assistantCredentialsSchema.parse({})
     clearing.value = []
     message.value = view.value.verified ? '设置已保存，已有能力验证仍有效。' : '设置已保存。修改配置后需重新进行能力测试。'
-    budgetRefreshKey.value++
   }
   catch (cause) { error.value = cause instanceof Error && cause.name === 'ZodError' ? '配置数值或地址不符合要求，请检查表单' : adminError(cause) }
   finally { busy.value = false }
@@ -65,7 +54,6 @@ async function testCapabilities() {
   catch (cause) { error.value = adminError(cause) }
   finally {
     busy.value = false
-    budgetRefreshKey.value++
   }
 }
 </script>
@@ -88,7 +76,6 @@ async function testCapabilities() {
     <BaseButton v-if="!loaded && error" variant="border" @click="load">
       重试
     </BaseButton>
-    <AssistantBudget v-if="loaded" :refresh-key="budgetRefreshKey" @edit-limit="editBudget" />
     <form v-if="loaded" class="space-y-6" @submit.prevent="save">
       <fieldset :disabled="busy" class="space-y-6">
         <BaseSwitch v-model="view.settings.enabled" label="启用对话助手" />
@@ -115,14 +102,10 @@ async function testCapabilities() {
           <label v-if="view.configured[key]" class="mt-2 flex gap-2 text-xs text-error"><input v-model="clearing" :value="key" type="checkbox">删除此密钥</label>
         </div>
         <div class="sm:grid-cols-2 grid gap-5">
-          <label class="block text-sm text-muted">每日额度上限（微元，1 元 = 1,000,000 微元）<input ref="budgetInput" v-model.number="view.settings.dailyBudgetMicros" type="number" min="1" step="1" required class="field-control mt-2 w-full px-3"></label>
           <label v-for="field in numericFields" :key="field.key" class="block text-sm text-muted">{{ field.label }}<input v-model.number="view.settings[field.key]" type="number" min="0" step="1" required class="field-control mt-2 w-full px-3"></label>
         </div>
         <p class="text-xs text-muted">
-          预算默认 5 元／天，包含模型与审核。价格填写保守上界，需覆盖实际检测维度与计费方式；供应商价格变化时请同步更新。未知用量、超时或中断按预留上界计费，不自动重试。
-        </p>
-        <p class="text-xs text-muted">
-          能力测试依次检查正常文本放行、攻击样本拦截、站点资料工具调用、结构化 JSON 回答及用量。完整通过时发送 2 次模型请求和 6 次审核请求，计入当日预算，失败即停止，不保存聊天正文。只支持可用 UTF-8 字节数给出保守输入 token 上界的供应商；上线时同时设置供应商消费告警。
+          能力测试检查正常文本放行、攻击样本拦截、工具调用和结构化回答，计入提问次数。失败也计次，不保存聊天正文。
         </p>
         <div class="flex flex-wrap gap-3">
           <BaseButton type="submit" :loading="busy">

@@ -1,6 +1,14 @@
 import { AssistantError, assistantLimits } from '../../../shared/assistant/model'
 
 export type Fetch = typeof globalThis.fetch
+export class UpstreamResponseError extends AssistantError {
+  readonly adminMessage: string
+  constructor(readonly upstreamStatus: number, readonly upstreamCode?: string, readonly requestId?: string) {
+    super(503, 'upstream_unavailable', '服务暂不可用，请稍后重试')
+    const advice = upstreamStatus === 401 || upstreamStatus === 403 ? '请检查模型密钥与模型访问权限。' : upstreamStatus === 429 ? '供应商请求受限，请检查供应商限制或稍后重试。' : upstreamStatus === 404 ? '请检查服务地址与模型名称。' : '请检查供应商服务状态与兼容接口配置。'
+    this.adminMessage = `模型请求失败（HTTP ${upstreamStatus}${upstreamCode ? ` / ${upstreamCode}` : ''}）。${advice}`
+  }
+}
 export async function boundedJson(response: Response, limit = assistantLimits.bodyBytes): Promise<unknown> {
   if (!response.ok || response.redirected) {
     await response.body?.cancel()

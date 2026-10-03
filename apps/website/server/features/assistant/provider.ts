@@ -5,7 +5,7 @@ import { z } from 'zod'
 import { AssistantError, assistantLimits } from '../../../shared/assistant/model'
 import { assistantSystemPrompt, publicHttpsEndpoint } from '../../../shared/assistant/settings'
 import { finalIntentSchema, toolCallSchema, toolDefinitions } from '../../../shared/assistant/tools'
-import { boundedJson, withTimeout } from './network'
+import { boundedJson, readBoundedJson, UpstreamResponseError, withTimeout } from './network'
 
 const usageSchema = z.object({ prompt_tokens: z.number().int().nonnegative().max(10_000_000), completion_tokens: z.number().int().nonnegative().max(10_000_000) })
 const providerResponseSchema = z.object({
@@ -59,21 +59,17 @@ export function modelBody(settings: AssistantSettings, messages: ModelMessage[],
     stream: false,
   }
 }
-export function modelCharge(settings: AssistantSettings, inputTokens: number, outputTokens: number): number {
-  if (settings.inputPriceMicrosPerMillion === null || settings.outputPriceMicrosPerMillion === null)
-    throw new AssistantError(503, 'missing_prices', '模型价格尚未配置')
-  return Math.ceil(inputTokens * settings.inputPriceMicrosPerMillion / 1_000_000) + Math.ceil(outputTokens * settings.outputPriceMicrosPerMillion / 1_000_000)
-}
-export function modelReservation(settings: AssistantSettings, body: ReturnType<typeof modelBody>) {
-  // Includes JSON framing, system text, tools and a generous protocol overhead.
-  const inputBound = new TextEncoder().encode(JSON.stringify(body)).byteLength + 2048
-  return modelCharge(settings, inputBound, assistantLimits.outputTokens)
-}
 export async function callModel(settings: AssistantSettings, credentials: AssistantCredentials, body: ReturnType<typeof modelBody>, signal: AbortSignal, fetcher: Fetch = fetch) {
   if (!settings.baseUrl || !publicHttpsEndpoint(settings.baseUrl))
     throw new AssistantError(503, 'not_configured', '模型地址尚未配置')
   return withTimeout(signal, assistantLimits.modelMs, async (activeSignal) => {
     const response = await fetcher(`${settings.baseUrl}/chat/completions`, { method: 'POST', headers: { 'content-type': 'application/json', 'authorization': `Bearer ${credentials.modelKey}` }, body: JSON.stringify(body), signal: activeSignal, redirect: 'error' })
+    if (!response.ok && !response.redirected) {
+      const value = await readBoundedJson(response, 8192).catch(() => null)
+      const parsed = z.object({ error: z.object({ code: z.string().regex(/^[\w.-]{1,100}$/).optional() }) }).safeParse(value)
+      const requestId = z.string().regex(/^[\w.-]{1,150}$/).safeParse(response.headers.get('x-request-id'))
+      throw new UpstreamResponseError(response.status, parsed.success ? parsed.data.error.code : undefined, requestId.success ? requestId.data : undefined)
+    }
     const parsed = providerResponseSchema.safeParse(await boundedJson(response))
     if (!parsed.success)
       throw new AssistantError(503, 'invalid_model_response', '模型返回内容不完整或格式不受支持，请稍后再试')

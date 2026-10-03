@@ -17,9 +17,10 @@ type AliyunCode = keyof typeof aliyunErrors
 const failureSchema = z.object({ Code: z.union([z.string(), z.number()]) })
 
 export class AliyunModerationError extends AssistantError {
-  readonly unbilled: boolean
   readonly adminMessage: string
   readonly adminStatusCode: number
+  readonly upstreamCode?: string
+  readonly requestId?: string
 
   constructor(readonly upstreamStatus: number, value: unknown) {
     const parsed = failureSchema.safeParse(value)
@@ -27,8 +28,9 @@ export class AliyunModerationError extends AssistantError {
     const reason = code ? aliyunErrors[code] : null
     super(503, `moderation_${reason?.[0] ?? 'unavailable'}`, '安全检查暂不可用，请稍后再试')
     this.name = 'AliyunModerationError'
-    // MultiModalGuard only bills HTTP 200; unknown network outcomes stay reserved.
-    this.unbilled = upstreamStatus !== 200
+    this.upstreamCode = code ?? undefined
+    const request = z.object({ RequestId: z.uuid() }).safeParse(value)
+    this.requestId = request.success ? request.data.RequestId : undefined
     this.adminStatusCode = reason && reason[0] !== 'rate_limited' ? 422 : 503
     this.adminMessage = `阿里云审核失败（HTTP ${upstreamStatus}${code ? ` / ${code}` : ''}）：${reason?.[1] ?? '请检查审核服务、地域和接口配置，或稍后重试。'}`
   }

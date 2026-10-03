@@ -6,12 +6,13 @@ import { assistantTestRoute } from '../server/features/assistant/admin'
 import { createAssistantRepository } from '../server/features/assistant/repository'
 import { assistantCredentialsSchema, defaultAssistantSettings } from '../shared/assistant/settings'
 
-const settings = { ...defaultAssistantSettings, baseUrl: 'https://model.example.com/v1', model: 'fixture', turnstileSiteKey: 'test-sitekey', inputPriceMicrosPerMillion: 100, outputPriceMicrosPerMillion: 100, moderationPriceMicros: 100 }
+const settings = { ...defaultAssistantSettings, baseUrl: 'https://model.example.com/v1', model: 'fixture', turnstileSiteKey: 'test-sitekey' }
 const state = vi.hoisted(() => ({ repository: null as ReturnType<typeof createAssistantRepository> | null }))
 vi.mock('../server/features/auth/session', () => ({ requireOwner: async () => ({ user: { id: 'owner' } }) }))
 vi.mock('../server/features/assistant/http', async original => ({
   ...await original<typeof import('../server/features/assistant/http')>(),
   assistantJson: async () => ({ version: 1 }),
+  trustedClientIp: () => '127.0.0.1',
   withAssistant: async (_event: H3Event, operation: (repo: ReturnType<typeof createAssistantRepository>) => Promise<unknown>) => operation(state.repository!),
   assistantConfiguration: async () => ({ settings, credentials: assistantCredentialsSchema.parse({ modelKey: 'test-key', aliyunKeyId: 'test-id', aliyunKeySecret: 'test-secret', turnstileSecret: 'test-turnstile' }), version: 1, secret: btoa('a'.repeat(32)), ready: false, verifiedHash: '' }),
 }))
@@ -21,15 +22,16 @@ afterEach(() => {
 })
 
 test.each([
-  { name: 'NoPermission 返回可操作配置错误，停止后续调用并结算为零', denied: true, malformed: false, slow: false },
+  { name: 'NoPermission 返回可操作配置错误，停止后续调用并保存诊断', denied: true, malformed: false, slow: false },
   { name: '仅开启内容合规与提示词攻击检测可通过完整能力测试', denied: false, malformed: false, slow: false },
   { name: '模型第二次响应字段不符合约定时返回字段诊断且不标记验证通过', denied: false, malformed: true, slow: false },
-  { name: '两次模型各耗时 55 秒，整轮超过旧 90 秒后仍能通过且正常结算', denied: false, malformed: false, slow: true },
+  { name: '两次模型各耗时 55 秒，整轮超过旧 90 秒后仍能通过且记录耗时', denied: false, malformed: false, slow: true },
 ])('后台能力测试：$name', async ({ denied, malformed, slow }) => {
   const db = new DatabaseSync(':memory:')
   try {
     db.exec(readFileSync(new URL('../migrations/admin/0006_assistant.sql', import.meta.url), 'utf8'))
     db.exec(readFileSync(new URL('../migrations/admin/0007_assistant_budget.sql', import.meta.url), 'utf8'))
+    db.exec(readFileSync(new URL('../migrations/admin/0008_runtime_settings_tasks.sql', import.meta.url), 'utf8'))
     const repo = createAssistantRepository({ close() {}, async batch(statements) {
       db.exec('BEGIN IMMEDIATE')
       try {
@@ -47,7 +49,7 @@ test.each([
     vi.stubGlobal('useRuntimeConfig', () => ({ adminEnabled: true }))
     const clear = { Code: 200, Data: { Suggestion: 'pass', Detail: [{ Type: 'contentModeration', Suggestion: 'pass' }, { Type: 'promptAttack', Suggestion: 'pass' }] } }
     const blocked = { Code: 200, Data: { Suggestion: 'block', Detail: [{ Type: 'contentModeration', Suggestion: 'pass' }, { Type: 'promptAttack', Suggestion: 'block' }] } }
-    const usage = { prompt_tokens: 100, completion_tokens: 20 }
+    const usage = undefined
     const tool = { choices: [{ finish_reason: 'tool_calls', message: { role: 'assistant', content: null, tool_calls: [{ id: 'site', type: 'function', function: { name: 'get_site_info', arguments: '{"scope":"site"}' } }] } }], usage }
     const intent = malformed ? { PRIVATE_SECRET: 'PRIVATE_SECRET', articles: [], references: [], taxonomy: null } : { text: '个人技术博客。', articles: [], references: [], taxonomy: null }
     const final = { choices: [{ finish_reason: 'stop', message: { role: 'assistant', content: JSON.stringify(intent) } }], usage }
@@ -82,7 +84,7 @@ test.each([
       expect(JSON.stringify(error)).not.toContain('PRIVATE_SECRET')
       expect(fetcher).toHaveBeenCalledTimes(1)
       expect(db.prepare('SELECT status, model_calls FROM assistant_requests').get()).toMatchObject({ status: 'failed', model_calls: 0 })
-      expect(db.prepare('SELECT reserved_micros, spent_micros FROM assistant_daily_usage').get()).toMatchObject({ reserved_micros: 0, spent_micros: 0 })
+      expect(db.prepare('SELECT COUNT(*) AS count FROM assistant_charges').get()).toEqual({ count: 0 })
       expect((await repo.settings()).verifiedHash).toBe('')
     }
     else if (malformed) {
@@ -104,7 +106,7 @@ test.each([
       await checked
       expect(fetcher).toHaveBeenCalledTimes(8)
       expect(db.prepare('SELECT status, model_calls FROM assistant_requests').get()).toMatchObject({ status: 'completed', model_calls: 2 })
-      expect(db.prepare('SELECT reserved_micros, spent_micros FROM assistant_daily_usage').get()).toMatchObject({ reserved_micros: 0, spent_micros: 604 })
+      expect(db.prepare('SELECT COUNT(*) AS count FROM assistant_charges').get()).toEqual({ count: 0 })
       expect((await repo.settings()).verifiedHash).not.toBe('')
     }
   }
