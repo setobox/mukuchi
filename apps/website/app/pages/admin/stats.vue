@@ -3,7 +3,7 @@ import { shanghaiDay, statsNumber } from '#shared/stats/model'
 
 definePageMeta({ layout: 'admin' })
 useSeoMeta({ title: '访问统计' })
-interface Report { range: { from: string, to: string }, total: { pageViews: number, visitors: number }, summary: { pageViews: number, visitors: number }, daily: { day: string, pageViews: number, visitors: number }[], pages: { path: string, pageViews: number, visitors: number }[], totalPages: number }
+interface Report { from: string, to: string, page: number, pageSize: number, total: { pageViews: number, visitors: number }, summary: { pageViews: number, visitors: number }, daily: { day: string, pageViews: number, visitors: number }[], pages: { path: string, pageViews: number, visitors: number }[], totalPages: number }
 const { current, request } = useAdminSession()
 const from = ref(shanghaiDay(Date.now() - 29 * 86400_000))
 const to = ref(shanghaiDay(Date.now()))
@@ -39,24 +39,28 @@ async function load(reset = false) {
   const sequence = ++loadSequence
   busy.value = true
   error.value = ''
+  const range = reset || !report.value ? { from: from.value, to: to.value } : report.value
   try {
-    const result = await request<Report>(`stats?${new URLSearchParams({ from: from.value, to: to.value, page: String(page.value), pageSize: '20' })}`)
-    if (sequence === loadSequence)
+    const result = await request<Report>(`stats?${new URLSearchParams({ from: range.from, to: range.to, page: String(page.value), pageSize: '20' })}`)
+    if (sequence === loadSequence) {
       report.value = result
+      page.value = result.page
+    }
   }
   catch (cause) {
-    if (sequence === loadSequence)
+    if (sequence === loadSequence) {
       error.value = adminError(cause)
+      page.value = report.value?.page ?? 1
+    }
   }
   finally {
     if (sequence === loadSequence)
       busy.value = false
   }
 }
-const maximum = computed(() => Math.max(1, ...report.value?.daily.flatMap(day => [day.pageViews, day.visitors]) ?? []))
-function points(field: 'pageViews' | 'visitors') {
-  return report.value?.daily.map((day, i, rows) => `${20 + i / Math.max(1, rows.length - 1) * 760},${180 - day[field] / maximum.value * 160}`).join(' ') ?? ''
-}
+const pvPoints = computed(() => report.value?.daily.map(day => ({ time: Date.parse(`${day.day}T00:00:00+08:00`), value: day.pageViews })) ?? [])
+const uvPoints = computed(() => report.value?.daily.map(day => ({ time: Date.parse(`${day.day}T00:00:00+08:00`), value: day.visitors })) ?? [])
+const dayTick = (time: number) => shanghaiDay(time).slice(5)
 watch(() => current.value.user?.role === 'admin', () => {
   if (current.value.user?.role === 'admin') {
     void load()
@@ -97,15 +101,22 @@ async function changePage(change: number) {
             {{ statsNumber(item.value) }}
           </p>
         </div>
-      </div><section class="mb-6 border border-line rounded-panel p-5">
+      </div><section class="mb-6">
         <h2 class="text-title text-heading">
           每日趋势
         </h2><p class="mt-2 text-xs text-muted">
-          实线：浏览量；虚线：访客数。日期按北京时间统计。
-        </p><svg viewBox="0 0 800 200" class="mt-5 w-full" role="img" aria-label="每日浏览量与访客趋势，下方可展开详细数据"><polyline :points="points('pageViews')" fill="none" stroke="var(--color-accent-text)" stroke-width="3" /><polyline :points="points('visitors')" fill="none" stroke="var(--color-info)" stroke-width="2" stroke-dasharray="6 4" /></svg><details class="mt-3">
-          <summary class="control-quiet min-h-11 cursor-pointer py-3 text-accent-soft">
+          当前显示 {{ report.from }} 至 {{ report.to }} · 北京时间。悬停或触摸查看每日数据。
+        </p>
+        <div class="grid mt-4 gap-4 md:grid-cols-2">
+          <BaseTimeSeriesChart title="浏览量 PV" :points="pvPoints" integer-ticks :format-value="statsNumber" :format-time="shanghaiDay" :format-tick="dayTick" />
+          <BaseTimeSeriesChart title="访客数 UV" :points="uvPoints" integer-ticks color="var(--color-info)" :format-value="statsNumber" :format-time="shanghaiDay" :format-tick="dayTick" />
+        </div>
+        <details class="group mt-4 border border-line rounded-panel p-2">
+          <summary class="control-quiet min-h-11 flex cursor-pointer list-none items-center gap-2 px-3 py-2 text-accent-soft [&::-webkit-details-marker]:hidden">
+            <span class="i-lucide-chevron-down size-4 shrink-0 group-open:hidden" aria-hidden="true" />
+            <span class="i-lucide-chevron-up hidden size-4 shrink-0 group-open:block" aria-hidden="true" />
             查看每日数据
-          </summary><div class="max-h-96 overflow-auto">
+          </summary><div class="max-h-96 overflow-auto px-3 pb-3">
             <table class="w-full text-left text-xs">
               <thead>
                 <tr>
