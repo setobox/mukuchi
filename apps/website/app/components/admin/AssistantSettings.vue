@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { AssistantCredentials, AssistantSettingsView } from '#shared/assistant/settings'
 import { assistantCredentialsSchema, assistantSettingsSchema, defaultAssistantSettings, missingAssistantConfiguration, settingsViewSchema } from '#shared/assistant/settings'
+import BaseHelpHint from '~/components/base/BaseHelpHint.vue'
 
 const props = defineProps<{ active: boolean }>()
 const section = defineModel<'config' | 'tasks'>('view', { default: 'config' })
@@ -117,12 +118,12 @@ async function testCapabilities() {
             服务端加密密钥尚未配置，无法保存凭据。
           </p>
           <section class="border border-line rounded-panel p-5 space-y-5" aria-label="助手模型服务">
-            <h3 class="text-heading font-medium">
-              模型服务
-            </h3>
-            <p class="text-xs text-muted">
-              能力测试检查审核、工具调用和结构化回答。聊天正文只保存在读者浏览器，后台仅保留最近 30 天的任务状态与诊断。
-            </p>
+            <div class="flex items-center justify-between gap-3">
+              <h3 class="text-heading font-medium">
+                模型服务
+              </h3>
+              <BaseHelpHint label="测试与隐私说明" text="能力测试检查审核、工具调用和结构化回答。聊天正文只保存在读者浏览器，后台仅保留最近 30 天的任务状态与诊断。" :active="props.active && section === 'config'" />
+            </div>
             <div class="grid gap-5 md:grid-cols-2">
               <label class="block text-sm text-muted">服务地址<input v-model="view.settings.baseUrl" type="url" autocomplete="off" placeholder="https://服务地址/v1" class="field-control mt-2 w-full px-3"></label>
               <label class="block text-sm text-muted">模型名称<input v-model="view.settings.model" autocomplete="off" class="field-control mt-2 w-full px-3"></label>
@@ -132,12 +133,12 @@ async function testCapabilities() {
             <label class="block text-sm text-muted">交流风格<textarea v-model="view.settings.style" maxlength="1000" rows="3" class="field-control mt-2 w-full p-3" /></label>
           </section>
           <section class="border border-line rounded-panel p-5 space-y-5" aria-label="助手安全审核">
-            <h3 class="text-heading font-medium">
-              安全审核
-            </h3>
-            <p class="text-xs text-muted">
-              输入、输出策略均需开启内容合规和提示词攻击检测，无需开启敏感内容检测。只有审核明确通过，回答才会展示。
-            </p>
+            <div class="flex items-center justify-between gap-3">
+              <h3 class="text-heading font-medium">
+                安全审核
+              </h3>
+              <BaseHelpHint label="审核策略要求" text="输入、输出策略均需开启内容合规和提示词攻击检测，无需开启敏感内容检测。只有审核明确通过，回答才会展示。" :active="props.active && section === 'config'" />
+            </div>
             <BaseSelect v-model="view.settings.region" label="阿里云地域" :disabled="saving || testing" :options="assistantSettingsSchema.shape.region.unwrap().options.map(value => ({ value, label: value }))" />
             <div v-for="key in moderationKeys" :key="key">
               <SavedCredential v-model="credentials[key]" service="assistant" :field="key" :label="keyLabels[key]" :configured="view.configured[key]" :revision="view.version" :active="credentialActive" :disabled="!view.encryptionReady" />

@@ -6,6 +6,7 @@ import { aiStatusLabels, aiStatusTone } from '#shared/admin/articles'
 import { articleRoute } from '#shared/admin/model'
 import { audioStatusLabel, defaultAudioSettings, kindEnabled } from '#shared/audio/model'
 import { acceptAudioSettings, audioSettingsForKind, kindSettingKeys } from '#shared/audio/settings-form'
+import BaseHelpHint from '~/components/base/BaseHelpHint.vue'
 
 const props = defineProps<{ kind: AudioKind, active: boolean }>()
 const section = defineModel<'config' | 'tasks'>('view', { default: 'config' })
@@ -211,12 +212,12 @@ useIntervalFn(() => {
             </div>
           </div>
           <div class="border border-line rounded-panel p-5 space-y-5">
-            <h3 class="text-heading font-medium">
-              {{ label }}参数
-            </h3>
-            <p class="text-xs text-muted">
-              额度按北京时间重置，超额任务继续排队；重试也会预占额度。更换音色后需要生成新版本。保存只提交当前类型和共用设置。朗读完成后自动公开；播客需要试听并确认公开。
-            </p>
+            <div class="flex items-center justify-between gap-3">
+              <h3 class="text-heading font-medium">
+                {{ label }}参数
+              </h3>
+              <BaseHelpHint :key="kind" :label="`${label}生成与额度说明`" text="额度按北京时间重置，超额任务继续排队；重试也会预占额度。更换音色后需要生成新版本。保存只提交当前类型和共用设置。朗读完成后自动公开；播客需要试听并确认公开。" :active="props.active && section === 'config'" />
+            </div>
             <div class="grid gap-5 md:grid-cols-2">
               <label v-for="field in fields" :key="field.key" class="block text-sm text-muted">{{ field.label }}<input v-model="form[field.key]" class="field-control mt-2 w-full px-3"></label>
               <label class="block text-sm text-muted">{{ kind === 'narration' ? '每日朗读字符额度' : '每日播客任务数' }}<input v-model.number="quota" type="number" min="0" :max="kind === 'narration' ? 10000000 : 1000" step="1" class="field-control mt-2 w-full px-3"></label>

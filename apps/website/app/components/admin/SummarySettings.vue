@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { AiSettingsView } from '#shared/ai/model'
 import { aiSettingsSchema, defaultAiSettings } from '#shared/ai/model'
+import BaseHelpHint from '~/components/base/BaseHelpHint.vue'
 
 const props = defineProps<{ active: boolean }>()
 const section = defineModel<'config' | 'tasks'>('view', { default: 'config' })
@@ -103,12 +104,12 @@ async function test() {
             <label v-if="form.keyConfigured" class="checkbox-field min-h-11 flex items-center gap-3 text-xs text-error"><input v-model="clearKey" type="checkbox" class="accent-error">删除已保存的密钥</label>
           </section>
           <section class="border border-line rounded-panel p-5 space-y-4">
-            <h3 class="text-heading font-medium">
-              摘要生成
-            </h3>
-            <p class="text-xs text-muted">
-              默认输出 80–140 字的中文摘要。修改服务地址、模型或提示词后，下次构建会更新摘要。连接测试会发送一次测试请求，有修改时先保存再测试。
-            </p>
+            <div class="flex items-center justify-between gap-3">
+              <h3 class="text-heading font-medium">
+                摘要生成
+              </h3>
+              <BaseHelpHint label="生成与测试说明" text="默认输出 80–140 字的中文摘要。修改服务地址、模型或提示词后，下次构建会更新摘要。连接测试会发送一次测试请求，有修改时先保存再测试。" :active="props.active && section === 'config'" />
+            </div>
             <label class="block text-sm text-muted">提示词<textarea v-model="form.prompt" rows="5" required maxlength="6000" class="field-control mt-2 w-full p-3 leading-7" /></label>
           </section>
         </fieldset>
