@@ -13,8 +13,10 @@ const tab = computed<(typeof settingsTabs)[number]>({
   set: (value) => { void router.replace({ query: { ...route.query, tab: value } }) },
 })
 const audioTab = computed(() => tab.value === 'podcast' ? 'podcast' : 'narration')
-const summaryRevision = ref(0)
-const summaryBusy = ref(false)
+const view = computed<'config' | 'tasks'>({
+  get: () => route.query.view === 'tasks' || (route.query.view !== 'config' && typeof route.query.article === 'string') ? 'tasks' : 'config',
+  set: (value) => { void router.replace({ query: { ...route.query, view: value } }) },
+})
 </script>
 
 <template>
@@ -23,23 +25,22 @@ const summaryBusy = ref(false)
       AI 设置
     </h1>
     <p class="mb-7 mt-2 text-muted">
-      配置生成服务，管理每篇文章的摘要与音频。
+      配置 AI 服务，查看生成任务和运行记录。
     </p>
     <TabsRoot v-model="tab">
-      <TabsList aria-label="AI 服务类型" class="mb-8 flex gap-2 border-b border-line pb-3">
-        <TabsTrigger v-for="kind in settingsTabs" :key="kind" :value="kind" class="control-base control-quiet px-4 data-[state=active]:bg-accent-surface data-[state=active]:text-accent-soft">
+      <TabsList aria-label="AI 服务类型" class="grid grid-cols-2 mb-3 gap-2 border-b border-line pb-3 md:flex">
+        <TabsTrigger v-for="kind in settingsTabs" :key="kind" :value="kind" class="control-base control-quiet shrink-0 whitespace-nowrap px-4 data-[state=active]:bg-accent-surface data-[state=active]:text-accent-soft">
           {{ settingsLabels[kind] }}
         </TabsTrigger>
       </TabsList>
       <TabsContent v-show="tab === 'summary'" value="summary" force-mount>
-        <SummarySettings :locked="summaryBusy" @saved="summaryRevision++" />
-        <SummaryManager :revision="summaryRevision" @busy="summaryBusy = $event" />
+        <SummarySettings v-model:view="view" :active="tab === 'summary'" />
       </TabsContent>
       <TabsContent v-show="tab === 'narration' || tab === 'podcast'" :value="audioTab" force-mount>
-        <AudioSettings :kind="audioTab" :active="tab === 'narration' || tab === 'podcast'" />
+        <AudioSettings v-model:view="view" :kind="audioTab" :active="tab === 'narration' || tab === 'podcast'" />
       </TabsContent>
-      <TabsContent value="assistant">
-        <AssistantSettings />
+      <TabsContent v-show="tab === 'assistant'" value="assistant" force-mount>
+        <AssistantSettings v-model:view="view" :active="tab === 'assistant'" />
       </TabsContent>
     </TabsRoot>
   </div>

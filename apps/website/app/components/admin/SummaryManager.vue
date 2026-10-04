@@ -185,7 +185,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <section class="mt-10 border-t border-line pt-8" aria-label="文章摘要管理">
+  <section aria-label="文章摘要管理">
     <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
       <h2 class="text-section text-heading">
         文章摘要
