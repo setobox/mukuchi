@@ -1,6 +1,7 @@
 <script lang="ts">
 import type { ComponentPublicInstance } from 'vue'
 import { cloneVNode, defineComponent, h, nextTick, ref, shallowRef, useId } from 'vue'
+import { codeThemeStyle } from '#shared/content/code'
 import { codeEntries, nextCodeTab } from '~/features/code/blocks'
 import CodeCopy from '../code/CodeCopy.vue'
 
@@ -44,7 +45,7 @@ export default defineComponent({
       if (other || entries.length < 2)
         return nodes
       const selected = Math.min(active.value, entries.length - 1)
-      return h('div', { class: 'field-group my-6 min-w-0 overflow-hidden border border-line rounded-xl bg-code' }, [
+      return h('div', { class: 'code-block field-group my-6 min-w-0 overflow-hidden border border-line rounded-xl', style: codeThemeStyle }, [
         h('div', { class: 'min-w-0 flex items-center gap-2 border-b border-line px-2 py-1' }, [
           h('div', {
             'ref': bar,

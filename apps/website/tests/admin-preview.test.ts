@@ -2,6 +2,7 @@ import type { Asset } from '../shared/admin/model'
 import { expect, test } from 'vite-plus/test'
 import { markdownWordCount } from '../content/reading'
 import { renderArticlePreview } from '../server/features/admin/preview'
+import { codeHighlight } from '../shared/content/code'
 
 const source = `---
 title: 未保存标题
@@ -71,7 +72,7 @@ test('无效元数据返回可重试的解析错误', async () => {
 test('服务端高亮器应用与前台一致的主题，不依赖公开高亮接口', async () => {
   const result = await renderArticlePreview(source, 'hello.md', [], '', missing, undefined, async (code, language, theme) => {
     expect(language).toBe('ts')
-    expect(theme).toEqual({ default: 'github-dark', light: 'github-light' })
+    expect(theme).toEqual(codeHighlight.theme)
     return { tree: [{ type: 'element', tagName: 'span', properties: { className: ['highlighted-token'] }, children: [{ type: 'text', value: code }] }], className: 'shiki', style: '', inlineStyle: '' }
   })
   expect(JSON.stringify(result.body)).toContain('highlighted-token')

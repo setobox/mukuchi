@@ -1,0 +1,107 @@
+.code-block {
+  --code-bg: var(--color-code);
+  --code-fg: var(--code-dark-fg);
+  --code-highlight-border: #b4a0ff;
+  --code-add: #a6da95;
+  --code-remove: #f38ba8;
+  --code-warning: #eed49f;
+  --code-info: #8aadf4;
+  --code-highlight-bg: color-mix(in srgb, var(--code-highlight-border) 12%, transparent);
+  color: var(--code-fg);
+  background: var(--code-bg);
+}
+
+html.light .code-block {
+  --code-fg: var(--code-light-fg);
+  --code-highlight-border: #774dba;
+  --code-add: #28753a;
+  --code-remove: #b3284b;
+  --code-warning: #946200;
+  --code-info: #285a9e;
+}
+
+pre.code-pre {
+  color: var(--code-fg);
+  background: var(--code-bg);
+  tab-size: 2;
+}
+
+pre.code-pre .line {
+  position: relative;
+  display: block;
+  min-height: 1lh;
+  padding-inline: 1.25rem;
+}
+
+pre.code-pre .line:is(.highlight, .highlighted) {
+  background: var(--code-highlight-bg);
+  box-shadow: inset 3px 0 var(--code-highlight-border);
+}
+
+pre.code-pre .line:is(.diff.add, .diff.remove, .error, .warning, .info) {
+  background: color-mix(in srgb, var(--code-marker) 12%, transparent);
+  box-shadow: inset 3px 0 var(--code-marker);
+}
+
+pre.code-pre .line.diff.add {
+  --code-marker: var(--code-add);
+}
+
+pre.code-pre .line:is(.diff.remove, .error) {
+  --code-marker: var(--code-remove);
+}
+
+pre.code-pre .line.warning {
+  --code-marker: var(--code-warning);
+}
+
+pre.code-pre .line.info {
+  --code-marker: var(--code-info);
+}
+
+pre.code-pre.has-diff .line {
+  padding-left: 2.5rem;
+}
+
+pre.code-pre .line.diff::after {
+  position: absolute;
+  left: 0.75rem;
+  color: var(--code-marker);
+  font-weight: 600;
+  user-select: none;
+}
+
+pre.code-pre .line.diff.add::after {
+  content: "+";
+}
+
+pre.code-pre .line.diff.remove::after {
+  content: "−";
+}
+
+pre.code-pre.code-line-numbers .line {
+  padding-left: 4.5rem;
+}
+
+pre.code-pre.code-line-numbers .line::before {
+  position: absolute;
+  left: 0.75rem;
+  width: 2.25rem;
+  color: color-mix(in srgb, var(--code-fg) 60%, var(--code-bg));
+  text-align: right;
+  content: attr(line);
+  user-select: none;
+}
+
+pre.code-pre.code-line-numbers .line.diff::after {
+  left: 3.25rem;
+}
+
+pre.code-pre.has-focused .line:not(.focused) {
+  opacity: 0.5;
+  transition: opacity var(--duration-interaction);
+}
+
+pre.code-pre.has-focused:is(:hover, :focus-within) .line:not(.focused) {
+  opacity: 1;
+}

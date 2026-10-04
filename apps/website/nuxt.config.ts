@@ -7,6 +7,7 @@ import adminPreview from './modules/admin-preview/module'
 import audio from './modules/audio/module'
 import coverIcons from './modules/cover-icons/module'
 import { localRequestAllowed } from './server/features/auth/policy.ts'
+import { codeHighlight } from './shared/content/code.ts'
 import { rssCacheControl, rssContentType, rssPath } from './shared/rss/config.ts'
 import { themeCookieBootstrap, themeCookieKey, themeCookieOptions } from './shared/theme/preference.ts'
 
@@ -61,7 +62,7 @@ export default defineNuxtConfig({
     build: { markdown: {
       contentHeading: false,
       toc: { depth: 5, searchDepth: 12 },
-      highlight: { theme: { default: 'github-dark', light: 'github-light' } },
+      highlight: codeHighlight,
     } },
     renderer: { anchorLinks: { h2: true, h3: true, h4: true, h5: true, h6: true } },
   },
@@ -89,7 +90,7 @@ export default defineNuxtConfig({
     },
   },
   components: [{ path: '~/components', pathPrefix: false }],
-  css: ['~/assets/css/main.css'],
+  css: ['~/assets/css/main.css', '~/assets/css/code.css'],
   devtools: { enabled: false },
   devServerHandlers: [{ handler(event) {
     // Nitro forwards dev requests over IPC. Only this outer listener has the real peer.

@@ -5,6 +5,7 @@ import type { SummaryState } from '../../../shared/ai/model'
 import { parseMarkdown } from '@nuxtjs/mdc/runtime'
 import rehypeHighlight from '@nuxtjs/mdc/runtime/highlighter/rehype'
 import { AdminError, articleRoute } from '../../../shared/admin/model'
+import { codeHighlight } from '../../../shared/content/code'
 import { splitDocument, validateFrontmatter } from '../../../shared/content/document'
 import { countReadingWords } from '../../../shared/content/reading'
 import { postSchema } from '../../../shared/content/schema'
@@ -13,7 +14,7 @@ import { postSchema } from '../../../shared/content/schema'
 export async function renderArticlePreview(source: string, path: string, assets: Asset[], prefix: string, summary: SummaryState, summaryText?: string, highlighter?: RehypeHighlightOption['highlighter']): Promise<ArticlePreview> {
   try {
     const data = { ...postSchema.parse(validateFrontmatter(source, path, 'posts')), path: articleRoute(path) }
-    const highlight = { theme: { default: 'github-dark', light: 'github-light' }, highlighter }
+    const highlight = { ...codeHighlight, highlighter }
     const parsed = await parseMarkdown(splitDocument(source).body, {
       contentHeading: false,
       highlight,
