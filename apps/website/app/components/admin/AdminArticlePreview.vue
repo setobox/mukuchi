@@ -122,7 +122,7 @@ async function followLink(event: MouseEvent) {
 .preview-frame {
   container: article-preview / inline-size;
   --color-accent-surface: color-mix(in srgb, var(--color-accent) 10%, transparent);
-  --color-accent-hover: color-mix(in srgb, var(--color-accent) 90%, white);
+  --color-accent-hover: color-mix(in srgb, var(--color-accent) 90%, black);
   --color-accent-pressed: color-mix(in srgb, var(--color-accent) 18%, transparent);
 }
 .preview-layout {

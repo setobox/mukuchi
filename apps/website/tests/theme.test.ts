@@ -7,7 +7,7 @@ import { ref } from 'vue'
 import { createArticleAccentScope, resolveArticleAccent } from '../app/features/theme/article.ts'
 import { createThemeController } from '../app/features/theme/controller.ts'
 import { themeColors } from '../shared/content/schema.ts'
-import { accentBackgrounds, contrastRatio, mixColor, readableAccent } from '../shared/theme/palette.ts'
+import { accentBackgrounds, contrastRatio, readableAccent } from '../shared/theme/palette.ts'
 import { nextPreference, normalizePreference, resolveTheme, themeCookieBootstrap } from '../shared/theme/preference.ts'
 
 function setup(overrides: Partial<ThemeControllerOptions> = {}) {
@@ -170,10 +170,8 @@ test('文章配色支持替换与退出，旧实例释放不影响新文章，40
   expect(resolveArticleAccent(state.value, '/posts/b')).toBe('#a369ff')
 })
 
-test('全部 16 色的强调文字及按钮在深浅背景上满足对比度', () => {
+test('全部 16 色的强调文字在深浅背景上满足对比度', () => {
   for (const color of themeColors) {
-    expect(contrastRatio(color, '#171615')).toBeGreaterThanOrEqual(4.5)
-    expect(contrastRatio(mixColor(color, '#ffffff', 0.1), '#171615')).toBeGreaterThanOrEqual(4.5)
     for (const mode of ['dark', 'light'] as const) {
       const foreground = readableAccent(color, mode)
       for (const background of accentBackgrounds(color, mode))

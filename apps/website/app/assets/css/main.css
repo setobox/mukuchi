@@ -12,7 +12,8 @@
   --color-accent-text: var(--accent-dark-text);
   --color-title: var(--color-accent);
   --color-on-accent: #171615;
-  --color-accent-hover: color-mix(in srgb, var(--color-accent) 90%, white);
+  --color-on-primary: #ffffff;
+  --color-accent-hover: color-mix(in srgb, var(--color-accent) 90%, black);
   --color-accent-pressed: color-mix(in srgb, var(--color-accent) 18%, transparent);
   --color-accent-pressed-solid: color-mix(in srgb, var(--color-accent) 82%, black);
   --color-border: #ffffff12;
