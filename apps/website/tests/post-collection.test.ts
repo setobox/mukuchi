@@ -66,7 +66,7 @@ async function setup(options: { url?: string, count?: number, pending?: boolean,
   vi.stubGlobal('usePostCatalog', () => catalog)
   vi.stubGlobal('useHead', (head: typeof heads[number]) => heads.push(head))
   vi.stubGlobal('useSeoMeta', (meta: typeof metas[number]) => metas.push(meta))
-  vi.stubGlobal('usePageUrl', (path: () => string) => computed(() => pageUrl('https://blog.setobox.me', '/blog/', toValue(path))))
+  vi.stubGlobal('usePageUrl', (path: () => string) => computed(() => pageUrl('https://blog.seto.box', '/blog/', toValue(path))))
   const scroll = vi.spyOn(HTMLElement.prototype, 'scrollIntoView').mockImplementation(() => {})
   const app = (options.ssr ? createSSRApp : createApp)({ render: () => h(PostCollection, { filter: filter.value }) })
   app.use(router)
@@ -142,7 +142,7 @@ test('第二页直接访问的服务端 HTML 与 hydration 一致，并具有独
   const error = vi.spyOn(console, 'error').mockImplementation(() => {})
   await state.mount()
   expect(state.titles()).toHaveLength(10)
-  expect(state.canonical()).toBe('https://blog.setobox.me/blog/posts?page=2')
+  expect(state.canonical()).toBe('https://blog.seto.box/blog/posts?page=2')
   expect(state.metas.at(-1)!.ogUrl.value).toBe(state.canonical())
   expect(state.host.querySelector('a[rel="prev"]')?.getAttribute('href')).toBe('/posts?source=test')
   expect(warn).not.toHaveBeenCalled()
@@ -155,7 +155,7 @@ test.each(['0', '-2', '2.5', 'abc', '2&page=3', '', '1'])('异常或显式首页
   await state.mount()
   expect(state.router.currentRoute.value.fullPath).toBe('/posts?source=test#heading')
   expect(state.replace).toHaveBeenCalledOnce()
-  expect(state.canonical()).toBe('https://blog.setobox.me/blog/posts')
+  expect(state.canonical()).toBe('https://blog.seto.box/blog/posts')
   expect(state.titles()[0]).toBe('文章 1')
 })
 
@@ -204,7 +204,7 @@ test.each(['/posts', '/tags/C%23', '/tags/%2523', '/tags/C%2B%2B', '/categories/
   const state = await setup({ url: `${path}?page=2` })
   await state.mount()
   expect(state.host.querySelector('a[rel="next"]')?.getAttribute('href')).toBe(`${path}?page=3`)
-  expect(state.canonical()).toBe(`https://blog.setobox.me/blog${path}?page=2`)
+  expect(state.canonical()).toBe(`https://blog.seto.box/blog${path}?page=2`)
 })
 
 test('修饰键打开分页链接不触发当前页面滚动或聚焦', async () => {

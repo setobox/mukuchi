@@ -220,7 +220,7 @@ test('文章集合仅使用显式筛选条件，旧查询参数不影响默认�
   vi.stubGlobal('useCookie', () => ref('list'))
   vi.stubGlobal('useRoute', () => ({ path: '/posts', query: { tag: 'C++', category: '开发' } }))
   vi.stubGlobal('useRouter', () => ({ replace: vi.fn() }))
-  vi.stubGlobal('usePageUrl', () => ref('https://blog.setobox.me/posts'))
+  vi.stubGlobal('usePageUrl', () => ref('https://blog.seto.box/posts'))
   vi.stubGlobal('useHead', vi.fn())
   vi.stubGlobal('useSeoMeta', vi.fn())
   const all = await render(PostCollection, {})

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import process from 'node:process'
 import { z } from 'zod'
 
-const origin = new URL(process.env.MUKUCHI_SMOKE_URL || 'https://blog.setobox.me')
+const origin = new URL(process.env.MUKUCHI_SMOKE_URL || 'https://blog.seto.box')
 assert.equal(origin.protocol, 'https:')
 const request = (path: string) => fetch(new URL(path, origin), { redirect: 'manual', signal: AbortSignal.timeout(15_000) })
 const session = await request('/api/auth/session')

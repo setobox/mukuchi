@@ -39,7 +39,7 @@ export default defineNuxtConfig({
     statsHashSecret: '',
     statsAdminToken: '',
     statsDatabasePath: fileURLToPath(new URL('./.data/stats.sqlite', import.meta.url)),
-    public: { siteUrl: 'https://blog.setobox.me', giscusRepo: 'setobox/mukuchi', giscusRepoId: '', giscusCategoryId: '' },
+    public: { siteUrl: 'https://blog.seto.box', giscusRepo: 'setobox/mukuchi', giscusRepoId: '', giscusCategoryId: '' },
   },
   alias: {
     '#stats-driver': fileURLToPath(new URL('./server/features/stats/drivers/node', import.meta.url)),

@@ -7,7 +7,7 @@ const site: RssSite = {
   name: 'Setobox',
   description: '博客介绍',
   author: '姬顶盒',
-  siteUrl: 'https://blog.setobox.me',
+  siteUrl: 'https://blog.seto.box',
   baseURL: '/',
 }
 const post: RssPost = { path: '/posts/example', title: '文章', description: '摘要', publish: '2024-03-01' }
@@ -51,8 +51,8 @@ test('发布日期降序、同日路径升序，不受置顶、施工或未来�
   const before = JSON.stringify(posts)
   const links = items(createRssFeed(posts, site)).map(item => elementText(item, 'link'))
   expect(links).toHaveLength(60)
-  expect(links[0]).toBe('https://blog.setobox.me/posts/59')
-  expect(links.slice(1)).toEqual(Array.from({ length: 59 }, (_, index) => `https://blog.setobox.me/posts/${String(index).padStart(2, '0')}`))
+  expect(links[0]).toBe('https://blog.seto.box/posts/59')
+  expect(links.slice(1)).toEqual(Array.from({ length: 59 }, (_, index) => `https://blog.seto.box/posts/${String(index).padStart(2, '0')}`))
   expect(JSON.stringify(posts)).toBe(before)
 })
 
@@ -105,9 +105,9 @@ test.each([
 test('永久链接和自引用使用正式域名，保留中文编码与部署子路径', () => {
   const xml = createRssFeed([{ ...post, path: '/posts/中文/C%23' }], { ...site, baseURL: '/blog/' })
   const [item] = items(xml)
-  expect(elementText(item!, 'link')).toBe('https://blog.setobox.me/blog/posts/%E4%B8%AD%E6%96%87/C%23')
+  expect(elementText(item!, 'link')).toBe('https://blog.seto.box/blog/posts/%E4%B8%AD%E6%96%87/C%23')
   const self = parseXml(xml).getElementsByTagNameNS('http://www.w3.org/2005/Atom', 'link').item(0)!
-  expect(self.getAttribute('href')).toBe('https://blog.setobox.me/blog/rss.xml')
+  expect(self.getAttribute('href')).toBe('https://blog.seto.box/blog/rss.xml')
   expect(() => createRssFeed([post], { ...site, siteUrl: 'invalid' })).toThrow()
   expect(() => createRssFeed([{ ...post, path: '//evil.example' }], site)).toThrow()
 })

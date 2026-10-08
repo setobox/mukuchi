@@ -9,7 +9,7 @@ useSeoMeta({ title: '隐私与存储说明', description: '本站账号、AI 助
     <SiteColumns>
       <article class="max-w-190 border-t border-line py-8 leading-8 lg:px-6">
         <p class="mb-8 text-muted">
-          更新日期：2026 年 10 月 8 日。本说明适用于 blog.setobox.me 的账号、登录与 AI 助手服务。浏览公开文章无需注册账号。
+          更新日期：2026 年 10 月 8 日。本说明适用于 blog.seto.box 的账号、登录与 AI 助手服务。浏览公开文章无需注册账号。
         </p>
         <h2 class="mb-3 text-section text-heading">
           收集哪些信息

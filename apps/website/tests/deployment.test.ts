@@ -12,20 +12,20 @@ afterEach(() => {
 
 test('正式链接只使用配置域名，保留路径编码并去掉查询参数和锚点', () => {
   for (const path of ['/posts/markdown/markdown', '/categories/内容管理', '/tags/C%23', '/tags/C%2B%2B', '/tags/%2523']) {
-    const url = new URL(pageUrl('https://blog.setobox.me', '/', `${path}?tag=old#section`))
-    expect(url.origin).toBe('https://blog.setobox.me')
+    const url = new URL(pageUrl('https://blog.seto.box', '/', `${path}?tag=old#section`))
+    expect(url.origin).toBe('https://blog.seto.box')
     expect(decodeURI(url.pathname)).toBe(decodeURI(path))
     expect(url.search).toBe('')
     expect(url.hash).toBe('')
   }
-  expect(pageUrl('https://blog.setobox.me', '/blog/', '/posts/example')).toBe('https://blog.setobox.me/blog/posts/example')
+  expect(pageUrl('https://blog.seto.box', '/blog/', '/posts/example')).toBe('https://blog.seto.box/blog/posts/example')
 })
 
 test('站点地址拒绝非 HTTP 地址、凭据和不明确的前缀，页面不能跳转站外', () => {
   for (const origin of ['invalid', 'javascript:alert(1)', 'https://user:pass@example.com', 'https://example.com/blog', 'https://example.com/?q=1', 'https://example.com/#hash'])
     expect(() => pageUrl(origin, '/', '/posts')).toThrow()
   for (const path of ['//evil.example', '/\\evil.example', 'https://evil.example'])
-    expect(() => pageUrl('https://blog.setobox.me', '/', path)).toThrow()
+    expect(() => pageUrl('https://blog.seto.box', '/', path)).toThrow()
 })
 
 test('预渲染文章以构建日完成 hydration，挂载后按当前上海日期显示时效提醒', async () => {

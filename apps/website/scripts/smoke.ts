@@ -48,7 +48,7 @@ async function browse() {
     assert.equal(document.getElementsByTagName('h1')[0]?.textContent?.trim(), title)
     assert.equal(document.getElementsByTagName('article').length, 0, `${path} 不展示文章卡片`)
     const canonical = [...document.getElementsByTagName('link')].find(link => link.getAttribute('rel') === 'canonical')
-    assert.equal(canonical?.getAttribute('href'), `https://blog.setobox.me${path}`)
+    assert.equal(canonical?.getAttribute('href'), `https://blog.seto.box${path}`)
     assert([...document.getElementsByTagName('meta')].some(meta => meta.getAttribute('name') === 'description' && meta.getAttribute('content')), `${path} 的 SEO 简介`)
     if (field) {
       const counts = new Map<string, number>()
@@ -80,7 +80,7 @@ async function seriesBrowse() {
   const { document, response } = await documentAt('/series')
   assert(response.headers.get('cache-control')?.includes('no-store'))
   assert.equal(document.getElementsByTagName('h1')[0]?.textContent?.trim(), '系列')
-  assert([...document.getElementsByTagName('link')].some(link => link.getAttribute('rel') === 'canonical' && link.getAttribute('href') === 'https://blog.setobox.me/series'))
+  assert([...document.getElementsByTagName('link')].some(link => link.getAttribute('rel') === 'canonical' && link.getAttribute('href') === 'https://blog.seto.box/series'))
   assert([...document.getElementsByTagName('meta')].some(meta => meta.getAttribute('name') === 'description' && meta.getAttribute('content')))
   const directory = [...document.getElementsByTagName('section')].find(section => section.getAttribute('aria-label') === '系列目录')
   if (!groups.length) {
@@ -128,7 +128,7 @@ assert.deepEqual(faviconBytes, await readFile(new URL('../public/favicon.ico', i
 const rss = await request('/rss.xml')
 assert.equal(rss.headers.get('content-type'), rssContentType)
 assert.equal(rss.headers.get('cache-control'), rssCacheControl)
-assertRss(await rss.text(), posts, 'https://blog.setobox.me')
+assertRss(await rss.text(), posts, 'https://blog.seto.box')
 for (const view of ['list', 'grid']) {
   await list('/posts?tag=missing&category=missing', posts.length, view)
 }
@@ -143,9 +143,9 @@ for (const [kind, field] of [['tag', 'tags'], ['category', 'categories']] as con
 for (const path of ['/about', ...posts.map(post => String(post.path))]) {
   const response = await request(path)
   const html = await response.text()
-  assert(html.includes('https://blog.setobox.me'), `正式地址：${path}`)
+  assert(html.includes('https://blog.seto.box'), `正式地址：${path}`)
   assert(/<link\s[^>]*rel="icon"[^>]*href="\/favicon\.ico"/.test(html), `页面使用本地静态图标：${path}`)
-  assert(/<link\s[^>]*rel="alternate"[^>]*href="https:\/\/blog\.setobox\.me\/rss\.xml"/.test(html), `RSS 自动发现：${path}`)
+  assert(/<link\s[^>]*rel="alternate"[^>]*href="https:\/\/blog\.seto\.box\/rss\.xml"/.test(html), `RSS 自动发现：${path}`)
   await request(`${path}/_payload.json`)
 }
 await request('/posts/__deployment_missing__', '', 404)
