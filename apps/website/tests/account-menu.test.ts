@@ -27,7 +27,7 @@ function key(target: Element, value: string) {
 }
 function mount(role?: 'admin' | 'user', path = '/posts') {
   vi.spyOn(window, 'matchMedia').mockImplementation(query => ({ matches: query.includes('prefers-reduced-motion'), media: query, onchange: null, addEventListener: vi.fn(), removeEventListener: vi.fn(), addListener: vi.fn(), removeListener: vi.fn(), dispatchEvent: () => true }))
-  const current = ref<SessionInfo>({ ...emptySession(), ssoAvailable: true, ssoLinked: false, centralLogoutAvailable: true, csrf: 'csrf', loginProvider: role ? 'sso' : null, user: role ? { id: 'user', name: '测试用户', email: 'user@example.com', avatar: 'https://example.com/avatar.png', role, local: false } : null })
+  const current = ref<SessionInfo>({ ...emptySession(), ssoAvailable: true, ssoLinked: !!role, centralLogoutAvailable: !!role, csrf: 'csrf', loginProvider: role ? 'sso' : null, user: role ? { id: 'user', name: 'MU³ 用户', email: 'user@example.com', avatar: 'https://example.com/avatar.png', role, local: false } : null })
   const auth = { current, loaded: ref(true), loading: ref(false), busy: ref(false), error: ref(''), loginOpen: ref(false), refresh: vi.fn(), logout: vi.fn(async () => {
     current.value = { ...current.value, user: null }
   }), loginUrl: vi.fn(() => '/api/auth/sso/login?returnTo=%2Fposts'), linkSso: vi.fn(async () => ({ url: 'https://id.seto.box/' })), endpoint: (path: string) => path }
@@ -87,13 +87,14 @@ test('已登录菜单无头像，导航头像显示登录平台，Esc 返回触�
   const menu = await openMenu()
   expect(dialog.open).toBe(false)
   expect(menu.textContent).toContain('user@example.com')
+  expect(menu.textContent).not.toContain('MU³ 用户')
   expect(menu.querySelector('img')).toBeNull()
   expect(button().getAttribute('aria-label')).toContain('MU³ ID')
   expect(button().querySelector('.i-lucide-circle-user-round')).not.toBeNull()
   expect(menu.textContent).not.toContain('前往后台')
-  expect(menu.textContent).toContain('退出本站')
-  expect(menu.textContent).toContain('绑定 MU³ ID')
+  expect(menu.textContent).toContain('退出登录')
   const avatar = button().querySelector('img')!
+  expect(avatar.alt).toBe('user@example.com')
   avatar.dispatchEvent(new Event('error'))
   await flush()
   expect(button().querySelector('img')).toBeNull()
@@ -108,37 +109,55 @@ test('本地会话不显示登录平台徽标', async () => {
   expect(button().getAttribute('aria-label')).toBe('账号菜单')
   expect(button().querySelector('.i-lucide-circle-user-round')).toBeNull()
 })
-test('管理员菜单支持键盘选择，后台退出后返回文章列表', async () => {
+test('本地管理员只有一个退出入口，支持键盘选择并返回文章列表', async () => {
   const { auth, openMenu, navigate } = mount('admin', '/admin')
+  auth.current.value.centralLogoutAvailable = false
+  auth.current.value.user!.local = true
   const menu = await openMenu()
   expect(menu.textContent).toContain('前往后台')
+  expect(menu.textContent).not.toContain('管理资料')
   const items = [...menu.querySelectorAll<HTMLElement>('[role="menuitem"]')]
-  const logout = items.find(item => item.textContent?.includes('退出本站'))!
+  const exits = items.filter(item => item.textContent?.includes('退出'))
+  expect(exits).toHaveLength(1)
+  const logout = exits[0]!
+  expect(logout.textContent?.trim()).toBe('退出登录')
   logout.focus()
   key(logout, 'Enter')
   await vi.waitFor(() => expect(auth.logout).toHaveBeenCalledOnce())
   expect(navigate).toHaveBeenCalledWith('/posts')
 })
-test('已绑定账号隐藏绑定入口，并提供带 CSRF 的原生账号中心退出表单', async () => {
+test.each(['click', 'Enter'])('统一账号只提供全部退出，%s 提交带 CSRF 的原生退出表单', async (interaction) => {
   const { auth, openMenu } = mount('user')
-  auth.current.value.ssoLinked = true
   const menu = await openMenu()
   expect(menu.textContent).not.toContain('绑定 MU³ ID')
-  expect(menu.querySelector('a[href="https://id.seto.box/account"]')).not.toBeNull()
+  expect(menu.querySelector('a[href="https://id.seto.box/account"]')?.textContent?.trim()).toBe('管理资料')
+  const exits = [...menu.querySelectorAll<HTMLElement>('[role="menuitem"]')].filter(item => item.textContent?.includes('退出'))
+  expect(exits).toHaveLength(1)
+  expect(exits[0]!.textContent?.trim()).toBe('退出登录')
   const form = menu.querySelector('form')!
   expect(form.method).toBe('post')
   expect(form.getAttribute('action')).toBe('/api/auth/logout')
   expect(form.querySelector<HTMLInputElement>('[name="csrf"]')!.value).toBe('csrf')
   expect(form.querySelector<HTMLInputElement>('[name="scope"]')!.value).toBe('central')
-  expect(form.textContent).toContain('同时退出账号中心')
   const submit = vi.fn((event: Event) => event.preventDefault())
   form.addEventListener('submit', submit)
-  form.querySelector('button')!.click()
+  const exit = form.querySelector('button')!
+  if (interaction === 'click') {
+    exit.click()
+  }
+  else {
+    exit.focus()
+    key(exit, 'Enter')
+  }
   expect(submit).toHaveBeenCalledOnce()
+  expect(auth.logout).not.toHaveBeenCalled()
 })
 
 test('原账号通过显式绑定入口前往账号中心', async () => {
   const { auth, openMenu, navigate } = mount('user')
+  auth.current.value.ssoLinked = false
+  auth.current.value.centralLogoutAvailable = false
+  auth.current.value.loginProvider = 'github'
   const menu = await openMenu()
   const link = [...menu.querySelectorAll<HTMLElement>('[role="menuitem"]')].find(item => item.textContent?.includes('绑定 MU³ ID'))!
   link.click()
