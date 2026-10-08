@@ -1,11 +1,15 @@
 import assert from 'node:assert/strict'
+import { existsSync } from 'node:fs'
 import { access, readFile } from 'node:fs/promises'
+import { resolve } from 'node:path'
 import { DatabaseSync } from 'node:sqlite'
 import { fileURLToPath } from 'node:url'
 import { DOMParser } from '@xmldom/xmldom'
+import { z } from 'zod'
 import { collectSeries } from '../shared/content/series.ts'
 import { pageUrl } from '../shared/site/url.ts'
 import { assertRss } from './lib/rss.ts'
+import { assertTaxonomyDirectory } from './lib/taxonomy.ts'
 
 const root = new URL('../', import.meta.url)
 const database = new DatabaseSync(fileURLToPath(new URL('.data/content/contents.sqlite', root)), { readOnly: true })
@@ -13,7 +17,9 @@ let paths: string[]
 let rssPosts: unknown
 let descriptions: Map<string, { text: string }>
 let series: ReturnType<typeof collectSeries>
+let taxonomyPosts: { tags: unknown, categories: unknown }[]
 try {
+  taxonomyPosts = database.prepare('SELECT tags, categories FROM _content_posts').all().map(row => ({ tags: row.tags, categories: row.categories }))
   series = collectSeries(database.prepare('SELECT path, title, publish, series, seriesOrder FROM _content_posts').all().map(row => ({ path: String(row.path), title: String(row.title), publish: String(row.publish), series: typeof row.series === 'string' ? row.series : undefined, seriesOrder: typeof row.seriesOrder === 'number' ? row.seriesOrder : undefined })))
   rssPosts = database.prepare('SELECT path, stem, title, description, publish, "update" FROM _content_posts').all()
   descriptions = new Map(database.prepare('SELECT path, description FROM _content_posts').all().map(row => [String(row.path), { text: String(row.description) }]))
@@ -66,7 +72,22 @@ for (const path of ['/about', ...paths]) {
   }
   await access(new URL('_payload.json', directory))
 }
-for (const path of ['posts', 'categories', 'tags', 'archive', 'series', 'tools', 'my']) {
+for (const field of ['categories', 'tags'] as const) {
+  const directory = new URL(`${field}/`, publicRoot)
+  const html = (await readFile(new URL('index.html', directory), 'utf8')).replace(/<script\b[^>]*>[\s\S]*?<\/script>/g, '')
+  const document = new DOMParser().parseFromString(html, 'text/html')
+  const detailPaths = assertTaxonomyDirectory(document, taxonomyPosts, field)
+  const payload: unknown = JSON.parse(await readFile(new URL('_payload.json', directory), 'utf8'))
+  assert(Array.isArray(payload) && payload.some(value => value && typeof value === 'object' && 'posts:catalog' in value), `/${field} 的静态数据包含文章目录，供客户端水合复用`)
+  for (const path of detailPaths)
+    await assert.rejects(access(new URL(`${path.slice(1)}/index.html`, publicRoot)), `详情页保持 SSR：${path}`)
+}
+const wranglerPath = new URL('.output/server/wrangler.json', root)
+if (existsSync(wranglerPath)) {
+  const config = z.object({ assets: z.object({ directory: z.string(), binding: z.literal('ASSETS'), run_worker_first: z.literal(false).optional() }) }).parse(JSON.parse(await readFile(wranglerPath, 'utf8')))
+  assert.equal(resolve(fileURLToPath(new URL('.', wranglerPath)), config.assets.directory), resolve(fileURLToPath(publicRoot)), 'Cloudflare 直接提供预渲染 HTML 和 payload 静态资源')
+}
+for (const path of ['posts', 'archive', 'series', 'tools', 'my']) {
   await assert.rejects(access(new URL(`${path}/index.html`, publicRoot)), `列表页不能预渲染：/${path}`)
 }
-console.log(`预渲染验收通过：${paths.length} 篇文章、关于页、导航页外壳与 RSS；文章列表保持 SSR。`)
+console.log(`预渲染验收通过：${paths.length} 篇文章、关于页、导航页外壳、分类与标签总览及 RSS；文章列表和分类、标签详情保持 SSR。`)

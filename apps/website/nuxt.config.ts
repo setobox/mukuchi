@@ -46,7 +46,7 @@ export default defineNuxtConfig({
     '#admin-driver': fileURLToPath(new URL('./server/features/admin/drivers/node', import.meta.url)),
   },
   nitro: {
-    prerender: { crawlLinks: false, failOnError: true, routes: ['/about', '/use', '/collections', rssPath] },
+    prerender: { crawlLinks: false, failOnError: true, routes: ['/about', '/use', '/collections', '/categories', '/tags', rssPath] },
     cloudflare: { deployConfig: true, nodeCompat: true },
   },
   modules: [contentImport, '@nuxt/content', '@nuxtjs/color-mode', '@unocss/nuxt', '@vueuse/nuxt', '@nuxt/eslint', githubSnapshots, coverIcons, audio, adminPreview],
@@ -69,6 +69,12 @@ export default defineNuxtConfig({
     renderer: { anchorLinks: { h2: true, h3: true, h4: true, h5: true, h6: true } },
   },
   hooks: {
+    'prerender:routes': ({ routes }) => {
+      // Let each HTML render enqueue its payload after populating Nuxt's cache.
+      // Rendering both concurrently can race the cache's atomic writes on Windows.
+      routes.delete('/categories/_payload.json')
+      routes.delete('/tags/_payload.json')
+    },
     'nitro:config': (config) => {
       const preset = process.env.NITRO_PRESET || config.preset || ''
       config.alias ||= {}
@@ -129,9 +135,11 @@ export default defineNuxtConfig({
     '/use': { prerender: true },
     '/collections': { prerender: true },
     '/posts': { prerender: false, headers: { 'cache-control': 'private, no-store' } },
-    '/categories': { prerender: false, headers: { 'cache-control': 'private, no-store' } },
+    '/categories': { prerender: true, headers: { 'cache-control': 'public, max-age=0, must-revalidate' } },
+    '/categories/_payload.json': { prerender: true },
     '/categories/**': { prerender: false, headers: { 'cache-control': 'private, no-store' } },
-    '/tags': { prerender: false, headers: { 'cache-control': 'private, no-store' } },
+    '/tags': { prerender: true, headers: { 'cache-control': 'public, max-age=0, must-revalidate' } },
+    '/tags/_payload.json': { prerender: true },
     '/tags/**': { prerender: false, headers: { 'cache-control': 'private, no-store' } },
     '/archive': { prerender: false, headers: { 'cache-control': 'private, no-store' } },
     '/series': { prerender: false, headers: { 'cache-control': 'private, no-store' } },

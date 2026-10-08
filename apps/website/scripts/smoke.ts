@@ -12,6 +12,7 @@ import { taxonomyPath } from '../shared/content/taxonomy.ts'
 import { rssCacheControl, rssContentType } from '../shared/rss/config.ts'
 import { assertSmokeStatus } from './lib/http.ts'
 import { assertRss } from './lib/rss.ts'
+import { assertTaxonomyDirectory } from './lib/taxonomy.ts'
 
 const origin = new URL(process.env.MUKUCHI_SMOKE_URL || 'http://127.0.0.1:8787')
 assert(['http:', 'https:'].includes(origin.protocol))
@@ -37,10 +38,15 @@ async function list(path: string, count: number, view = 'list') {
   assert.equal((html.match(/<article\b/g) || []).length, Math.min(count, postPageSize), path)
   assert(new RegExp(`aria-label="${view === 'grid' ? '卡片' : '列表'}显示"[^>]*aria-pressed="true"`).test(html), `${path} 的首屏显示偏好`)
 }
-async function browse() {
+async function browse(taxonomyOnly = false) {
   for (const [path, title, field] of [['/categories', '分类', 'categories'], ['/tags', '标签', 'tags'], ['/archive', '归档', null]] as const) {
+    if (taxonomyOnly && !field)
+      continue
     const response = await request(path)
-    assert(response.headers.get('cache-control')?.includes('no-store'), path)
+    if (field)
+      assert.equal(response.headers.get('cache-control'), 'public, max-age=0, must-revalidate', path)
+    else
+      assert(response.headers.get('cache-control')?.includes('no-store'), path)
     const html = (await response.text()).replace(/<script\b[^>]*>[\s\S]*?<\/script>/g, '')
     // Vite's dev stylesheet URLs contain bare ampersands, valid in HTML but
     // rejected by this XML-backed parser. Preserve existing entity references.
@@ -51,13 +57,10 @@ async function browse() {
     assert.equal(canonical?.getAttribute('href'), `https://blog.seto.box${path}`)
     assert([...document.getElementsByTagName('meta')].some(meta => meta.getAttribute('name') === 'description' && meta.getAttribute('content')), `${path} 的 SEO 简介`)
     if (field) {
-      const counts = new Map<string, number>()
-      for (const post of posts) {
-        for (const name of new Set(terms(post[field]))) counts.set(name, (counts.get(name) ?? 0) + 1)
-      }
-      const expected = [...counts].sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0))
-      const entries = [...document.getElementsByTagName('a')].filter(link => link.getAttribute('aria-label')?.endsWith('篇文章'))
-      assert.deepEqual(entries.map(link => [link.getAttribute('href'), link.getAttribute('aria-label')]), expected.map(([name, count]) => [taxonomyPath(field === 'tags' ? 'tag' : 'category', name), `${name}，${count} 篇文章`]))
+      assertTaxonomyDirectory(document, posts.map(post => ({ tags: post.tags, categories: post.categories })), field)
+      const payload = await request(`${path}/_payload.json`)
+      assert.match(payload.headers.get('content-type') || '', /application\/json/)
+      assert((await payload.text()).includes('"posts:catalog"'), `${path} 的静态数据包含文章目录`)
     }
     else {
       const timeline = [...document.getElementsByTagName('section')].find(section => section.getAttribute('aria-label') === '文章时间线')!
@@ -112,10 +115,15 @@ async function seriesBrowse() {
   await request('/api/stats/page?path=%2Fseries')
   console.log(`系列 HTTP 验收通过：${groups.length} 个系列，${groups.reduce((sum, group) => sum + group.posts.length, 0)} 篇关联文章。`)
 }
-await browse()
+const taxonomyOnly = process.argv.includes('--taxonomy-only')
+await browse(taxonomyOnly)
+if (taxonomyOnly) {
+  console.log('分类与标签总览 HTTP 验收通过：静态页面及数据、计数、排序、链接、缓存头与 SEO。')
+  process.exit(0)
+}
 await seriesBrowse()
 if (process.argv.includes('--browse-only')) {
-  console.log('内容浏览 HTTP 验收通过：归档排序与初始展开、分类与标签计数及链接、SSR 与 SEO。')
+  console.log('内容浏览 HTTP 验收通过：归档 SSR、分类与标签总览及静态数据、计数、链接与 SEO。')
   process.exit(0)
 }
 const home = await request('/', '', 302)
