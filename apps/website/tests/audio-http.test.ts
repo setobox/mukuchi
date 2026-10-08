@@ -8,7 +8,7 @@ import { createAuthRepository } from '../server/features/auth/repository'
 import { createSession } from '../server/features/auth/session'
 import { audioBucket, audioDatabase, audioSettings, audioSource } from './fixtures/audio'
 import manifest from './fixtures/audio-manifest'
-import { githubProfile } from './fixtures/auth'
+import { oidcProfile } from './fixtures/auth'
 
 const state = vi.hoisted(() => ({ db: null as AdminDatabase | null }))
 vi.mock('#admin-driver', () => ({ openDatabase: () => ({ batch: state.db!.batch, close() {} }), openStorage: vi.fn() }))
@@ -33,7 +33,7 @@ beforeEach(async () => {
   event.method = 'GET'
   headers.set('content-type', 'application/json')
   headers.set('origin', 'https://blog.test')
-  vi.stubGlobal('useRuntimeConfig', () => ({ aiEncryptionKey: btoa('a'.repeat(32)), audioSyncToken: 'sync-token-'.repeat(4), authAdminEmails: 'user1@example.com', app: { baseURL: '/' } }))
+  vi.stubGlobal('useRuntimeConfig', () => ({ aiEncryptionKey: btoa('a'.repeat(32)), audioSyncToken: 'sync-token-'.repeat(4), authAdminEmails: 'user1@example.com', appOrigin: 'https://blog.test', app: { baseURL: '/' } }))
   vi.stubGlobal('getCookie', (_event: H3Event, name: string) => cookies.get(name))
   vi.stubGlobal('setCookie', (_event: H3Event, name: string, value: string) => cookies.set(name, value))
   vi.stubGlobal('getHeader', (_event: H3Event, name: string) => headers.get(name))
@@ -50,7 +50,7 @@ afterEach(() => {
   vi.clearAllMocks()
 })
 async function login(user = 1) {
-  const account = await createAuthRepository(fixture.db).resolve({ ...githubProfile, subject: String(user), email: `user${user}@example.com` })
+  const account = await createAuthRepository(fixture.db).resolve({ ...oidcProfile, subject: String(user), email: `user${user}@example.com` })
   await createSession(event, account.id)
   headers.set('x-csrf-token', String((await fixture.repo.query('SELECT csrf FROM auth_sessions WHERE user_id = ?', [account.id]))[0]!.csrf))
 }

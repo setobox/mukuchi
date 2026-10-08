@@ -19,7 +19,7 @@ afterEach(() => {
   vi.unstubAllGlobals()
   vi.resetAllMocks()
 })
-const signed: SessionInfo = { ...emptySession(), user: { id: 'id', name: 'name', avatar: '', email: 'user@example.com', role: 'user', local: false }, csrf: 'csrf', providers: { github: true, google: true } }
+const signed: SessionInfo = { ...emptySession(), user: { id: 'id', name: 'name', avatar: '', email: 'user@example.com', role: 'user', local: false }, csrf: 'csrf', ssoAvailable: true }
 test('共享会话；网络错误保留现有用户并显示重试错误，实际退出立即清除', async () => {
   fetcher.mockResolvedValueOnce(signed)
   const auth = useAuthSession()
@@ -33,7 +33,7 @@ test('共享会话；网络错误保留现有用户并显示重试错误，实�
   await auth.logout()
   expect(auth.current.value.user).toBeNull()
   expect(fetcher).toHaveBeenLastCalledWith('/blog/api/auth/logout', expect.objectContaining({ headers: { 'x-csrf-token': 'csrf' } }))
-  expect(auth.loginUrl('google', '/posts?q=1#h')).toContain('returnTo=%2Fblog%2Fposts%3Fq%3D1%23h')
+  expect(auth.loginUrl('/posts?q=1#h')).toContain('returnTo=%2Fblog%2Fposts%3Fq%3D1%23h')
 })
 test('退出时仍在途的会话响应不能恢复已撤销的用户，重复操作被阻止', async () => {
   const auth = useAuthSession()

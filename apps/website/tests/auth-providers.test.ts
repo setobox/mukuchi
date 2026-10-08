@@ -1,46 +1,64 @@
-import type { JWTVerifyGetKey } from 'jose'
-import { createLocalJWKSet, exportJWK, generateKeyPair, SignJWT } from 'jose'
-import { beforeAll, expect, test, vi } from 'vite-plus/test'
-import { googleProfile, verifyGoogleToken } from '../server/features/auth/providers'
+import { afterEach, expect, test, vi } from 'vite-plus/test'
+import { discoverOidc, oidcProfile } from '../server/features/auth/providers'
+import { parseOidcSettings } from '../server/features/auth/settings'
+import { mockIdentityProvider, oidcConfig } from './fixtures/oidc'
 
-const keys = vi.hoisted(() => ({ resolver: null as JWTVerifyGetKey | null }))
-vi.mock('jose', async (original) => {
-  const actual = await original<typeof import('jose')>()
-  return { ...actual, createRemoteJWKSet: () => (...args: Parameters<JWTVerifyGetKey>) => keys.resolver!(...args) }
+afterEach(() => vi.unstubAllGlobals())
+
+test('UserInfo 是资料来源，邮箱必须已验证，头像提供兜底', () => {
+  const profile = { sub: 'subject', email: ' OWNER@Example.com ', email_verified: true }
+  expect(oidcProfile(profile, oidcConfig.oidcIssuer, 'subject')).toMatchObject({ name: 'owner', email: 'owner@example.com', avatar: '' })
+  expect(oidcProfile({ ...profile, picture: 'javascript:alert(1)' }, oidcConfig.oidcIssuer, 'subject').avatar).toBe('')
+  expect(() => oidcProfile({ ...profile, name: 123 }, oidcConfig.oidcIssuer, 'subject')).toThrow()
+  expect(() => oidcProfile({ ...profile, email_verified: false }, oidcConfig.oidcIssuer, 'subject')).toThrow()
+  expect(() => oidcProfile(profile, oidcConfig.oidcIssuer, 'other')).toThrow()
 })
-let pair: Awaited<ReturnType<typeof generateKeyPair>>
-beforeAll(async () => {
-  pair = await generateKeyPair('RS256')
-  keys.resolver = createLocalJWKSet({ keys: [await exportJWK(pair.publicKey)] })
+
+test.each([
+  { oidcClientSecret: '' },
+  { oidcClientSecret: 'replace-with-issued-client-secret' },
+  { oidcIssuer: 'https://id.test' },
+  { oidcIssuer: 'http://remote.test/api/auth' },
+  { oidcIssuer: 'http://localhost:5186/api/auth' },
+  { oidcIssuer: 'https://id.test/api/auth/' },
+  { oidcRedirectUri: 'https://other.test/api/auth/sso/callback' },
+  { oidcRedirectUri: 'https://blog.test/api/auth/callback' },
+  { oidcPostLogoutRedirectUri: 'https://other.test/' },
+  { oidcScopes: 'openid offline_access' },
+  { authSessionKey: 'weak' },
+  { authSessionMaxAge: 99999999 },
+])('拒绝无效生产配置 %j', (override) => {
+  expect(() => parseOidcSettings({ ...oidcConfig, ...override }, false)).toThrow()
 })
-async function token(overrides: Record<string, unknown> = {}) {
-  return new SignJWT({ sub: 'stable-google-sub', nonce: 'nonce', email: 'Owner@gmail.com', email_verified: true, ...overrides })
-    .setProtectedHeader({ alg: 'RS256' })
-    .setIssuer('https://accounts.google.com')
-    .setAudience('client')
-    .setIssuedAt()
-    .setExpirationTime('5m')
-    .sign(pair.privateKey)
-}
-test('Google 使用签名、issuer、audience、expiry、nonce 及稳定 sub 验证身份', async () => {
-  const signed = await token()
-  await expect(verifyGoogleToken(signed, 'client', 'nonce')).resolves.toMatchObject({ subject: 'stable-google-sub', email: 'owner@gmail.com', trustedEmail: true, avatar: '' })
-  await expect(verifyGoogleToken(signed, 'other-client', 'nonce')).rejects.toThrow()
-  await expect(verifyGoogleToken(signed, 'client', 'other-nonce')).rejects.toThrow()
-  await expect(verifyGoogleToken(await token({ azp: 'attacker' }), 'client', 'nonce')).rejects.toThrow()
-  const badIssuer = await new SignJWT({ sub: 's', nonce: 'nonce' }).setProtectedHeader({ alg: 'RS256' }).setIssuer('https://evil.test').setAudience('client').setIssuedAt().setExpirationTime('5m').sign(pair.privateKey)
-  await expect(verifyGoogleToken(badIssuer, 'client', 'nonce')).rejects.toThrow()
-  const expired = await new SignJWT({ sub: 's', nonce: 'nonce' }).setProtectedHeader({ alg: 'RS256' }).setIssuer('https://accounts.google.com').setAudience('client').setIssuedAt(1).setExpirationTime(2).sign(pair.privateKey)
-  await expect(verifyGoogleToken(expired, 'client', 'nonce')).rejects.toThrow()
-  const forgedPair = await generateKeyPair('RS256')
-  const forged = await new SignJWT({ sub: 's', nonce: 'nonce' }).setProtectedHeader({ alg: 'RS256' }).setIssuer('https://accounts.google.com').setAudience('client').setIssuedAt().setExpirationTime('5m').sign(forgedPair.privateKey)
-  await expect(verifyGoogleToken(forged, 'client', 'nonce')).rejects.toThrow()
+
+test('开发只允许本机 HTTP，退出地址保留登记时的尾斜杠形式', () => {
+  const local = { ...oidcConfig, appOrigin: 'http://localhost:3333', oidcIssuer: 'http://localhost:5186/api/auth', oidcRedirectUri: 'http://localhost:3333/api/auth/sso/callback', oidcPostLogoutRedirectUri: 'http://localhost:3333/' }
+  expect(parseOidcSettings(local, true).oidcPostLogoutRedirectUri).toBe(local.oidcPostLogoutRedirectUri)
+  expect(() => parseOidcSettings({ ...local, oidcIssuer: 'http://192.168.1.1/api/auth' }, true)).toThrow()
+  expect(parseOidcSettings(oidcConfig, false).oidcPostLogoutRedirectUri).toBe('https://blog.test')
 })
-test('Google 外部邮箱需本站验证，Workspace 依据 hd；未验证邮箱拒绝，缺少头像安全回退', () => {
-  const claims = { sub: 'g', email: 'owner@qq.com', email_verified: true }
-  expect(googleProfile(claims)).toMatchObject({ trustedEmail: false, avatar: '' })
-  expect(googleProfile({ ...claims, email: 'person@company.test', hd: 'company.test' })).toMatchObject({ trustedEmail: true })
-  expect(() => googleProfile({ ...claims, email_verified: false })).toThrow()
-  expect(() => googleProfile({ sub: 'g' })).toThrow()
-  expect(googleProfile({ ...claims, picture: 'javascript:alert(1)' }).avatar).toBe('')
+
+test('Discovery 检查 issuer 和必要端点，防止不安全传输', async () => {
+  const idp = await mockIdentityProvider()
+  idp.metadata.issuer = 'https://wrong.test/api/auth'
+  await expect(discoverOidc(idp.settings)).rejects.toThrow()
+  idp.metadata.issuer = idp.settings.oidcIssuer
+  idp.metadata.userinfo_endpoint = 'http://remote.test/userinfo'
+  await expect(discoverOidc(idp.settings)).rejects.toThrow()
+  idp.metadata.userinfo_endpoint = ''
+  await expect(discoverOidc(idp.settings)).rejects.toThrow()
+})
+
+test('SDK 校验成功令牌并读取 UserInfo', async () => {
+  const idp = await mockIdentityProvider()
+  const client = await import('openid-client')
+  const { exchangeIdentity } = await import('../server/features/auth/providers')
+  const config = await discoverOidc(idp.settings)
+  const verifier = client.randomPKCECodeVerifier()
+  const state = client.randomState()
+  const nonce = client.randomNonce()
+  const url = client.buildAuthorizationUrl(config, { redirect_uri: idp.settings.oidcRedirectUri, response_type: 'code', scope: 'openid profile email', state, nonce, code_challenge: await client.calculatePKCECodeChallenge(verifier), code_challenge_method: 'S256' })
+  const transaction = { browser_hash: '', verifier, nonce, issuer: idp.settings.oidcIssuer, client_id: idp.settings.oidcClientId, redirect_uri: idp.settings.oidcRedirectUri, user_id: null, session_hash: null, return_to: '/posts', expires_at: Date.now() + 600000 }
+  const result = await exchangeIdentity(config, idp.settings, idp.callback(url.href), transaction, state)
+  expect(result.profile.email).toBe('owner@example.com')
 })

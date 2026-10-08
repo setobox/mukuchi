@@ -33,9 +33,9 @@ async function call(path: string, options: { method?: string, body?: unknown, an
   return response
 }
 await call('/api/admin/articles', { anonymous: true, expected: 401 })
-const invalidCallback = await fetch(new URL('/api/auth/callback?state=invalid&code=invalid', base), { redirect: 'manual' })
+const invalidCallback = await fetch(new URL('/api/auth/sso/callback?state=invalid&code=invalid', base), { redirect: 'manual' })
 assert.equal(invalidCallback.status, 302)
-assert.ok(invalidCallback.headers.get('location')?.includes('auth_error=expired'))
+assert.match(invalidCallback.headers.get('location') ?? '', /auth_error=(?:expired|unavailable)/)
 await call('/api/auth/local', { method: 'POST', headers: { 'x-admin-request': '1', 'x-forwarded-for': '127.0.0.1' }, expected: 403 })
 const login = await call('/api/auth/local', { method: 'POST', headers: { 'x-admin-request': '1' }, expected: worker ? 403 : 200 })
 if (!worker)

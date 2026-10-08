@@ -8,7 +8,7 @@ const request = (path: string) => fetch(new URL(path, origin), { redirect: 'manu
 const session = await request('/api/auth/session')
 assert.equal(session.status, 200, '生产登录接口不可用')
 assert.match(session.headers.get('cache-control') ?? '', /no-store/)
-z.object({ user: z.null(), csrf: z.null(), localAvailable: z.literal(false), providers: z.object({ github: z.literal(true), google: z.literal(true) }), linkedProviders: z.array(z.string()).length(0), pendingVerification: z.null() }).parse(await session.json())
+z.object({ user: z.null(), csrf: z.null(), localAvailable: z.literal(false), ssoAvailable: z.literal(true), ssoLinked: z.literal(false), centralLogoutAvailable: z.literal(false) }).parse(await session.json())
 for (const path of ['/api/admin/articles', '/api/admin/ai/settings', `/api/admin/drafts/${crypto.randomUUID()}/summary`, `/api/admin/assets/${crypto.randomUUID()}`])
   assert.equal((await request(path)).status, 401, '生产后台必须验证会话')
 const page = await request('/admin')

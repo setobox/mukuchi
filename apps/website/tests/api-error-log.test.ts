@@ -92,7 +92,7 @@ test.each([
   ['auth', defineAuthHandler],
   ['assistant', defineAssistantHandler],
   ['stats', defineStatsHandler],
-] as const)('%s 处理器捕获的错误仍记录原始异常，公开响应保持脱敏', async (name, defineHandler) => {
+] as const)('%s 处理器公开响应脱敏，认证异常不泄漏提供方响应', async (name, defineHandler) => {
   const event = request(`/api/${name}/example`)
   startApiErrorLog(event)
   const error = new Error('private provider detail')
@@ -102,7 +102,7 @@ test.each([
   const response = await handler(event)
   expect(event.node.res.statusCode).toBe(503)
   expect(JSON.stringify(response)).not.toContain('private provider detail')
-  expect(output).toHaveBeenCalledWith(expect.stringContaining(`[API] POST /api/${name}/example 503`), expect.objectContaining({ statusCode: 503 }), error)
+  expect(output).toHaveBeenCalledWith(expect.stringContaining(`[API] POST /api/${name}/example 503`), expect.objectContaining({ statusCode: 503 }), name === 'auth' ? new Error('账号服务暂时不可用，请稍后重试') : error)
 })
 
 test('已处理的 4xx 也记录，成功请求保持安静', async () => {

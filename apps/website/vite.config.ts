@@ -4,6 +4,10 @@ import { defineConfig } from 'vite-plus'
 export default defineConfig({
   run: {
     tasks: {
+      'auth:smoke': {
+        command: 'node scripts/smoke-auth.ts',
+        cache: false,
+      },
       'audio:check-build': {
         command: 'node scripts/check-audio-build.ts',
         cache: false,

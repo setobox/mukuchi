@@ -1,14 +1,14 @@
 import type { H3Event } from 'h3'
-import type { AuthProvider } from '../../../shared/auth/model'
+import * as oidc from 'openid-client'
 import { z } from 'zod'
 import { sha256 } from '../../../shared/admin/model'
 import { AuthError, safeReturnTo } from '../../../shared/auth/model'
 import { authCookieOptions, readAuthJson, withAuth } from './http'
-import { callbackUrl, exchangeProfile, providerConfig } from './providers'
+import { discoverOidc, exchangeIdentity } from './providers'
 import { createSession, requireAuthSession, session } from './session'
-import { beginVerification, clearVerification, sendVerification } from './verification'
+import { oidcSettings } from './settings'
 
-const stateCookie = (provider: AuthProvider) => `mukuchi:oauth:${provider}`
+export const transactionCookie = 'mukuchi:oidc:transaction'
 export function authReturn(event: H3Event, returnTo: string, result?: string, error?: string) {
   const url = new URL(safeReturnTo(returnTo, useRuntimeConfig(event).app.baseURL), 'https://return.invalid')
   if (result)
@@ -17,83 +17,73 @@ export function authReturn(event: H3Event, returnTo: string, result?: string, er
     url.searchParams.set('auth_error', error)
   return `${url.pathname}${url.search}${url.hash}`
 }
-export async function startLogin(event: H3Event, provider: AuthProvider) {
+export async function startLogin(event: H3Event) {
   try {
-    return await startOAuth(event, provider)
+    return sendRedirect(event, (await startOAuth(event)).url)
   }
   catch (cause) {
-    const returnTo = safeReturnTo(getQuery(event).returnTo, useRuntimeConfig(event).app.baseURL)
-    return sendRedirect(event, authReturn(event, returnTo, 'login', cause instanceof AuthError ? cause.code : 'failed'))
+    return sendRedirect(event, authReturn(event, safeReturnTo(getQuery(event).returnTo, useRuntimeConfig(event).app.baseURL), 'login', cause instanceof AuthError ? cause.code : 'failed'))
   }
 }
-export async function startOAuth(event: H3Event, provider: AuthProvider = 'github', link = false) {
-  const config = providerConfig(event, provider)
-  if (!config.id || !config.secret)
-    throw new AuthError(503, '此登录方式尚未配置', 'unavailable')
+export async function startOAuth(event: H3Event, link = false) {
+  const settings = oidcSettings(event)
   const current = link ? await requireAuthSession(event) : null
   if (current?.user.local)
-    throw new AuthError(400, '本地开发会话不能关联第三方账号')
+    throw new AuthError(400, '本地开发会话不能绑定账号中心')
   const input = link ? z.object({ returnTo: z.string().optional() }).parse(await readAuthJson(event)) : getQuery(event)
   const returnTo = safeReturnTo(input.returnTo, useRuntimeConfig(event).app.baseURL)
-  const state = crypto.randomUUID()
-  const verifier = `${crypto.randomUUID()}${crypto.randomUUID()}`.replace(/-/g, '')
-  const nonce = crypto.randomUUID()
-  const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier)))
-  const challenge = btoa(String.fromCharCode(...digest)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
-  await withAuth(event, async repo => repo.saveOAuth(await sha256(state), { provider, verifier, nonce, user_id: current?.user.id ?? null, session_hash: current?.hash ?? null, return_to: returnTo, expires_at: Date.now() + 600_000 }))
-  setCookie(event, stateCookie(provider), state, authCookieOptions(event, 600))
-  const url = new URL(config.authorize)
-  url.search = new URLSearchParams({ client_id: config.id, redirect_uri: callbackUrl(event, provider), response_type: 'code', state, scope: config.scope, code_challenge: challenge, code_challenge_method: 'S256', ...(provider === 'google' ? { nonce, prompt: 'select_account' } : {}) }).toString()
-  return link ? { url: url.href } : sendRedirect(event, url.href)
+  const config = await discoverOidc(settings)
+  const state = oidc.randomState()
+  const browser = oidc.randomState()
+  const verifier = oidc.randomPKCECodeVerifier()
+  const nonce = oidc.randomNonce()
+  const challenge = await oidc.calculatePKCECodeChallenge(verifier)
+  await withAuth(event, async repo => repo.saveTransaction(await sha256(state), { browser_hash: await sha256(browser), verifier, nonce, issuer: settings.oidcIssuer, client_id: settings.oidcClientId, redirect_uri: settings.oidcRedirectUri, user_id: current?.user.id ?? null, session_hash: current?.hash ?? null, return_to: returnTo, expires_at: Date.now() + 600_000 }))
+  setCookie(event, transactionCookie, browser, authCookieOptions(event, 600))
+  const url = oidc.buildAuthorizationUrl(config, { client_id: settings.oidcClientId, redirect_uri: settings.oidcRedirectUri, response_type: 'code', scope: settings.oidcScopes, state, nonce, code_challenge: challenge, code_challenge_method: 'S256' })
+  return { url: url.href }
 }
-export async function finishOAuth(event: H3Event, provider: AuthProvider = 'github') {
+export async function finishOAuth(event: H3Event) {
   let returnTo = safeReturnTo(undefined, useRuntimeConfig(event).app.baseURL)
-  let verifying = false
   try {
-    const query = z.object({ state: z.uuid(), code: z.string().min(1).max(4096).optional(), error: z.string().max(200).optional() }).safeParse(getQuery(event))
-    if (!query.success || getCookie(event, stateCookie(provider)) !== query.data.state)
+    const settings = oidcSettings(event)
+    // Ignore incoming Host and proxy headers; only transfer the response query.
+    const callback = new URL(settings.oidcRedirectUri)
+    callback.search = getRequestURL(event).search
+    const states = callback.searchParams.getAll('state')
+    const state = states[0]
+    const browser = getCookie(event, transactionCookie)
+    if (states.length !== 1 || !state || state.length > 256 || !browser || browser.length > 256)
       throw new AuthError(400, '登录请求已失效', 'expired')
-    deleteCookie(event, stateCookie(provider), authCookieOptions(event, 0))
-    const request = await withAuth(event, async repo => repo.consumeOAuth(await sha256(query.data.state), provider))
-    if (!request)
-      throw new AuthError(400, '登录请求已过期或使用', 'expired')
-    returnTo = request.return_to
-    if (query.data.error)
-      throw new AuthError(400, '已取消授权', 'cancelled')
-    if (!query.data.code)
-      throw new AuthError(400, '缺少授权码', 'expired')
-    const profile = await exchangeProfile(event, provider, query.data.code, request.verifier, request.nonce)
-    if (request.user_id) {
+    const transaction = await withAuth(event, async repo => repo.consumeTransaction(await sha256(state), await sha256(browser)))
+    if (!transaction || transaction.issuer !== settings.oidcIssuer || transaction.client_id !== settings.oidcClientId || transaction.redirect_uri !== settings.oidcRedirectUri)
+      throw new AuthError(400, '登录请求已失效', 'expired')
+    returnTo = transaction.return_to
+    if (callback.searchParams.has('error'))
+      throw new AuthError(400, '授权失败', callback.searchParams.get('error') === 'access_denied' ? 'cancelled' : 'failed')
+    let link: { userId: string, sessionHash: string } | undefined
+    if (transaction.user_id) {
       const current = await session(event)
-      if (!current || current.user.local || current.hash !== request.session_hash || current.user.id !== request.user_id)
-        throw new AuthError(401, '关联请求已失效，请重新登录', 'expired')
-      if (current.user.email !== profile.email)
-        throw new AuthError(400, '邮箱不一致', 'mismatch')
-      await withAuth(event, repo => repo.link(current.user.id, profile))
-      return sendRedirect(event, authReturn(event, returnTo, 'linked'))
+      if (!current || current.user.local || current.user.id !== transaction.user_id || current.hash !== transaction.session_hash)
+        throw new AuthError(403, '关联会话已失效', 'expired')
+      link = { userId: current.user.id, sessionHash: current.hash }
     }
-    const existing = await withAuth(event, repo => repo.identity(provider, profile.subject))
-    if (existing) {
-      await withAuth(event, repo => repo.syncProfile(existing.id, profile))
-      await createSession(event, existing.id, provider)
+    const config = await discoverOidc(settings)
+    const identity = await exchangeIdentity(config, settings, callback, transaction, state)
+    if (link) {
+      const current = await session(event)
+      if (!current || current.hash !== link.sessionHash)
+        throw new AuthError(403, '关联会话已失效', 'expired')
+      if (current.user.email !== identity.profile.email)
+        throw new AuthError(403, '绑定邮箱必须一致', 'mismatch')
     }
-    else if (profile.trustedEmail) {
-      const user = await withAuth(event, repo => repo.resolve(profile))
-      await createSession(event, user.id, provider)
-    }
-    else {
-      if (await withAuth(event, repo => repo.emailExists(profile.email)))
-        throw new AuthError(409, '请先登录已有账号再关联', 'link')
-      const hash = await beginVerification(event, profile, returnTo)
-      verifying = true
-      await sendVerification(event, hash)
-      return sendRedirect(event, authReturn(event, returnTo, 'verify'))
-    }
-    await clearVerification(event)
+    const user = await withAuth(event, repo => repo.resolve(identity.profile, link))
+    await createSession(event, user.id, { issuer: settings.oidcIssuer, idToken: identity.idToken })
     return sendRedirect(event, authReturn(event, returnTo))
   }
   catch (cause) {
-    const code = cause instanceof AuthError ? cause.code : 'failed'
-    return sendRedirect(event, authReturn(event, returnTo, verifying ? 'verify' : 'login', code))
+    // SDK errors can contain tokens/response bodies. Never log or expose them.
+    return sendRedirect(event, authReturn(event, returnTo, 'login', cause instanceof AuthError ? cause.code : 'failed'))
   }
+  finally { deleteCookie(event, transactionCookie, authCookieOptions(event, 0)) }
 }

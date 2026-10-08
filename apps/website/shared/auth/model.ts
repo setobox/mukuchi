@@ -1,11 +1,12 @@
 import { z } from 'zod'
 
-export const providerSchema = z.enum(['github', 'google'])
+// Legacy providers are read only, for migration of existing sessions.
+export const providerSchema = z.enum(['sso', 'github', 'google'])
 export type AuthProvider = z.infer<typeof providerSchema>
 export const emailSchema = z.string().trim().toLowerCase().pipe(z.email().max(254))
 export const avatarSchema = z.string().max(2048).refine(value => !value || (URL.canParse(value) && new URL(value).protocol === 'https:'))
 export const profileSchema = z.object({
-  provider: providerSchema,
+  issuer: z.url(),
   subject: z.string().min(1).max(255),
   email: emailSchema,
   name: z.string().min(1).max(200),
@@ -13,7 +14,7 @@ export const profileSchema = z.object({
   trustedEmail: z.boolean(),
 })
 export type AuthProfile = z.infer<typeof profileSchema>
-export const userSchema = z.object({ id: z.uuid(), email: emailSchema, name: z.string(), avatar: avatarSchema })
+export const userSchema = z.object({ id: z.uuid(), email: emailSchema, name: z.string(), avatar: avatarSchema, disabled: z.number() })
 export type AuthUser = z.infer<typeof userSchema>
 export interface Account {
   id: string
@@ -23,32 +24,32 @@ export interface Account {
   role: 'admin' | 'user'
   local: boolean
 }
-export interface PendingVerification { email: string, expiresAt: number, resendAfter: number, csrf: string }
 export interface SessionInfo {
   user: Account | null
   loginProvider: AuthProvider | null
   csrf: string | null
   localAvailable: boolean
-  providers: Record<AuthProvider, boolean>
-  linkedProviders: AuthProvider[]
-  pendingVerification: PendingVerification | null
+  ssoAvailable: boolean
+  ssoLinked: boolean
+  centralLogoutAvailable: boolean
 }
 export function emptySession(): SessionInfo {
-  return { user: null, loginProvider: null, csrf: null, localAvailable: false, providers: { github: false, google: false }, linkedProviders: [], pendingVerification: null }
+  return { user: null, loginProvider: null, csrf: null, localAvailable: false, ssoAvailable: false, ssoLinked: false, centralLogoutAvailable: false }
 }
 export class AuthError extends Error {
   constructor(public statusCode: number, message: string, public code = 'failed') { super(message) }
 }
 export const authMessages: Record<string, string> = {
   failed: '登录失败，请稍后重试。',
-  cancelled: '已取消授权，可以选择其他方式登录。',
+  cancelled: '已取消授权，可以重新使用 MU³ ID 登录。',
   expired: '登录请求已失效，请重新登录。',
-  email: '请先在登录平台设置并验证主邮箱。',
-  link: '此邮箱已有账号，请先使用原登录方式登录，再在账号菜单中关联 Google。',
+  email: '请先在 MU³ ID 设置并验证邮箱。',
+  link: '此邮箱已有本站账号，请在原账号的有效会话中绑定 MU³ ID；会话已过期时请联系站点管理员验证账号归属。',
   conflict: '此登录方式已关联其他账号，无法继续关联。',
   mismatch: '关联账号的邮箱必须与当前账号一致。',
-  mail: '验证码发送失败，请稍后点击重新发送。',
-  unavailable: '此登录方式尚未配置，请选择其他方式。',
+  disabled: '本站账号已停用，请联系站点管理员。',
+  unavailable: 'MU³ ID 登录尚未配置，请稍后重试。',
+  logout: '已退出本站，但账号中心暂时无法退出。可前往 MU³ ID 退出。',
 }
 export function adminEmails(value: unknown): string[] {
   if (typeof value !== 'string' || !value.trim())

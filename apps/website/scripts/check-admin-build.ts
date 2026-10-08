@@ -9,7 +9,7 @@ import './stats-environment.ts'
 function files(directory: string): string[] {
   return readdirSync(directory, { withFileTypes: true }).flatMap(entry => entry.isDirectory() ? files(join(directory, entry.name)) : [join(directory, entry.name)])
 }
-const forbidden = ['NUXT_GITHUB_CLIENT_SECRET', 'NUXT_GOOGLE_CLIENT_SECRET', 'NUXT_AUTH_SECRET', 'NUXT_RESEND_API_KEY', 'NUXT_GITHUB_PUBLISH_TOKEN', 'NUXT_STATS_HASH_SECRET', 'NUXT_STATS_ADMIN_TOKEN', 'NUXT_AI_ENCRYPTION_KEY', 'NUXT_AUDIO_SYNC_TOKEN'].map(key => process.env[key]).filter((value): value is string => !!value)
+const forbidden = ['NUXT_OIDC_CLIENT_SECRET', 'NUXT_AUTH_SESSION_KEY', 'NUXT_GITHUB_CLIENT_SECRET', 'NUXT_GOOGLE_CLIENT_SECRET', 'NUXT_AUTH_SECRET', 'NUXT_RESEND_API_KEY', 'NUXT_GITHUB_PUBLISH_TOKEN', 'NUXT_STATS_HASH_SECRET', 'NUXT_STATS_ADMIN_TOKEN', 'NUXT_AI_ENCRYPTION_KEY', 'NUXT_AUDIO_SYNC_TOKEN'].map(key => process.env[key]).filter((value): value is string => !!value)
 // A contact already published literally on the privacy page is public information.
 // Still check every other administrator address, and all secrets without exceptions.
 const privacy = existsSync('app/pages/privacy.vue') ? readFileSync('app/pages/privacy.vue', 'utf8') : ''
@@ -26,11 +26,15 @@ if (existsSync(filename)) {
       for (const row of database.prepare(`SELECT id FROM ${table}`).all())
         forbidden.push(String(row.id))
     }
-    for (const [table, columns] of [['auth_users', 'id,email'], ['auth_sessions', 'token_hash,csrf'], ['auth_oauth', 'state_hash,verifier,nonce'], ['auth_verifications', 'token_hash,email,profile,csrf,code_hash']]) {
+    for (const [table, columns] of [['auth_users', 'id,email'], ['auth_sessions', 'token_hash,csrf'], ['auth_oauth', 'state_hash,verifier,nonce'], ['auth_verifications', 'token_hash,email,profile,csrf,code_hash'], ['auth_login_transactions', 'state_hash,browser_hash,verifier,nonce'], ['auth_oidc_identities', 'subject,user_id']]) {
       if (database.prepare('SELECT name FROM sqlite_master WHERE name = ?').get(table!)) {
         for (const row of database.prepare(`SELECT ${columns} FROM ${table}`).all())
           forbidden.push(...Object.values(row).filter((value): value is string => typeof value === 'string' && !!value))
       }
+    }
+    if (database.prepare('PRAGMA table_info(auth_sessions)').all().some(column => column.name === 'encrypted_id_token')) {
+      for (const row of database.prepare('SELECT encrypted_id_token FROM auth_sessions WHERE encrypted_id_token IS NOT NULL').all())
+        forbidden.push(String(row.encrypted_id_token))
     }
     if (database.prepare('SELECT name FROM sqlite_master WHERE name = \'admin_ai_settings\'').get()) {
       for (const row of database.prepare('SELECT encrypted_key FROM admin_ai_settings WHERE encrypted_key != \'\'').all())

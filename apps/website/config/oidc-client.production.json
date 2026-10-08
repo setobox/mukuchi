@@ -1,0 +1,9 @@
+{
+  "clientId": "mukuchi",
+  "name": "mukuchi 博客",
+  "redirectUris": ["https://blog.setobox.me/api/auth/sso/callback"],
+  "postLogoutRedirectUris": ["https://blog.setobox.me"],
+  "scopes": ["openid", "profile", "email"],
+  "skipConsent": false,
+  "disabled": false
+}

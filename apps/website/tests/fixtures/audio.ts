@@ -13,6 +13,7 @@ export function audioDatabase() {
   sqlite.exec(readFileSync(new URL('../../migrations/admin/0003_audio.sql', import.meta.url), 'utf8'))
   sqlite.exec(readFileSync(new URL('../../migrations/admin/0004_auth.sql', import.meta.url), 'utf8'))
   sqlite.exec(readFileSync(new URL('../../migrations/admin/0005_session_login_provider.sql', import.meta.url), 'utf8'))
+  sqlite.exec(readFileSync(new URL('../../migrations/admin/0009_oidc.sql', import.meta.url), 'utf8'))
   const db: AdminDatabase = { close: () => sqlite.close(), async batch(statements) {
     sqlite.exec('BEGIN IMMEDIATE')
     try {

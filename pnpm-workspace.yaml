@@ -67,6 +67,7 @@ catalog:
   happy-dom: 20.14.5
   jose: ^6.2.12
   nuxt: 4.5.2
+  openid-client: ^6.8.8
   reka-ui: 2.9.2
   slugify: 1.6.9
   typescript: ^6.0.3

@@ -1,0 +1,9 @@
+{
+  "clientId": "mukuchi-dev",
+  "name": "mukuchi 博客（开发）",
+  "redirectUris": ["http://localhost:3333/api/auth/sso/callback"],
+  "postLogoutRedirectUris": ["http://localhost:3333/"],
+  "scopes": ["openid", "profile", "email"],
+  "skipConsent": false,
+  "disabled": false
+}

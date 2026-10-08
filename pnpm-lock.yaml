@@ -206,6 +206,9 @@ catalogs:
     nuxt:
       specifier: 4.5.2
       version: 4.5.2
+    openid-client:
+      specifier: ^6.8.8
+      version: 6.8.8
     reka-ui:
       specifier: 2.9.2
       version: 2.9.2
@@ -316,6 +319,9 @@ importers:
       nuxt:
         specifier: 'catalog:'
         version: 4.5.2(b5420c656d383253ac3cd2ee2e67f190)
+      openid-client:
+        specifier: 'catalog:'
+        version: 6.8.8
       reka-ui:
         specifier: 'catalog:'
         version: 2.9.2(vue@3.5.42(typescript@6.0.3))
@@ -5983,6 +5989,9 @@ packages:
     engines: {node: '>=18'}
     hasBin: true
 
+  oauth4webapi@3.8.8:
+    resolution: {integrity: sha512-8N28E+a/oxfXWBgOMt+ZP/JUf/XR+IFbvkAEPP3gznXOMv9BpAAwiIj0TFNz3tGTPc0ZQ8zmWBNgN1nAys0gng==}
+
   object-deep-merge@2.0.1:
     resolution: {integrity: sha512-aKttDKcU3pyZqKcCkDhsMn70WmZFG2JGDQLP9EcLyTSIFQRCPWLAmBZRLJnrVUrhPG1jETEEbfdgbNtJf1LyMg==}
 
@@ -6023,6 +6032,9 @@ packages:
   open@11.0.3:
     resolution: {integrity: sha512-b3souUgU0VaAvMmzA4+9cRgrOgMdE0vc9H9VhQ0FYnjjcyZ8R/f9DiwMU9V8rl+vjf05On9UJhbgb06fsTs87Q==}
     engines: {node: '>=20'}
+
+  openid-client@6.8.8:
+    resolution: {integrity: sha512-ZsucJA5Ad04Uv7YN4ql+s4GXNmb9uAYQwyJTsJx7CH/MX3JZioLE2pVKi1SC+YrbSLA4Px3Gi30dMjgOZtb6pA==}
 
   optionator@0.9.4:
     resolution: {integrity: sha512-6IpQ7mKUxRcZNLIObR0hz7lxsapSSIYNZJwXPGeF0mTVqGKFIXj1DQcMoT22S3ROcLyY/rz0PWaWZ9ayWmad9g==}
@@ -13892,6 +13904,8 @@ snapshots:
       pathe: 2.0.3
       tinyexec: 1.3.1
 
+  oauth4webapi@3.8.8: {}
+
   object-deep-merge@2.0.1: {}
 
   object-identity@0.2.3: {}
@@ -13936,6 +13950,11 @@ snapshots:
       is-inside-container: 1.0.0
       powershell-utils: 0.2.1
       wsl-utils: 1.0.0
+
+  openid-client@6.8.8:
+    dependencies:
+      jose: 6.2.12
+      oauth4webapi: 3.8.8
 
   optionator@0.9.4:
     dependencies:

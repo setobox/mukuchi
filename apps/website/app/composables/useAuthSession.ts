@@ -1,4 +1,4 @@
-import type { AuthProvider, SessionInfo } from '#shared/auth/model'
+import type { SessionInfo } from '#shared/auth/model'
 import { emptySession } from '#shared/auth/model'
 
 export function authError(error: unknown) {
@@ -20,7 +20,7 @@ export function useAuthSession() {
     const request = ++revision.value
     loading.value = true
     try {
-      const value = await $fetch<SessionInfo>(endpoint('/api/auth/session'))
+      const value = await $fetch<SessionInfo>(endpoint('/api/auth/me'))
       if (request === revision.value) {
         current.value = value
         error.value = ''
@@ -58,7 +58,7 @@ export function useAuthSession() {
       await $fetch(endpoint('/api/auth/logout'), { method: 'POST', headers: { 'x-csrf-token': current.value.csrf ?? '' }, retry: 0 })
       revision.value++
       loading.value = false
-      current.value = { ...emptySession(), providers: current.value.providers, localAvailable: current.value.localAvailable }
+      current.value = { ...emptySession(), ssoAvailable: current.value.ssoAvailable, localAvailable: current.value.localAvailable }
     })
   }
   async function localLogin() {
@@ -67,24 +67,11 @@ export function useAuthSession() {
       await refresh()
     })
   }
-  function loginUrl(provider: AuthProvider, returnTo: string) {
-    return `${endpoint(`/api/auth/${provider}`)}?${new URLSearchParams({ returnTo: `${base}${returnTo}` })}`
+  function loginUrl(returnTo: string) {
+    return `${endpoint('/api/auth/sso/login')}?${new URLSearchParams({ returnTo: `${base}${returnTo}` })}`
   }
-  async function linkGoogle(returnTo: string) {
-    return perform(() => $fetch<{ url: string }>(endpoint('/api/auth/link/google'), { method: 'POST', headers: { 'x-csrf-token': current.value.csrf ?? '' }, body: { returnTo: `${base}${returnTo}` }, retry: 0 }))
+  async function linkSso(returnTo: string) {
+    return perform(() => $fetch<{ url: string }>(endpoint('/api/auth/sso/link'), { method: 'POST', headers: { 'x-csrf-token': current.value.csrf ?? '' }, body: { returnTo: `${base}${returnTo}` }, retry: 0 }))
   }
-  async function sendCode() {
-    await perform(async () => {
-      await $fetch(endpoint('/api/auth/email/send'), { method: 'POST', headers: { 'x-csrf-token': current.value.pendingVerification?.csrf ?? '' }, retry: 0 })
-      await refresh()
-    })
-  }
-  async function verifyCode(code: string) {
-    return perform(async () => {
-      const result = await $fetch<{ returnTo: string }>(endpoint('/api/auth/email/verify'), { method: 'POST', headers: { 'x-csrf-token': current.value.pendingVerification?.csrf ?? '' }, body: { code }, retry: 0 })
-      await refresh()
-      return result
-    })
-  }
-  return { current, loaded, loading, busy, error, loginOpen, endpoint, refresh, logout, localLogin, loginUrl, linkGoogle, sendCode, verifyCode }
+  return { current, loaded, loading, busy, error, loginOpen, endpoint, refresh, logout, localLogin, loginUrl, linkSso }
 }

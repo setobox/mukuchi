@@ -54,7 +54,7 @@ watch(() => route.path, () => {
           <p class="mb-6 text-muted">
             {{ current.user ? '此账号没有管理权限。' : '请使用管理员邮箱对应的账号登录。' }}
           </p>
-          <BaseButton v-if="!current.user && (current.providers.github || current.providers.google)" @click="loginOpen = true">
+          <BaseButton v-if="!current.user && current.ssoAvailable" @click="loginOpen = true">
             登录
           </BaseButton>
           <p v-else-if="!current.localAvailable" class="text-muted">

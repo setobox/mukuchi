@@ -30,6 +30,7 @@
     "gsap": "catalog:",
     "jose": "catalog:",
     "nuxt": "catalog:",
+    "openid-client": "catalog:",
     "reka-ui": "catalog:",
     "slugify": "catalog:",
     "vue": "catalog:",

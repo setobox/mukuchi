@@ -14,7 +14,7 @@ onMounted(async () => {
     await auth.refresh()
   const result = route.query.auth
   const failure = route.query.auth_error
-  if (result === 'login' || result === 'verify') {
+  if (result === 'login') {
     loginOpen.value = true
     if (typeof failure === 'string')
       error.value = authMessages[failure] ?? authMessages.failed!
@@ -38,10 +38,10 @@ async function signOut() {
   }
   catch { /* Leave the menu open with the shared error. */ }
 }
-async function linkGoogle() {
+async function linkSso() {
   linking.value = true
   try {
-    const result = await auth.linkGoogle(route.fullPath)
+    const result = await auth.linkSso(route.fullPath)
     await navigateTo(result.url, { external: true })
   }
   catch { linking.value = false }
@@ -51,10 +51,10 @@ async function linkGoogle() {
 <template>
   <DropdownMenuRoot v-if="current.user" v-model:open="menuOpen" :modal="false">
     <DropdownMenuTrigger as-child>
-      <button type="button" class="icon-button relative" :aria-label="current.loginProvider ? `账号菜单，使用 ${current.loginProvider === 'github' ? 'GitHub' : 'Google'} 登录` : '账号菜单'" title="账号菜单">
+      <button type="button" class="icon-button relative" :aria-label="current.loginProvider ? `账号菜单，使用 ${current.loginProvider === 'sso' ? 'MU³ ID' : '原账号'} 登录` : '账号菜单'" title="账号菜单">
         <AccountAvatar :src="current.user.avatar" :name="current.user.name" class="size-8" />
         <span v-if="current.loginProvider" class="absolute bottom-0.5 right-0.5 size-4 flex items-center justify-center border border-line rounded-full bg-canvas" aria-hidden="true">
-          <span :class="current.loginProvider === 'github' ? 'i-lucide-github' : 'i-logos-google-icon'" class="size-3" />
+          <span class="i-lucide-circle-user-round size-3" />
         </span>
       </button>
     </DropdownMenuTrigger>
@@ -74,12 +74,26 @@ async function linkGoogle() {
             <span class="i-lucide-layout-dashboard" aria-hidden="true" />前往后台
           </NuxtLink>
         </DropdownMenuItem>
-        <DropdownMenuItem v-if="!current.user.local && current.providers.google && !current.linkedProviders.includes('google')" :disabled="busy || linking" class="control-quiet min-h-11 flex cursor-pointer items-center gap-3 px-3 text-muted outline-none data-[highlighted]:bg-accent-surface data-[highlighted]:text-accent-soft" @select.prevent="linkGoogle">
-          <span class="i-lucide-link" aria-hidden="true" />{{ linking ? '正在前往关联…' : '关联 Google' }}
+        <DropdownMenuItem v-if="!current.user.local" as-child>
+          <a href="https://id.seto.box/account" target="_blank" rel="noopener noreferrer" class="control-quiet min-h-11 flex cursor-pointer items-center gap-3 px-3 outline-none data-[highlighted]:bg-accent-surface">
+            <span class="i-lucide-user-round-pen" aria-hidden="true" />管理 MU³ ID 资料
+          </a>
+        </DropdownMenuItem>
+        <DropdownMenuItem v-if="!current.user.local && current.ssoAvailable && !current.ssoLinked" :disabled="busy || linking" class="control-quiet min-h-11 flex cursor-pointer items-center gap-3 px-3 text-muted outline-none data-[highlighted]:bg-accent-surface data-[highlighted]:text-accent-soft" @select.prevent="linkSso">
+          <span class="i-lucide-link" aria-hidden="true" />{{ linking ? '正在前往关联…' : '绑定 MU³ ID' }}
         </DropdownMenuItem>
         <DropdownMenuItem :disabled="busy || linking" class="control-quiet min-h-11 flex cursor-pointer items-center gap-3 px-3 outline-none data-[highlighted]:bg-accent-surface data-[highlighted]:text-accent-soft" @select.prevent="signOut">
-          <span class="i-lucide-log-out" aria-hidden="true" />{{ busy ? '正在处理…' : '退出登录' }}
+          <span class="i-lucide-log-out" aria-hidden="true" />{{ busy ? '正在处理…' : '退出本站' }}
         </DropdownMenuItem>
+        <form v-if="current.centralLogoutAvailable" :action="auth.endpoint('/api/auth/logout')" method="post">
+          <input type="hidden" name="csrf" :value="current.csrf ?? ''">
+          <input type="hidden" name="scope" value="central">
+          <DropdownMenuItem as-child @select.prevent>
+            <button type="submit" :disabled="busy || linking" class="control-quiet min-h-11 w-full flex cursor-pointer items-center gap-3 px-3 text-left outline-none data-[highlighted]:bg-accent-surface">
+              <span class="i-lucide-log-out" aria-hidden="true" />同时退出账号中心
+            </button>
+          </DropdownMenuItem>
+        </form>
         <p v-if="error" role="alert" class="p-3 text-xs text-error">
           {{ error }}
         </p>

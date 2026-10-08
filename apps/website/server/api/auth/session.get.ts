@@ -1,9 +1,8 @@
 import { defineAuthHandler } from '../../features/auth/http'
-import { availableProviders } from '../../features/auth/providers'
 import { isLocal, session } from '../../features/auth/session'
-import { verificationInfo } from '../../features/auth/verification'
+import { ssoAvailable } from '../../features/auth/settings'
 
 export default defineAuthHandler(async (event) => {
   const current = await session(event)
-  return { user: current?.user ?? null, loginProvider: current?.loginProvider ?? null, csrf: current?.csrf ?? null, localAvailable: isLocal(event), providers: availableProviders(event), linkedProviders: current?.linkedProviders ?? [], pendingVerification: await verificationInfo(event) }
+  return { user: current?.user ?? null, loginProvider: current?.loginProvider ?? null, csrf: current?.csrf ?? null, localAvailable: isLocal(event), ssoAvailable: ssoAvailable(event), ssoLinked: current?.ssoLinked ?? false, centralLogoutAvailable: current?.centralLogoutAvailable ?? false }
 })

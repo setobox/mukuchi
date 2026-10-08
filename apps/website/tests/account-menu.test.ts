@@ -27,10 +27,10 @@ function key(target: Element, value: string) {
 }
 function mount(role?: 'admin' | 'user', path = '/posts') {
   vi.spyOn(window, 'matchMedia').mockImplementation(query => ({ matches: query.includes('prefers-reduced-motion'), media: query, onchange: null, addEventListener: vi.fn(), removeEventListener: vi.fn(), addListener: vi.fn(), removeListener: vi.fn(), dispatchEvent: () => true }))
-  const current = ref<SessionInfo>({ ...emptySession(), providers: { github: true, google: true }, linkedProviders: ['github'], loginProvider: role ? 'github' : null, user: role ? { id: 'user', name: '测试用户', email: 'user@example.com', avatar: 'https://example.com/avatar.png', role, local: false } : null })
+  const current = ref<SessionInfo>({ ...emptySession(), ssoAvailable: true, ssoLinked: false, centralLogoutAvailable: true, csrf: 'csrf', loginProvider: role ? 'sso' : null, user: role ? { id: 'user', name: '测试用户', email: 'user@example.com', avatar: 'https://example.com/avatar.png', role, local: false } : null })
   const auth = { current, loaded: ref(true), loading: ref(false), busy: ref(false), error: ref(''), loginOpen: ref(false), refresh: vi.fn(), logout: vi.fn(async () => {
     current.value = { ...current.value, user: null }
-  }), loginUrl: vi.fn(() => '/api/auth/github?returnTo=%2Fposts'), linkGoogle: vi.fn(async () => ({ url: 'https://accounts.google.com/' })), sendCode: vi.fn(), verifyCode: vi.fn(async () => ({ returnTo: '/posts' })) }
+  }), loginUrl: vi.fn(() => '/api/auth/sso/login?returnTo=%2Fposts'), linkSso: vi.fn(async () => ({ url: 'https://id.seto.box/' })), endpoint: (path: string) => path }
   const route = reactive({ path, fullPath: path, query: {} as Record<string, string>, hash: '' })
   const navigate = vi.fn()
   vi.stubGlobal('useAuthSession', () => auth)
@@ -64,19 +64,19 @@ function mount(role?: 'admin' | 'user', path = '/posts') {
   }
   return { host, auth, route, navigate, dialog, button, openMenu }
 }
-test('未登录打开登录弹窗，展示两平台与首次注册提示，关闭恢复焦点', async () => {
+test('未登录打开登录弹窗，展示统一账号与注册提示，关闭恢复焦点', async () => {
   const { button, dialog, auth, navigate } = mount()
   button().focus()
   button().click()
   await flush()
   expect(dialog.open).toBe(true)
-  expect(dialog.textContent).toContain('首次登录将自动注册')
-  const github = [...dialog.querySelectorAll('button')].find(item => item.textContent?.includes('使用 GitHub'))!
-  expect(dialog.textContent).toContain('使用 Google 登录')
+  expect(dialog.textContent).toContain('注册与账号资料由账号中心管理')
+  const github = [...dialog.querySelectorAll('button')].find(item => item.textContent?.includes('使用 MU³ ID'))!
+  expect(dialog.textContent).toContain('使用 MU³ ID 登录')
   github.click()
   await flush()
-  expect(auth.loginUrl).toHaveBeenCalledWith('github', '/posts')
-  expect(navigate).toHaveBeenCalledWith('/api/auth/github?returnTo=%2Fposts', { external: true })
+  expect(auth.loginUrl).toHaveBeenCalledWith('/posts')
+  expect(navigate).toHaveBeenCalledWith('/api/auth/sso/login?returnTo=%2Fposts', { external: true })
   dialog.dispatchEvent(new Event('cancel', { cancelable: true }))
   await flush()
   expect(dialog.open).toBe(false)
@@ -88,11 +88,11 @@ test('已登录菜单无头像，导航头像显示登录平台，Esc 返回触�
   expect(dialog.open).toBe(false)
   expect(menu.textContent).toContain('user@example.com')
   expect(menu.querySelector('img')).toBeNull()
-  expect(button().getAttribute('aria-label')).toContain('GitHub')
-  expect(button().querySelector('.i-lucide-github')).not.toBeNull()
+  expect(button().getAttribute('aria-label')).toContain('MU³ ID')
+  expect(button().querySelector('.i-lucide-circle-user-round')).not.toBeNull()
   expect(menu.textContent).not.toContain('前往后台')
-  expect(menu.textContent).toContain('退出登录')
-  expect(menu.textContent).toContain('关联 Google')
+  expect(menu.textContent).toContain('退出本站')
+  expect(menu.textContent).toContain('绑定 MU³ ID')
   const avatar = button().querySelector('img')!
   avatar.dispatchEvent(new Event('error'))
   await flush()
@@ -101,48 +101,47 @@ test('已登录菜单无头像，导航头像显示登录平台，Esc 返回触�
   await vi.waitFor(() => expect(document.querySelector('[role="menu"]')).toBeNull())
   await vi.waitFor(() => expect(document.activeElement).toBe(button()))
 })
-test('切换登录平台后导航徽标显示 Google', async () => {
+test('本地会话不显示登录平台徽标', async () => {
   const { auth, button } = mount('user')
-  auth.current.value.loginProvider = 'google'
+  auth.current.value.loginProvider = null
   await flush()
-  expect(button().getAttribute('aria-label')).toContain('Google')
-  expect(button().querySelector('.i-logos-google-icon')).not.toBeNull()
+  expect(button().getAttribute('aria-label')).toBe('账号菜单')
+  expect(button().querySelector('.i-lucide-circle-user-round')).toBeNull()
 })
 test('管理员菜单支持键盘选择，后台退出后返回文章列表', async () => {
   const { auth, openMenu, navigate } = mount('admin', '/admin')
   const menu = await openMenu()
   expect(menu.textContent).toContain('前往后台')
   const items = [...menu.querySelectorAll<HTMLElement>('[role="menuitem"]')]
-  const logout = items.find(item => item.textContent?.includes('退出登录'))!
+  const logout = items.find(item => item.textContent?.includes('退出本站'))!
   logout.focus()
   key(logout, 'Enter')
   await vi.waitFor(() => expect(auth.logout).toHaveBeenCalledOnce())
   expect(navigate).toHaveBeenCalledWith('/posts')
 })
-test('验证邮件步骤支持验证码输入、冷却、重发与错误提示；已绑定 Google 隐藏关联入口', async () => {
-  const { auth, dialog, openMenu } = mount('user')
-  auth.current.value.linkedProviders = ['github', 'google']
+test('已绑定账号隐藏绑定入口，并提供带 CSRF 的原生账号中心退出表单', async () => {
+  const { auth, openMenu } = mount('user')
+  auth.current.value.ssoLinked = true
   const menu = await openMenu()
-  expect(menu.textContent).not.toContain('关联 Google')
-  key(menu, 'Escape')
-  auth.current.value.user = null
-  auth.current.value.pendingVerification = { email: 'new@qq.com', expiresAt: Date.now() + 600_000, resendAfter: Date.now() + 60_000, csrf: 'pending' }
-  auth.loginOpen.value = true
-  await flush()
-  expect(dialog.textContent).toContain('new@qq.com')
-  const resend = [...dialog.querySelectorAll<HTMLButtonElement>('button')].find(item => item.textContent?.includes('重新发送'))!
-  expect(resend.disabled).toBe(true)
-  auth.current.value.pendingVerification.resendAfter = 0
-  await flush()
-  resend.click()
-  expect(auth.sendCode).toHaveBeenCalledOnce()
-  auth.error.value = '验证码错误'
-  await flush()
-  expect(dialog.querySelector('[role="alert"]')?.textContent).toContain('验证码错误')
-  const input = dialog.querySelector('input')!
-  input.value = '123456'
-  input.dispatchEvent(new Event('input', { bubbles: true }))
-  await flush()
-  dialog.querySelector('form')!.dispatchEvent(new Event('submit', { cancelable: true }))
-  await vi.waitFor(() => expect(auth.verifyCode).toHaveBeenCalledWith('123456'))
+  expect(menu.textContent).not.toContain('绑定 MU³ ID')
+  expect(menu.querySelector('a[href="https://id.seto.box/account"]')).not.toBeNull()
+  const form = menu.querySelector('form')!
+  expect(form.method).toBe('post')
+  expect(form.getAttribute('action')).toBe('/api/auth/logout')
+  expect(form.querySelector<HTMLInputElement>('[name="csrf"]')!.value).toBe('csrf')
+  expect(form.querySelector<HTMLInputElement>('[name="scope"]')!.value).toBe('central')
+  expect(form.textContent).toContain('同时退出账号中心')
+  const submit = vi.fn((event: Event) => event.preventDefault())
+  form.addEventListener('submit', submit)
+  form.querySelector('button')!.click()
+  expect(submit).toHaveBeenCalledOnce()
+})
+
+test('原账号通过显式绑定入口前往账号中心', async () => {
+  const { auth, openMenu, navigate } = mount('user')
+  const menu = await openMenu()
+  const link = [...menu.querySelectorAll<HTMLElement>('[role="menuitem"]')].find(item => item.textContent?.includes('绑定 MU³ ID'))!
+  link.click()
+  await vi.waitFor(() => expect(auth.linkSso).toHaveBeenCalledWith('/posts'))
+  expect(navigate).toHaveBeenCalledWith('https://id.seto.box/', { external: true })
 })

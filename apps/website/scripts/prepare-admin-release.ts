@@ -15,7 +15,7 @@ const require = createRequire(import.meta.url)
 const wrangler = join(dirname(require.resolve('wrangler/package.json')), 'bin/wrangler.js')
 const output = execFileSync(process.execPath, [wrangler, 'secret', 'list', '--format', 'json', '--config', path], { encoding: 'utf8', windowsHide: true })
 const secrets = z.array(z.object({ name: z.string() })).parse(JSON.parse(output)).map(item => item.name)
-const required = ['NUXT_GITHUB_CLIENT_ID', 'NUXT_GITHUB_CLIENT_SECRET', 'NUXT_GOOGLE_CLIENT_ID', 'NUXT_GOOGLE_CLIENT_SECRET', 'NUXT_AUTH_SECRET', 'NUXT_RESEND_API_KEY', 'NUXT_AUTH_EMAIL_FROM']
+const required = ['NUXT_APP_ORIGIN', 'NUXT_OIDC_ISSUER', 'NUXT_OIDC_CLIENT_ID', 'NUXT_OIDC_CLIENT_SECRET', 'NUXT_OIDC_REDIRECT_URI', 'NUXT_OIDC_POST_LOGOUT_REDIRECT_URI', 'NUXT_AUTH_SESSION_KEY']
 assert.ok(config.r2_buckets?.some(bucket => bucket.binding === 'ADMIN_ASSETS' && bucket.bucket_name === 'mukuchi-draft-assets'), '缺少私有图片桶绑定')
 required.push('NUXT_AUTH_ADMIN_EMAILS', 'NUXT_GITHUB_PUBLISH_TOKEN', 'NUXT_AI_ENCRYPTION_KEY')
 for (const name of ['NUXT_PUBLIC_GISCUS_REPO_ID', 'NUXT_PUBLIC_GISCUS_CATEGORY_ID']) assert.ok(z.string().min(1).safeParse(config.vars[name]).success, `缺少评论配置：${name}`)
