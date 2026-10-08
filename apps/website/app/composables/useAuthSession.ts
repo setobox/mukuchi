@@ -18,12 +18,14 @@ export function useAuthSession() {
   const endpoint = (path: string) => `${base}${path}`
   async function refresh() {
     const request = ++revision.value
+    const previousError = error.value
     loading.value = true
     try {
       const value = await $fetch<SessionInfo>(endpoint('/api/auth/me'))
       if (request === revision.value) {
         current.value = value
-        error.value = ''
+        if (error.value === previousError)
+          error.value = ''
       }
       return true
     }

@@ -49,3 +49,17 @@ test('退出时仍在途的会话响应不能恢复已撤销的用户，重复�
   expect(auth.current.value.user).toBeNull()
   expect(auth.loading.value).toBe(false)
 })
+
+test('在途会话刷新不会清除后来设置的登录回调错误，主动重试仍可清除', async () => {
+  const auth = useAuthSession()
+  let resolveRefresh: (value: SessionInfo) => void = () => {}
+  fetcher.mockReturnValueOnce(new Promise<SessionInfo>(resolve => resolveRefresh = resolve))
+  const refreshing = auth.refresh()
+  auth.error.value = '已取消授权，可以重新登录'
+  resolveRefresh(emptySession())
+  await refreshing
+  expect(auth.error.value).toBe('已取消授权，可以重新登录')
+  fetcher.mockResolvedValueOnce(emptySession())
+  await auth.refresh()
+  expect(auth.error.value).toBe('')
+})
