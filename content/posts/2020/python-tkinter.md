@@ -104,13 +104,13 @@ publish: 2020-05-25
 
 ### 导入 tkinter 库
 
-```
+```python
 from tkinter import *
 ```
 
 ### 主界面绘制
 
-```
+```python
 #将tkinter对象实例化
 root = TK()
 #设置标题
@@ -168,7 +168,7 @@ def LoginCallBack():
 
 调用的话则需要
 
-```
+```python
 Button(login, text='确定', width=10, height=2, ).place(x=180, y=220)
 加上command = LoginCallBack属性
 即Button(login, text='确定', width=10, height=2, command = LoginCallBack).place(x=180, y=220)

@@ -61,7 +61,7 @@ publish: 2020-06-05
 
 记住改好的密码，每次打开都需要登陆。
 
-```
+```text
 命令格式: mysql -u 用户名 -p 密码
 例如:     mysql -u root -p password
 ```
@@ -104,7 +104,7 @@ SQL 语句创建用户数据库其语法格式如下：
 `CREATE {DATABASE|SCHEMA}[IF NOT EXISTS] <数据库文件名>`
 例如:
 
-```
+```sql
 #创建名为D_sample的数据库
 create datebase D_sample;
 
@@ -118,7 +118,7 @@ create database if not exists D_sample;
 SHOW DATABASES;
 例如:
 
-```
+```sql
 show databases;
 ```
 
@@ -127,7 +127,7 @@ show databases;
 在对某数据库操作前需要先选中
 例如: 打开 D_sample 数据库:
 
-```
+```sql
 use D_sample;
 ```
 
@@ -135,7 +135,7 @@ use D_sample;
 
 修改数据库 D_sample 的默认字符集和校对规则。
 
-```
+```sql
 alter database D_sample
   default character set=gbk
   default collate=gbk_chinese_ci;
@@ -145,7 +145,7 @@ alter database D_sample
 
 删除 D_sample 数据库:
 
-```
+```sql
 drop database D_sample1;
 ```
 
@@ -193,7 +193,7 @@ drop database D_sample1;
 `[(<字段名> <数据类型> [完整性约束条件][,…])][表的选项];`
 例如:
 
-```
+```sql
 use D_sample;
 create table student
 ( #设置主键约束
@@ -211,20 +211,20 @@ create table student
 查看信息:SHOW TABLES;
 例如:
 
-```
+```sql
 show tables;
 ```
 
 查看表:`{DESCRIBE |DESC}<表名> [字段名];`
 例如查看 D_sample 数据库中 student 表的信息:
 
-```
+```sql
 desc student;
 ```
 
 修改表:`ALTER TABLE <表名>`
 
-```
+```sql
 alter table student #添加字段
 add 专业 char(30);
 #course 表中的学分字段的数据类型改为 smallint
@@ -238,7 +238,7 @@ rename as stu;
 删除表语法格式如下:
 `DROP [TEMPORARY] TABLE [IF EXISTS] <表名> [,<表名>...];`
 
-```
+```sql
 drop table student;
 ```
 
@@ -250,7 +250,7 @@ drop table student;
 
 向数据库 D_sample 的 student 表中添加数据:
 
-```
+```sql
 insert into student
 values('201839001','刘一','女','1998-07-07','汉族','共青团员');
 insert into student
@@ -266,7 +266,7 @@ values('201839003','周八','男','1999-01-06','汉族','共青团员');
 
 向数据库 D_sample 的 course 表中添加数据:
 
-```
+```sql
 insert into course
 values('07001','计算机应用基础','掌握计算机基本操作',4,4,'1');
 insert into course
@@ -283,7 +283,7 @@ values('07003','数据库技术基础','掌握数据库系统设计',4,4,'2');
 例如:
 将 student 表中姓名值为“周八”的出生日期改为“1999-02-01”
 
-```
+```sql
 update student
 set 出生日期='1999-02-01'
 where 姓名='周八';

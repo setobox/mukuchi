@@ -241,7 +241,7 @@ Servlet(server applet)为运行在服务器端的小程序。
 
 3. 重写service方法
 
-   ```
+   ```java
    import javax.servlet.ServletException;
    import javax.servlet.http.HttpServlet;
    import javax.servlet.http.HttpServletRequest;

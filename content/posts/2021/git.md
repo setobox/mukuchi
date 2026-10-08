@@ -158,7 +158,7 @@ git stash drop "stash@{2}"         # 删除指定 stash
 
 在仓库的 `.gitignore` 中写入匹配规则。例如：
 
-```gitignore
+```text [.gitignore]
 # 依赖目录
 node_modules/
 
