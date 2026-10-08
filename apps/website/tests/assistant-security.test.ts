@@ -74,7 +74,9 @@ test('续传加密绑定身份与用途，不在凭据中暴露明文，任何�
   expect(await unseal(secret, 'actor:a', 'continuation', token, shape)).toEqual(value)
   await expect(unseal(secret, 'actor:b', 'continuation', token, shape)).rejects.toThrow()
   await expect(unseal(secret, 'actor:a', 'cookie', token, shape)).rejects.toThrow()
-  await expect(unseal(secret, 'actor:a', 'continuation', `${token.slice(0, 20)}x${token.slice(21)}`, shape)).rejects.toThrow()
+  const tampered = `${token.slice(0, 20)}${token[20] === 'A' ? 'B' : 'A'}${token.slice(21)}`
+  expect(tampered).not.toBe(token)
+  await expect(unseal(secret, 'actor:a', 'continuation', tampered, shape)).rejects.toThrow()
 })
 test('配额原子限制身份、IP、全站并发；取消后租约等待最长处理期限', async () => {
   const { repository } = setup()
