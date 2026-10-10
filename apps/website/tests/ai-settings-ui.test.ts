@@ -76,7 +76,7 @@ test.each([
   { component: SummarySettings, response: summary, kind: 'narration' as const, label: '生成与测试说明', title: '摘要生成', content: '下次构建会更新摘要' },
   { component: AudioSettings, response: () => ({ ...defaultAudioSettings, version: 1, keyConfigured: true, encryptionReady: true, executionReady: true }), kind: 'narration' as const, label: 'AI 朗读生成与额度说明', title: 'AI 朗读参数', content: '额度按北京时间重置' },
   { component: AudioSettings, response: () => ({ ...defaultAudioSettings, version: 1, keyConfigured: true, encryptionReady: true, executionReady: true }), kind: 'podcast' as const, label: '双人播客生成与额度说明', title: '双人播客参数', content: '播客需要试听并确认公开' },
-  { component: AssistantSettings, response: assistant, kind: 'narration' as const, label: '审核策略要求', title: '安全审核', content: '只有审核明确通过' },
+  { component: AssistantSettings, response: assistant, kind: 'narration' as const, label: '审核策略要求', title: '安全审核', content: '只审核每轮用户输入' },
   { component: AssistantSettings, response: assistant, kind: 'narration' as const, label: '测试与隐私说明', title: '模型服务', content: '最近 30 天的任务状态与诊断' },
 ])('$label 位于卡片标题旁，点击可查看，切换视图关闭且不保存设置', async ({ component, response, kind, label, title, content }) => {
   const request = vi.fn(async (path: string) => path === 'audio/jobs' ? { jobs: [], articles: [], usage: { day: '', narrationCharacters: 0, podcasts: 0 } } : response())

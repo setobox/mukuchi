@@ -120,6 +120,7 @@ export default defineNuxtConfig({
     },
   },
   routeRules: {
+    '/assistant/showcase': { prerender: false, headers: { 'x-robots-tag': 'noindex, nofollow' } },
     '/admin': { prerender: false, headers: { 'cache-control': 'private, no-store', 'x-robots-tag': 'noindex, nofollow' } },
     '/admin/**': { prerender: false, headers: { 'cache-control': 'private, no-store', 'x-robots-tag': 'noindex, nofollow' } },
     '/api/auth/**': { prerender: false, headers: { 'cache-control': 'no-store' } },

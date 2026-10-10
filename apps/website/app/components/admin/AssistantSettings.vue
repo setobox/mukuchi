@@ -19,7 +19,7 @@ const taskRevision = ref(0)
 const focusTask = ref('')
 const keyLabels: Record<keyof AssistantCredentials, string> = { modelKey: '模型 API 密钥', aliyunKeyId: '阿里云 AccessKey ID', aliyunKeySecret: '阿里云 AccessKey Secret', turnstileSecret: 'Turnstile Secret Key' }
 const moderationKeys = ['aliyunKeyId', 'aliyunKeySecret'] as const
-const capabilityKeys = ['baseUrl', 'model', 'style', 'region', 'queryService', 'responseService', 'turnstileSiteKey'] as const
+const capabilityKeys = ['baseUrl', 'model', 'style', 'region', 'queryService', 'turnstileSiteKey'] as const
 const credentialChanged = computed(() => clearing.value.length > 0 || Object.values(credentials.value).some(Boolean))
 const requiresVerification = computed(() => credentialChanged.value || capabilityKeys.some(key => saved.value[key] !== view.value.settings[key]))
 const dirty = computed(() => loaded.value && (credentialChanged.value || JSON.stringify(saved.value) !== JSON.stringify(view.value.settings)))
@@ -137,7 +137,7 @@ async function testCapabilities() {
               <h3 class="text-heading font-medium">
                 安全审核
               </h3>
-              <BaseHelpHint label="审核策略要求" text="输入、输出策略均需开启内容合规和提示词攻击检测，无需开启敏感内容检测。只有审核明确通过，回答才会展示。" :active="props.active && section === 'config'" />
+              <BaseHelpHint label="审核策略要求" text="只审核每轮用户输入，需开启内容合规和提示词攻击检测。回复实时展示，不调用输出审核。升级流式协议后需重新运行能力测试。" :active="props.active && section === 'config'" />
             </div>
             <BaseSelect v-model="view.settings.region" label="阿里云地域" :disabled="saving || testing" :options="assistantSettingsSchema.shape.region.unwrap().options.map(value => ({ value, label: value }))" />
             <div v-for="key in moderationKeys" :key="key">
@@ -146,7 +146,6 @@ async function testCapabilities() {
             </div>
             <div class="grid gap-5 md:grid-cols-2">
               <label class="block text-sm text-muted">输入审核服务<input v-model="view.settings.queryService" class="field-control mt-2 w-full px-3"></label>
-              <label class="block text-sm text-muted">输出审核服务<input v-model="view.settings.responseService" class="field-control mt-2 w-full px-3"></label>
             </div>
           </section>
           <section class="border border-line rounded-panel p-5 space-y-5" aria-label="助手访客验证">
