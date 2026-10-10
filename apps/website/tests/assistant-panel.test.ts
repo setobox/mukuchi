@@ -102,7 +102,7 @@ test('消息、输入区域与快捷按钮不关闭；拖选和触摸取消不�
   ui.seedReply()
   ui.controller.page.value = { path: '/posts/test' }
   await flush()
-  for (const selector of ['.assistant-user', '.assistant-reply', '.assistant-reply span', '.assistant-composer', 'textarea', '.assistant-heading', '.assistant-context']) await ui.click(ui.query(selector))
+  for (const selector of ['.assistant-user', '.assistant-reply', '.assistant-reply p', '.assistant-composer', 'textarea', '.assistant-heading', '.assistant-context']) await ui.click(ui.query(selector))
   const backdrop = ui.query('.assistant-conversation')
   ui.pointerdown(ui.query('.assistant-user'))
   backdrop.click()
@@ -134,4 +134,23 @@ test('遮罩优先关闭抽屉，浮窗空白不关闭助手', async () => {
   await ui.click(ui.query('.assistant-conversation'))
   expect(ui.controller.mode.value).toBe('floating')
   expect(ui.close).not.toHaveBeenCalled()
+})
+
+test('流式增长时保持向上阅读位置，点击新回复提示后恢复跟随', async () => {
+  const ui = await setup()
+  ui.seedReply()
+  await flush()
+  const list = ui.query('.assistant-conversation')
+  Object.defineProperties(list, { scrollHeight: { configurable: true, value: 2000 }, clientHeight: { configurable: true, value: 500 } })
+  list.scrollTop = 400
+  list.dispatchEvent(new Event('scroll'))
+  ui.controller.previews.value = { fixture: { label: '正在生成回复…', message: { id: crypto.randomUUID(), role: 'assistant', blocks: [{ type: 'text', text: '增加内容' }], references: [] } } }
+  await flush()
+  expect(list.scrollTop).toBe(400)
+  await ui.click(ui.query('.assistant-new-reply'))
+  expect(list.scrollTop).toBe(2000)
+  ui.controller.previews.value = {}
+  Object.defineProperty(list, 'scrollHeight', { configurable: true, value: 2300 })
+  await flush()
+  expect(list.scrollTop).toBe(2300)
 })

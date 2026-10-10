@@ -1,5 +1,6 @@
 import type { AssistantTransport } from '../app/features/assistant/controller'
 import type { TurnRequest } from '../shared/assistant/model'
+import type { StreamPayload } from '../shared/assistant/stream'
 import { expect, test, vi } from 'vite-plus/test'
 import { createAssistantController } from '../app/features/assistant/controller'
 import { createLocalHistory } from '../app/features/assistant/history'
@@ -38,6 +39,58 @@ async function setup() {
   controller.draft.value = '介绍文章'
   return { controller, history, transport, navigate, response, started, identity }
 }
+
+test('流式部分回复在停止后保留，迟到事件被丢弃且不作为可信历史上传', async () => {
+  const { controller, transport, response, started } = await setup()
+  let receive: (payload: StreamPayload) => void = () => {}
+  transport.stream = vi.fn(async (_path, body, _csrf, _id, emit) => {
+    receive = emit
+    emit({ type: 'status', label: 'Thinking…' })
+    emit({ type: 'text_delta', index: 0, text: '已经显示的中文' })
+    started.resolve(body as TurnRequest)
+    return response.promise
+  })
+  const sending = controller.send()
+  const request = await started.promise
+  await vi.waitFor(() => expect(controller.previews.value[request.requestId]?.message.blocks[0]).toEqual({ type: 'text', text: '已经显示的中文' }))
+  await controller.stop()
+  receive({ type: 'text_delta', index: 0, text: '不应出现' })
+  response.resolve(answer(request))
+  await sending
+  expect(controller.turns.value[0]).toMatchObject({ status: 'cancelled', preview: { blocks: [{ type: 'text', text: '已经显示的中文' }] } })
+  expect(controller.turns.value[0]?.record).toBeUndefined()
+  expect(controller.previews.value).toEqual({})
+  transport.stream = vi.fn(async (_path, body) => {
+    expect((body as TurnRequest).history).toEqual([])
+    return answer(body as TurnRequest)
+  })
+  controller.draft.value = '继续'
+  await controller.send()
+  expect(controller.turns.value.at(-1)?.status).toBe('completed')
+  controller.dispose()
+})
+
+test('流式历史续传沿用请求标识及单条当前状态，最终签名后才完成', async () => {
+  const { controller, transport } = await setup()
+  let request: TurnRequest
+  const stream = vi.fn<NonNullable<AssistantTransport['stream']>>(async (path, body, _csrf, id, receive) => {
+    if (path === '/turns') {
+      request = body as TurnRequest
+      receive({ type: 'status', label: '正在读取会话历史…' })
+      return { kind: 'needs_history', requestId: id, conversationId: request.conversationId, continuation: 'fixture', historyRequest: { before: null, limit: 2 } }
+    }
+    expect(id).toBe(request.requestId)
+    expect(body).toEqual({ continuation: 'fixture', history: [] })
+    receive({ type: 'text_delta', index: 0, text: '完成' })
+    return answer(request)
+  })
+  transport.stream = stream
+  await controller.send()
+  expect(stream).toHaveBeenCalledTimes(2)
+  expect(controller.turns.value[0]?.status).toBe('completed')
+  expect(controller.previews.value).toEqual({})
+  controller.dispose()
+})
 test('关闭面板继续生成，回复写入原会话并显示未读；重新打开保留内容', async () => {
   const { controller, response, started } = await setup()
   const sending = controller.send()

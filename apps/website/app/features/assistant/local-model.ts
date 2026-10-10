@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { pageContextSchema, signedTurnSchema } from '#shared/assistant/model'
+import { assistantMessageSchema, pageContextSchema, signedTurnSchema } from '#shared/assistant/model'
 
 export const conversationSchema = z.object({
   id: z.uuid(),
@@ -23,6 +23,8 @@ export const localTurnSchema = z.object({
   ownerId: z.uuid().optional(),
   record: signedTurnSchema.optional(),
   error: z.string().optional(),
+  preview: assistantMessageSchema.optional(),
+  durationMs: z.number().nonnegative().optional(),
 })
 export type LocalTurn = z.infer<typeof localTurnSchema>
 export interface ConversationGroup { label: '今天' | '7天内' | '7天前', items: Conversation[] }

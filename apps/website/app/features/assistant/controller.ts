@@ -1,4 +1,5 @@
-import type { AssistantPage, AssistantSession, SignedTurn } from '#shared/assistant/model'
+import type { AssistantMessage, AssistantPage, AssistantSession, SignedTurn } from '#shared/assistant/model'
+import type { StreamPayload } from '#shared/assistant/stream'
 import type { DeletedConversation, LocalHistory } from './history'
 import type { Conversation, LocalTurn } from './local-model'
 import { computed, reactive, ref, shallowRef } from 'vue'
@@ -9,9 +10,11 @@ import { groupConversations } from './local-model'
 export interface AssistantTransport {
   session: () => Promise<unknown>
   post: (path: string, body: unknown, csrf: string, signal?: AbortSignal) => Promise<unknown>
+  stream?: (path: string, body: unknown, csrf: string, requestId: string, receive: (payload: StreamPayload) => void, signal?: AbortSignal) => Promise<unknown>
 }
-interface ActiveTurn { id: string, conversationId: string, namespace: string, csrf: string, controller: AbortController, page: string | null, stored: boolean, stopping?: boolean }
-export function createAssistantController(options: { history: Promise<LocalHistory>, transport: AssistantTransport, navigate: (path: string) => Promise<void>, now?: () => number, ownerId?: string }) {
+interface ActiveTurn { id: string, conversationId: string, namespace: string, csrf: string, controller: AbortController, page: string | null, stored: boolean, stopping?: boolean, startedAt: number }
+interface LiveReply { label: string, message: AssistantMessage }
+export function createAssistantController(options: { history: Promise<LocalHistory>, transport: AssistantTransport, navigate: (path: string) => Promise<void>, automaticNavigation?: boolean, now?: () => number, ownerId?: string }) {
   const now = options.now ?? Date.now
   const session = shallowRef<AssistantSession | null>(null)
   const mode = ref<'hidden' | 'fullscreen' | 'floating'>('hidden')
@@ -23,6 +26,30 @@ export function createAssistantController(options: { history: Promise<LocalHisto
   const page = ref<AssistantPage>({ path: null })
   const pageTitle = ref('')
   const active = shallowRef<ActiveTurn | null>(null)
+  const previews = shallowRef<Record<string, LiveReply>>({})
+  const live = new Map<string, LiveReply>()
+  let frame: { cancel: () => void } | undefined
+  function flushPreviews() {
+    frame?.cancel()
+    frame = undefined
+    previews.value = Object.fromEntries([...live].map(([id, value]) => [id, { label: value.label, message: { ...value.message, blocks: [...value.message.blocks], references: [...value.message.references] } }]))
+  }
+  function queuePreview() {
+    if (frame)
+      return
+    if (typeof requestAnimationFrame === 'function') {
+      const id = requestAnimationFrame(flushPreviews)
+      frame = { cancel: () => cancelAnimationFrame(id) }
+    }
+    else {
+      const id = setTimeout(flushPreviews, 16)
+      frame = { cancel: () => clearTimeout(id) }
+    }
+  }
+  function partial(running: ActiveTurn) {
+    const message = live.get(running.id)?.message
+    return { ...(message?.blocks.length ? { preview: { ...message, blocks: message.blocks.filter(Boolean) } } : {}), durationMs: Math.max(0, now() - running.startedAt) }
+  }
   const busyElsewhere = ref(false)
   const error = ref('')
   const storageWarning = ref('')
@@ -71,7 +98,9 @@ export function createAssistantController(options: { history: Promise<LocalHisto
     running.stored = false
     running.controller.abort()
     const history = await options.history
-    await history.finish(running.namespace, running.conversationId, running.id, { status: 'cancelled' }, false)
+    await history.finish(running.namespace, running.conversationId, running.id, { status: 'cancelled', ...partial(running) }, false)
+    live.delete(running.id)
+    flushPreviews()
     try {
       await options.transport.post(`/turns/${running.id}/cancel`, {}, running.csrf)
     }
@@ -92,6 +121,8 @@ export function createAssistantController(options: { history: Promise<LocalHisto
         await stop()
         revision++
         turns.value = []
+        live.clear()
+        flushPreviews()
         conversations.value = []
         drawer.value = false
         undoSnapshot.value = null
@@ -208,8 +239,10 @@ export function createAssistantController(options: { history: Promise<LocalHisto
       return
     }
     queuedSend.value = false
-    const running: ActiveTurn = { id: crypto.randomUUID(), conversationId: currentId.value, namespace: identity.namespace, csrf: identity.csrf, controller: new AbortController(), page: page.value.path, stored: false }
+    const running: ActiveTurn = { id: crypto.randomUUID(), conversationId: currentId.value, namespace: identity.namespace, csrf: identity.csrf, controller: new AbortController(), page: page.value.path, stored: false, startedAt: now() }
     active.value = running
+    live.set(running.id, { label: '正在连接…', message: { id: running.id, role: 'assistant', blocks: [], references: [] } })
+    flushPreviews()
     error.value = ''
     limited.value = false
     const history = await options.history
@@ -219,7 +252,7 @@ export function createAssistantController(options: { history: Promise<LocalHisto
       const records = previous.flatMap(turn => turn.status === 'completed' && turn.record ? [turn.record] : [])
       const recent = records.slice(-8)
       // The HTTP bound also applies before sending; never upload an entire long conversation.
-      while (new TextEncoder().encode(JSON.stringify(recent)).byteLength > 30_000) recent.shift()
+      while (new TextEncoder().encode(JSON.stringify(recent)).byteLength > assistantLimits.historyUploadBytes) recent.shift()
       const candidate = recent.at(-1)?.assistant.blocks.find(block => block.type === 'navigation_confirmation' && block.expiresAt > now() && !navigationResults[block.actionId])
       const pendingActionId = candidate?.type === 'navigation_confirmation' && liveActions.has(candidate.actionId) ? candidate.actionId : undefined
       const row = (await history.list(running.namespace)).find(item => item.id === running.conversationId)
@@ -227,7 +260,36 @@ export function createAssistantController(options: { history: Promise<LocalHisto
       running.stored = true
       drafts[running.conversationId] = ''
       await reload()
-      let response = turnResponseSchema.parse(await options.transport.post('/turns', { requestId: running.id, conversationId: running.conversationId, text, page: { path: running.page }, history: recent, turnstileToken, pendingActionId }, running.csrf, running.controller.signal))
+      const receive = (payload: StreamPayload) => {
+        if (disposed || running.controller.signal.aborted || active.value !== running || session.value?.namespace !== running.namespace)
+          return
+        const preview = live.get(running.id)!
+        if (payload.type === 'status') {
+          preview.label = payload.label
+        }
+        else if (payload.type === 'text_delta') {
+          const existing = preview.message.blocks[payload.index]
+          if (existing && existing.type !== 'text')
+            throw new Error('回复结构发生变化')
+          const text = (existing?.text ?? '') + payload.text
+          if (text.length > assistantLimits.visibleLength)
+            throw new Error('回复超过长度限制')
+          preview.message.blocks[payload.index] = { type: 'text', text }
+        }
+        else if (payload.type === 'block') {
+          preview.message.blocks[payload.index] = payload.block
+          preview.message.references = payload.references
+        }
+        queuePreview()
+      }
+      const postTurn = async (path: string, body: unknown) => {
+        const response = options.transport.stream
+          ? await options.transport.stream(path, body, running.csrf, running.id, receive, running.controller.signal)
+          : await options.transport.post(path, body, running.csrf, running.controller.signal)
+        flushPreviews()
+        return turnResponseSchema.parse(response)
+      }
+      let response = await postTurn('/turns', { requestId: running.id, conversationId: running.conversationId, text, page: { path: running.page }, history: recent, turnstileToken, pendingActionId })
       let continuations = 0
       while (response.kind === 'needs_history') {
         if (++continuations > assistantLimits.historyCalls || response.requestId !== running.id || response.conversationId !== running.conversationId)
@@ -237,7 +299,8 @@ export function createAssistantController(options: { history: Promise<LocalHisto
         const before = response.historyRequest.before
         const cursor = before ? local.findIndex(turn => turn.id === before) : local.length
         const older: SignedTurn[] = cursor < 0 ? [] : local.slice(Math.max(0, cursor - response.historyRequest.limit), cursor)
-        response = turnResponseSchema.parse(await options.transport.post('/turns/continue', { continuation: response.continuation, history: older }, running.csrf, running.controller.signal))
+        while (new TextEncoder().encode(JSON.stringify(older)).byteLength > assistantLimits.historyUploadBytes) older.shift()
+        response = await postTurn('/turns/continue', { continuation: response.continuation, history: older })
       }
       running.controller.signal.throwIfAborted()
       if (response.kind === 'rejected')
@@ -251,13 +314,13 @@ export function createAssistantController(options: { history: Promise<LocalHisto
             liveActions.add(block.actionId)
         }
         await reload()
-        if (response.navigate && visible && page.value.path === running.page)
+        if (response.navigate && visible && page.value.path === running.page && options.automaticNavigation !== false)
           await navigateAction(response.navigate, running.conversationId, false)
       }
     }
     catch (cause) {
       const aborted = running.controller.signal.aborted
-      await history.finish(running.namespace, running.conversationId, running.id, { status: running.stopping ? 'cancelled' : aborted ? 'interrupted' : 'failed', error: running.stopping ? undefined : aborted ? '本次回答已中断，请重新提问' : '本次回答未完成，请调整问题或稍后重试' }, false, now())
+      await history.finish(running.namespace, running.conversationId, running.id, { status: running.stopping ? 'cancelled' : aborted ? 'interrupted' : 'failed', ...partial(running), error: running.stopping ? undefined : aborted ? '本次回答已中断，请重新提问' : '本次回答未完成，请调整问题或稍后重试' }, false, now())
       if (!running.stopping && currentId.value === running.conversationId && session.value?.namespace === running.namespace) {
         if (aborted)
           error.value = '本次回答已中断，请重新提问'
@@ -266,9 +329,13 @@ export function createAssistantController(options: { history: Promise<LocalHisto
     }
     finally {
       clearTimeout(timer)
+      live.delete(running.id)
+      flushPreviews()
       if (active.value === running)
         active.value = null
       await reload()
+      if (disposed)
+        history.close()
     }
   }
   async function remove(id: string) {
@@ -310,9 +377,15 @@ export function createAssistantController(options: { history: Promise<LocalHisto
   }
   function dispose() {
     disposed = true
+    frame?.cancel()
+    frame = undefined
     active.value?.controller.abort()
-    void options.history.then(history => history.close())
+    // An in-flight send persists its partial response before closing the database.
+    if (!active.value) {
+      live.clear()
+      void options.history.then(history => history.close())
+    }
   }
-  return { session, mode, drawer, currentId, conversations, turns, draft, page, pageTitle, active, error, storageWarning, limited, groups, unread, busy, busyElsewhere, enabled, undoSnapshot, navigationResults, actionBusy, queuedSend, refreshSession, reload, select, newConversation, open, close, routeChanged, send, stop, remove, undo, clear, tick, dispose, navigateAction }
+  return { session, mode, drawer, currentId, conversations, turns, draft, page, pageTitle, active, previews, error, storageWarning, limited, groups, unread, busy, busyElsewhere, enabled, undoSnapshot, navigationResults, actionBusy, queuedSend, refreshSession, reload, select, newConversation, open, close, routeChanged, send, stop, remove, undo, clear, tick, dispose, navigateAction }
 }
 export type AssistantController = ReturnType<typeof createAssistantController>

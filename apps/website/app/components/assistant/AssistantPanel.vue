@@ -1,11 +1,17 @@
 <script setup lang="ts">
-import { useEventListener, useScrollLock } from '@vueuse/core'
+import type { LocalTurn } from '~/features/assistant/local-model'
+import { useEventListener, useResizeObserver, useScrollLock } from '@vueuse/core'
+import { useAssistantMotion } from '~/features/assistant/motion'
+import AssistantMessage from './AssistantMessage.vue'
+import AssistantStatus from './AssistantStatus.vue'
 
 const assistant = useAssistant()!
-const { mode, drawer, currentId, turns, draft, page, pageTitle, active, error, storageWarning, limited, groups, busy, busyElsewhere, enabled, undoSnapshot, navigationResults, actionBusy, session } = assistant
+const { mode, drawer, currentId, turns, draft, page, pageTitle, active, previews, error, storageWarning, limited, groups, busy, busyElsewhere, enabled, undoSnapshot, navigationResults, actionBusy, session } = assistant
+const motion = useAssistantMotion()
 const dialog = useTemplateRef<HTMLDialogElement>('dialog')
 const input = useTemplateRef<HTMLTextAreaElement>('input')
 const list = useTemplateRef<HTMLElement>('list')
+const conversationBody = useTemplateRef<HTMLElement>('conversationBody')
 const drawerElement = useTemplateRef<HTMLElement>('drawerElement')
 const historyButton = useTemplateRef<HTMLButtonElement>('historyButton')
 const locked = useScrollLock(document.body)
@@ -26,6 +32,7 @@ useEventListener(window, 'resize', updateViewport)
 useEventListener(window.visualViewport, 'resize', updateViewport)
 useEventListener(window.visualViewport, 'scroll', updateViewport)
 watch(mode, async (value, previous) => {
+  motion.reset()
   backdropPressed = false
   if (previous === 'hidden' && value !== 'hidden')
     previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null
@@ -46,6 +53,8 @@ watch(mode, async (value, previous) => {
     return
   }
   input.value?.focus({ preventScroll: true })
+  for (const [index, element] of [...dialog.value.querySelectorAll('.assistant-welcome .assistant-suggestion')].entries())
+    void motion.enter(element, undefined, index * 0.04)
 })
 watch(drawer, async (value) => {
   confirmClear.value = false
@@ -66,16 +75,28 @@ function onScroll() {
   if (nearBottom.value)
     newReply.value = false
 }
-watch([() => turns.value.length, () => turns.value.at(-1)?.status], async () => {
+watch([() => turns.value.length, () => turns.value.at(-1)?.status, previews], async () => {
   await nextTick()
   if (nearBottom.value)
     scrollBottom()
   else newReply.value = true
 })
 watch(currentId, async () => {
+  motion.reset()
   await nextTick()
   scrollBottom()
 })
+useResizeObserver(conversationBody, () => {
+  if (nearBottom.value)
+    scrollBottom()
+})
+function messageFor(turn: LocalTurn) {
+  return turn.record?.assistant ?? previews.value[turn.id]?.message ?? turn.preview
+}
+function suggestion(text: string) {
+  draft.value = text
+  input.value?.focus({ preventScroll: true })
+}
 watch([assistant.queuedSend, token, () => session.value?.authenticated, busy], () => {
   if (assistant.queuedSend.value && !busy.value && (session.value?.authenticated || token.value))
     void send()
@@ -168,63 +189,35 @@ onBeforeUnmount(() => {
             当前文章 · {{ pageTitle || page.path }}
           </p>
           <div ref="list" class="assistant-conversation" aria-label="聊天记录" tabindex="0" data-assistant-backdrop @scroll="onScroll">
-            <div v-if="!turns.length" class="assistant-welcome">
-              <span class="i-lucide-sparkles text-3xl text-accent-soft" aria-hidden="true" />
-              <p>我是 Setobox Blog 的 AI 对话助手。可以帮你找文章、解释内容，或回顾这次聊天。</p>
-              <div class="mt-5 flex flex-wrap justify-center gap-2">
-                <button class="assistant-suggestion" type="button" @click="draft = '这篇文章讲了什么？'">
-                  这篇文章讲了什么？
-                </button>
-                <button class="assistant-suggestion" type="button" @click="draft = '有哪些文章分类？'">
-                  浏览分类
-                </button>
-                <button class="assistant-suggestion" type="button" @click="draft = '介绍一下作者'">
-                  了解作者
-                </button>
+            <div ref="conversationBody" data-assistant-backdrop>
+              <div v-if="!turns.length" class="assistant-welcome">
+                <span class="i-lucide-sparkles text-3xl text-accent-soft" aria-hidden="true" />
+                <p>我是 Setobox Blog 的 AI 对话助手。可以帮你找文章、解释内容，或回顾这次聊天。</p>
+                <div class="mt-5 flex flex-wrap justify-center gap-2">
+                  <button class="assistant-suggestion" type="button" @click="draft = '这篇文章讲了什么？'">
+                    这篇文章讲了什么？
+                  </button>
+                  <button class="assistant-suggestion" type="button" @click="draft = '有哪些文章分类？'">
+                    浏览分类
+                  </button>
+                  <button class="assistant-suggestion" type="button" @click="draft = '介绍一下作者'">
+                    了解作者
+                  </button>
+                </div>
               </div>
+              <article v-for="turn in turns" :key="turn.id" class="assistant-turn" data-assistant-backdrop>
+                <p class="assistant-user">
+                  {{ turn.user }}
+                </p>
+                <div v-if="mode !== 'hidden'" class="assistant-reply">
+                  <AssistantStatus class="mb-3" :active="turn.status === 'pending'" :duration-ms="turn.record?.durationMs ?? turn.durationMs" :failed="['failed', 'interrupted'].includes(turn.status)" :label="turn.status === 'pending' ? previews[turn.id]?.label : turn.status === 'completed' ? undefined : turn.error || '本次生成已停止'" />
+                  <AssistantMessage v-if="messageFor(turn)?.blocks.length" :message="messageFor(turn)!" :busy="turn.status === 'pending'" :animate="turn.status === 'pending'" :portal-target="dialog ?? undefined" :navigation-results="navigationResults" :action-busy="actionBusy" @suggestion="suggestion" @navigate="assistant.navigateAction($event, turn.conversationId, true)" />
+                  <div v-if="turn.status === 'pending' && (!messageFor(turn)?.blocks.length || previews[turn.id]?.label === '正在生成结构…')" class="assistant-reply-placeholder" aria-hidden="true">
+                    <span /><span />
+                  </div>
+                </div>
+              </article>
             </div>
-            <article v-for="turn in turns" :key="turn.id" class="assistant-turn" data-assistant-backdrop>
-              <p class="assistant-user">
-                {{ turn.user }}
-              </p>
-              <div v-if="turn.record" class="assistant-reply">
-                <div class="mb-2 flex items-center gap-2 text-xs text-muted">
-                  <span class="i-lucide-sparkles" aria-hidden="true" />
-                </div>
-                <template v-for="(block, blockIndex) in turn.record.assistant.blocks" :key="blockIndex">
-                  <AssistantText v-if="block.type === 'text'" :text="block.text" />
-                  <div v-else-if="block.type === 'article_list'" class="assistant-cards">
-                    <NuxtLink v-for="item in block.items" :key="item.articleId" :to="item.path" class="assistant-card">
-                      <strong>{{ item.title }}</strong><span>{{ item.description }}</span><span class="text-accent-soft">阅读文章 →</span>
-                    </NuxtLink>
-                  </div>
-                  <div v-else-if="block.type === 'taxonomy_list'" class="mt-3 flex flex-wrap gap-2">
-                    <NuxtLink v-for="item in block.items" :key="item.path" :to="item.path" class="assistant-suggestion">
-                      {{ item.name }} · {{ item.count }}
-                    </NuxtLink>
-                  </div>
-                  <div v-else-if="block.type === 'navigation_confirmation'" class="mt-3">
-                    <p v-if="navigationResults[block.actionId]" class="text-xs text-muted">
-                      {{ { succeeded: '已打开文章', failed: '打开失败，请重新选择', cancelled: '已取消打开' }[navigationResults[block.actionId]!] }}
-                    </p>
-                    <button v-else class="assistant-suggestion" type="button" :disabled="actionBusy || block.expiresAt < Date.now()" @click="assistant.navigateAction(block.actionId, turn.conversationId, true)">
-                      打开《{{ block.target.title }}》
-                    </button>
-                  </div>
-                  <p v-else-if="block.type === 'navigation_result'" class="text-xs text-muted">
-                    {{ { succeeded: '已打开文章', failed: '打开失败', cancelled: '已取消打开' }[block.status] }}
-                  </p>
-                </template>
-                <div v-if="turn.record.assistant.references.length" class="mt-3 border-t border-line pt-2 text-xs text-muted">
-                  参考文章：<NuxtLink v-for="reference in turn.record.assistant.references" :key="`${reference.articleId}:${reference.sectionId}`" class="mr-2 hover:text-accent-soft" :to="`${reference.path}${reference.sectionId ? `#${encodeURIComponent(reference.sectionId)}` : ''}`">
-                    {{ reference.title }}
-                  </NuxtLink>
-                </div>
-              </div>
-              <p v-else class="assistant-status" role="status">
-                {{ turn.status === 'pending' ? '正在阅读与整理，回答检查通过后会显示…' : turn.error || { completed: '', failed: '回答未完成，请重新提问', interrupted: '本次回答已中断', cancelled: '本次生成已停止' }[turn.status] }}
-              </p>
-            </article>
           </div>
           <button v-if="newReply" class="assistant-new-reply" type="button" @click="scrollBottom">
             有新回复 ↓
@@ -381,4 +374,7 @@ onBeforeUnmount(() => {
   .assistant-welcome { padding: 20px 16px; }
 }
 @media (prefers-reduced-motion: reduce) { .assistant-drawer-enter-active, .assistant-drawer-leave-active { transition: none; } }
+.assistant-reply-placeholder { display: flex; flex-direction: column; gap: 10px; padding: 8px 0; }
+.assistant-reply-placeholder span { height: 8px; width: 55%; border-radius: 8px; background: var(--color-border); }
+.assistant-reply-placeholder span + span { width: 32%; }
 </style>

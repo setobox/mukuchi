@@ -1,5 +1,6 @@
 import { defineConfig, presetIcons, presetWind3 } from 'unocss'
 import { icons } from './app/shared/icons.ts'
+import { presentationIcons } from './shared/assistant/presentation.ts'
 
 const breakpoints = { md: '900px', lg: '1200px' }
 
@@ -96,5 +97,5 @@ export default defineConfig({
       'control-base control-quiet h-11 w-11 shrink-0 text-muted',
     'text-link': 'ui-link inline-flex items-center gap-2 min-h-11 text-heading',
   },
-  safelist: Object.values(icons),
+  safelist: [...Object.values(icons), ...Object.values(presentationIcons)],
 })

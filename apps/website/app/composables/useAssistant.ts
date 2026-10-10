@@ -4,6 +4,7 @@ import { createInjectionState, useEventListener, useIntervalFn } from '@vueuse/c
 import { createAssistantController } from '~/features/assistant/controller'
 import { createLocalHistory } from '~/features/assistant/history'
 import { memoryHistoryDatabase, openHistoryDatabase, resilientHistoryDatabase } from '~/features/assistant/storage'
+import { readTurnResponse } from '~/features/assistant/transport'
 
 export const assistantInjectionKey: InjectionKey<AssistantController> = Symbol('assistant')
 const [useProvideAssistant, useInjectedAssistant] = createInjectionState(() => {
@@ -37,6 +38,10 @@ const [useProvideAssistant, useInjectedAssistant] = createInjectionState(() => {
     transport: {
       session: () => request('/session'),
       post: (path, body, csrf, signal) => request(path, { method: 'POST', body: JSON.stringify(body), headers: { 'content-type': 'application/json', 'x-csrf-token': csrf }, signal }),
+      stream: async (path, body, csrf, requestId, receive, signal) => {
+        const response = await fetch(`${base}/api/assistant${path}`, { credentials: 'same-origin', cache: 'no-store', method: 'POST', body: JSON.stringify(body), headers: { 'content-type': 'application/json', 'accept': 'text/event-stream', 'x-csrf-token': csrf, 'x-assistant-request-id': requestId }, signal })
+        return readTurnResponse(response, requestId, receive, signal)
+      },
     },
     navigate: async (path) => {
       const result = await router.push(path)

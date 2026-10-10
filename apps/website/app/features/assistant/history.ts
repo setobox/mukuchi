@@ -58,7 +58,7 @@ export function createLocalHistory(db: LocalDatabase, notify: (change: HistoryCh
         return row
       })
     },
-    async finish(namespace: string, conversationId: string, turnId: string, outcome: { status: 'completed', record: SignedTurn } | { status: 'failed' | 'interrupted' | 'cancelled', error?: string }, unread: boolean, now = Date.now()) {
+    async finish(namespace: string, conversationId: string, turnId: string, outcome: { status: 'completed', record: SignedTurn } | { status: 'failed' | 'interrupted' | 'cancelled', error?: string, preview?: LocalTurn['preview'], durationMs?: number }, unread: boolean, now = Date.now()) {
       return write(namespace, async (tx) => {
         const row = await conversation(tx, namespace, conversationId)
         const raw = await tx.get('messages', [namespace, turnId])
