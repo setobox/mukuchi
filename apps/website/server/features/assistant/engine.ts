@@ -1,10 +1,12 @@
 import type { z } from 'zod'
 import type { ArticleReference, AssistantBlock, SignedTurn, TurnRequest, TurnResponse } from '../../../shared/assistant/model'
 import type { AssistantCredentials, AssistantSettings } from '../../../shared/assistant/settings'
-import type { ModelMessage, ToolCall } from '../../../shared/assistant/tools'
+import type { StreamPayload } from '../../../shared/assistant/stream'
+import type { IntentBlock, ModelMessage, ToolCall } from '../../../shared/assistant/tools'
 import type { PublicContent } from './content'
 import type { AssistantRepository } from './repository'
 import { z as schema } from 'zod'
+import { cleanAssistantHtml } from '../../../shared/assistant/html'
 import { AssistantError, assistantLimits, assistantMessageSchema, historyText, referenceSchema, turnRequestSchema, visibleText } from '../../../shared/assistant/model'
 import { modelMessageSchema, toolCallSchema, toolInputs } from '../../../shared/assistant/tools'
 import { digest, seal, signTurn, unseal, verifyHistory } from './crypto'
@@ -15,6 +17,8 @@ import { taskFailure } from './tasks'
 
 const stateSchema = schema.object({
   request: turnRequestSchema.omit({ turnstileToken: true }),
+  history: schema.array(schema.object({ id: schema.uuid(), text: schema.string().max(2200) })).max(8),
+  startedAt: schema.number(),
   groups: schema.array(schema.array(modelMessageSchema)).max(8),
   knownArticles: schema.array(schema.string()).max(100),
   references: schema.array(referenceSchema).max(8),
@@ -40,15 +44,18 @@ export interface EngineDependencies {
   actor: string
   signal: AbortSignal
   configVersion?: number
+  /** Server-authorized administrator preview; never taken from request JSON. */
+  preview?: boolean
   now?: () => number
   model?: typeof callModel
   moderation?: typeof moderate
+  emit?: (requestId: string, payload: StreamPayload) => void | Promise<void>
 }
-export function contextMessages(state: Pick<EngineState, 'request' | 'groups'>) {
-  const history = [...state.request.history]
+export function contextMessages(state: Pick<EngineState, 'request' | 'groups'> & Partial<Pick<EngineState, 'history'>>) {
+  const history = [...(state.history ?? state.request.history.map(turn => ({ id: turn.id, text: historyText(turn) })))]
   const groups = [...state.groups]
   let limited = false
-  const make = (): ModelMessage[] => [{ role: 'user', content: JSON.stringify({ question: state.request.text, page: state.request.page, history: history.map(historyText), limited }) }, ...groups.flat()]
+  const make = (): ModelMessage[] => [{ role: 'user', content: JSON.stringify({ question: state.request.text, page: state.request.page, history: history.map(turn => turn.text), limited }) }, ...groups.flat()]
   let messages = make()
   while (JSON.stringify(messages).length > assistantLimits.contextLength) {
     limited = true
@@ -56,21 +63,26 @@ export function contextMessages(state: Pick<EngineState, 'request' | 'groups'>) 
       history.shift()
     else if (groups.length > 1)
       groups.shift()
-    else throw new AssistantError(400, 'context_limit', '本次材料超出安全检查范围，请指定较短的章节或缩小问题')
+    else throw new AssistantError(400, 'context_limit', '本次材料超出上下文范围，请指定较短的章节或缩小问题')
     messages = make()
   }
-  return { messages, limited }
+  return { messages, limited, history, groups }
 }
 export function createAssistantEngine(dependencies: EngineDependencies) {
   const { repository, content, settings, credentials, secret, actor, signal } = dependencies
   const now = dependencies.now ?? Date.now
   const model = dependencies.model ?? callModel
   const moderation = dependencies.moderation ?? moderate
+  async function emit(requestId: string, payload: StreamPayload) {
+    signal.throwIfAborted()
+    await dependencies.emit?.(requestId, payload)
+  }
+  const status = (requestId: string, label: string, tool?: string) => emit(requestId, { type: 'status', label, ...(tool ? { tool } : {}) })
   async function active(requestId: string) {
     signal.throwIfAborted()
     if (dependencies.configVersion !== undefined) {
       const latest = await repository.settings()
-      if (!latest.settings.enabled || latest.version !== dependencies.configVersion || !latest.verifiedHash)
+      if (latest.version !== dependencies.configVersion || (!dependencies.preview && (!latest.settings.enabled || !latest.verifiedHash)))
         throw new AssistantError(503, 'configuration_changed', '助手配置已变化，本次处理已停止')
     }
     return repository.assertActive(requestId, actor, now())
@@ -83,15 +95,61 @@ export function createAssistantEngine(dependencies: EngineDependencies) {
     await repository.tasks.finishStep(step, now())
     return value
   }
-  async function check(requestId: string, text: string, direction: 'input' | 'output') {
-    await tracked(requestId, direction === 'input' ? '输入审核' : '输出审核', 'review', async () => {
-      if (!await moderation(text, direction, settings, credentials, signal))
+  async function check(requestId: string, text: string) {
+    await status(requestId, '正在检查输入…')
+    await tracked(requestId, '输入审核', 'review', async () => {
+      if (!await moderation(text, 'input', settings, credentials, signal))
         throw new AssistantError(400, 'moderation_rejected', '本次内容未通过安全检查，请调整问题后重试')
     })
   }
   function known(state: EngineState, articleId: string) {
     if (!state.knownArticles.includes(articleId))
       throw new AssistantError(400, 'unknown_article', '未能确定文章，请先搜索或选择文章')
+  }
+  async function resolveBlock(state: EngineState, block: IntentBlock): Promise<AssistantBlock> {
+    for (const id of block.sourceIds) {
+      const ref = state.references.find(reference => reference.sourceId === id)
+      if (!ref || !await content.article(ref.articleId))
+        throw new AssistantError(400, 'invalid_reference', '文章引用无法验证，请重新提问')
+    }
+    const fallback = () => ({ type: 'text' as const, text: 'summary' in block ? `${block.title}\n\n${block.summary || '此结构暂时无法展示。'}` : block.text, sourceIds: block.sourceIds })
+    if (block.type === 'html') {
+      try {
+        return {
+          ...block,
+          ...cleanAssistantHtml(block.html, block.css),
+        }
+      }
+      catch { return fallback() }
+    }
+    if (block.type === 'architecture') {
+      const ids = new Set(block.nodes.map(node => node.id))
+      const indegree = new Map(block.nodes.map(node => [node.id, 0]))
+      if (ids.size !== block.nodes.length || block.edges.some(edge => !ids.has(edge.from) || !ids.has(edge.to)))
+        return fallback()
+      for (const edge of block.edges) indegree.set(edge.to, indegree.get(edge.to)! + 1)
+      const queue = [...ids].filter(id => indegree.get(id) === 0)
+      let visited = 0
+      while (queue.length) {
+        const id = queue.shift()!
+        visited++
+        for (const edge of block.edges.filter(edge => edge.from === id)) {
+          indegree.set(edge.to, indegree.get(edge.to)! - 1)
+          if (indegree.get(edge.to) === 0)
+            queue.push(edge.to)
+        }
+      }
+      if (visited !== ids.size)
+        return fallback()
+    }
+    if (block.type === 'media') {
+      known(state, block.articleId)
+      if (!state.references.some(ref => ref.articleId === block.articleId) || !await content.article(block.articleId))
+        return fallback()
+      const image = await content.image(block.articleId)
+      return { ...block, ...(image ? { image } : {}) }
+    }
+    return block
   }
   async function execute(state: EngineState, call: ToolCall): Promise<unknown> {
     let args: unknown
@@ -102,23 +160,29 @@ export function createAssistantEngine(dependencies: EngineDependencies) {
     await repository.countCall(state.request.requestId, actor, 'tool', now())
     switch (call.function.name) {
       case 'get_site_info': {
+        await status(state.request.requestId, '正在了解站点资料…', call.function.name)
         const input = toolInputs.get_site_info.parse(args)
         return content.siteInfo(input.scope)
       }
       case 'get_taxonomy': {
+        await status(state.request.requestId, '正在读取分类与标签…', call.function.name)
         const input = toolInputs.get_taxonomy.parse(args)
         state.taxonomyRead.push(input.kind)
         return { items: await content.taxonomy(input.kind), limited: true }
       }
       case 'search_articles': {
+        await status(state.request.requestId, '正在搜索文章…', call.function.name)
         const input = toolInputs.search_articles.parse(args)
         const articles = await content.search(input.query, input)
         state.knownArticles = [...new Set([...state.knownArticles, ...articles.map(article => article.articleId)])]
+        await status(state.request.requestId, `找到 ${articles.length} 篇文章`, call.function.name)
         return { articles, purpose: '候选摘要，不是正文阅读依据' }
       }
       case 'get_article': {
         const input = toolInputs.get_article.parse(args)
         known(state, input.articleId)
+        const article = await content.article(input.articleId)
+        await status(state.request.requestId, article ? `正在读取《${article.title}》…` : '正在读取文章…', call.function.name)
         const reading = await content.read(input.articleId, input.sectionId)
         if (!reading)
           return { missing: true }
@@ -126,9 +190,10 @@ export function createAssistantEngine(dependencies: EngineDependencies) {
         if (!state.references.some(ref => ref.articleId === reference.articleId && ref.sectionId === reference.sectionId))
           state.references.push(reference)
         state.contextLimited ||= reading.partial
-        return reading
+        return { ...reading, sourceId: reference.sourceId }
       }
       case 'navigate_to_article': {
+        await status(state.request.requestId, '正在准备文章入口…', call.function.name)
         const input = toolInputs.navigate_to_article.parse(args)
         known(state, input.articleId)
         if (!await content.article(input.articleId))
@@ -137,6 +202,7 @@ export function createAssistantEngine(dependencies: EngineDependencies) {
         return { proposal: true, articleId: input.articleId, message: '尚未跳转，应用将确认用户意图后提供导航。' }
       }
       case 'get_history': {
+        await status(state.request.requestId, '正在查找会话历史…', call.function.name)
         toolInputs.get_history.parse(args)
         return { unavailable: true, message: '没有更多可验证的本地历史，请勿编造。' }
       }
@@ -149,12 +215,52 @@ export function createAssistantEngine(dependencies: EngineDependencies) {
         await active(request.requestId)
         const context = contextMessages(state)
         state.contextLimited ||= context.limited
-        await check(request.requestId, JSON.stringify(context.messages), 'input')
+        state.history = context.history
+        state.groups = context.groups
         await repository.countCall(request.requestId, actor, 'model', now())
         const body = modelBody(settings, context.messages)
-        const result = await tracked(request.requestId, '模型调用', 'reply', () => model(settings, credentials, body, signal))
+        await status(request.requestId, 'Thinking…')
+        let generating = false
+        let checkedAt = now()
+        const preview: AssistantBlock[] = []
+        function checkPreview(index: number, block: AssistantBlock) {
+          preview[index] = block
+          if (visibleText({ id: request.requestId, role: 'assistant', blocks: preview.filter(Boolean), references: [] }).length > assistantLimits.visibleLength)
+            throw new AssistantError(400, 'output_limit', '回答内容过长，请缩小问题范围后重试')
+        }
+        const result = await tracked(request.requestId, '模型调用', 'reply', () => model(settings, credentials, body, signal, undefined, async (event) => {
+          signal.throwIfAborted()
+          if (now() - checkedAt >= 250 || event.type === 'block' || event.type === 'retry') {
+            await active(request.requestId)
+            checkedAt = now()
+          }
+          if (event.type === 'retry') {
+            await repository.countCall(request.requestId, actor, 'model', now())
+            await status(request.requestId, `正在重试…（${event.attempt}/2）`)
+          }
+          else if (event.type === 'text') {
+            const previous = preview[event.index]
+            checkPreview(event.index, { type: 'text', text: `${previous?.type === 'text' ? previous.text : ''}${event.text}` })
+            if (!generating) {
+              await status(request.requestId, '正在生成回复…')
+              generating = true
+            }
+            await emit(request.requestId, { type: 'text_delta', index: event.index, text: event.text })
+          }
+          else if (event.type === 'structure') {
+            generating = false
+            await status(request.requestId, '正在生成结构…')
+          }
+          else if (event.type === 'block') {
+            const block = await resolveBlock(state, event.block)
+            checkPreview(event.index, block)
+            await emit(request.requestId, { type: 'block', index: event.index, block, references: state.references })
+            if (block.type !== 'text')
+              await status(request.requestId, '正在生成回复…')
+          }
+        }))
         if (result.kind === 'tools') {
-          // Audit the complete proposal before running any tool, including read-only tools.
+          // Tool parameters are still validated before execution; they are not user input.
           const proposal = JSON.stringify(result.calls)
           if (proposal.length > assistantLimits.contextLength)
             throw new AssistantError(400, 'context_limit', '本次工具请求过长，请缩小问题范围')
@@ -168,7 +274,6 @@ export function createAssistantEngine(dependencies: EngineDependencies) {
           }
           if (new Set(result.calls.map(call => call.id)).size !== result.calls.length)
             throw new AssistantError(503, 'invalid_tool', '模型工具标识重复，请重试')
-          await check(request.requestId, proposal, 'output')
           const historyCall = result.calls.find(call => call.function.name === 'get_history')
           if (historyCall && !state.historyExhausted) {
             // Parallel history requests cannot be resumed safely; require the single-tool protocol.
@@ -177,6 +282,16 @@ export function createAssistantEngine(dependencies: EngineDependencies) {
             await repository.countCall(request.requestId, actor, 'history', now())
             await repository.countCall(request.requestId, actor, 'tool', now())
             const nonce = crypto.randomUUID()
+            await status(request.requestId, '正在读取会话历史…', 'get_history')
+            // Leave room for the call and envelope in the 30 KiB encrypted payload.
+            while (new TextEncoder().encode(JSON.stringify(state)).byteLength > 27_000) {
+              state.contextLimited = true
+              if (state.history.length)
+                state.history.shift()
+              else if (state.groups.length)
+                state.groups.shift()
+              else throw new AssistantError(400, 'context_limit', '本次材料过长，请缩小问题范围')
+            }
             const token = await seal(secret, actor, 'continuation', { state, call: historyCall, nonce, expiresAt: now() + 60_000 })
             await repository.waitForHistory(request.requestId, actor, nonce, now())
             return { kind: 'needs_history', requestId: request.requestId, conversationId: request.conversationId, continuation: token, historyRequest: { before: state.historyCursor?.id ?? null, limit: toolInputs.get_history.parse(JSON.parse(historyCall.function.arguments)).limit } }
@@ -190,7 +305,7 @@ export function createAssistantEngine(dependencies: EngineDependencies) {
           continue
         }
         const { intent } = result
-        const blocks: AssistantBlock[] = [{ type: 'text', text: intent.text }]
+        const blocks: AssistantBlock[] = 'blocks' in intent ? await Promise.all(intent.blocks.map(block => resolveBlock(state, block))) : [{ type: 'text', text: intent.text }]
         if (intent.articles.length) {
           const cards = []
           for (const articleId of new Set(intent.articles)) {
@@ -209,12 +324,14 @@ export function createAssistantEngine(dependencies: EngineDependencies) {
           if (items.length)
             blocks.push({ type: 'taxonomy_list', items })
         }
-        const references: ArticleReference[] = []
+        const usedSources = new Set(blocks.flatMap(block => 'sourceIds' in block ? block.sourceIds ?? [] : []))
+        const references: ArticleReference[] = state.references.filter(ref => ref.sourceId && usedSources.has(ref.sourceId))
         for (const item of intent.references) {
           const reference = state.references.find(ref => ref.articleId === item.articleId && (ref.sectionId ?? null) === item.sectionId)
           if (!reference || !await content.article(item.articleId))
             throw new AssistantError(400, 'invalid_reference', '文章引用无法验证，请重新提问')
-          references.push(reference)
+          if (!references.some(ref => ref.articleId === reference.articleId && ref.sectionId === reference.sectionId))
+            references.push(reference)
         }
         const id = crypto.randomUUID()
         let actionId: string | undefined
@@ -229,14 +346,13 @@ export function createAssistantEngine(dependencies: EngineDependencies) {
             && (request.text.includes(article.title) || request.text.includes(article.path) || (state.navigation === request.page.path && /这篇|当前|此文/.test(request.text)))
           blocks.push({ type: 'navigation_confirmation', actionId, target: { articleId: article.articleId, path: article.path, title: article.title }, expiresAt: now() + 300_000 })
         }
-        const message = assistantMessageSchema.parse({ id, role: 'assistant', blocks, references })
+        const message = assistantMessageSchema.parse({ id, role: 'assistant', blocks, references, ...('suggestions' in intent ? { suggestions: intent.suggestions } : {}) })
         const text = visibleText(message)
         if (text.length > assistantLimits.visibleLength)
           throw new AssistantError(400, 'output_limit', '回答内容过长，请缩小问题范围后重试')
-        await check(request.requestId, text, 'output')
         if (actionId && state.navigation)
           await repository.createAction({ id: actionId, actor, conversationId: request.conversationId, messageId: id, articleId: state.navigation, authorized }, now())
-        const record = await signTurn(secret, actor, { id: request.requestId, conversationId: request.conversationId, user: request.text, createdAt: now(), assistant: message })
+        const record = await signTurn(secret, actor, { id: request.requestId, conversationId: request.conversationId, user: request.text, createdAt: now(), assistant: message, durationMs: Math.max(0, now() - state.startedAt) })
         await active(request.requestId)
         await repository.end(request.requestId, actor, 'completed', null, now())
         return { kind: 'completed', record, contextLimited: state.contextLimited, ...(authorized && actionId ? { navigate: actionId } : {}) }
@@ -250,39 +366,48 @@ export function createAssistantEngine(dependencies: EngineDependencies) {
   return {
     async start(input: TurnRequest): Promise<TurnResponse> {
       const request = turnRequestSchema.parse(input)
-      request.history = await verifyHistory(secret, actor, request.conversationId, request.history, now())
-      const confirmation = /^(?:yes|ok|好|好的|是|是的|打开|打开吧|确认|可以)[！!。.\s]*$/i.test(request.text)
-      const pending = request.pendingActionId && request.history.at(-1)?.assistant.blocks.some(block => block.type === 'navigation_confirmation' && block.actionId === request.pendingActionId)
-      if (confirmation && pending && request.pendingActionId) {
-        const action = await repository.action(request.pendingActionId, actor, request.conversationId, now())
-        const article = action?.status === 'pending' ? await content.article(action.article_id) : null
-        if (action && article) {
-          const message = assistantMessageSchema.parse({ id: crypto.randomUUID(), role: 'assistant', references: [], blocks: [
-            { type: 'text', text: `准备打开《${article.title}》。` },
-            { type: 'navigation_confirmation', actionId: action.id, target: { articleId: article.articleId, path: article.path, title: article.title }, expiresAt: action.expires_at },
-          ] })
-          const context = contextMessages({ request, groups: [] })
-          await check(request.requestId, JSON.stringify(context.messages), 'input')
-          await tracked(request.requestId, '生成导航确认回复', 'reply', async () => {})
-          await check(request.requestId, visibleText(message), 'output')
-          if (!await repository.authorizeAction(action.id, actor, request.conversationId, now()))
-            throw new AssistantError(409, 'action_expired', '操作已失效，请重新选择')
-          const record = await signTurn(secret, actor, { id: request.requestId, conversationId: request.conversationId, user: request.text, createdAt: now(), assistant: message })
-          await active(request.requestId)
-          await repository.end(request.requestId, actor, 'completed', null, now())
-          return { kind: 'completed', record, contextLimited: context.limited, navigate: action.id }
+      try {
+        request.history = await verifyHistory(secret, actor, request.conversationId, request.history, now())
+        const startedAt = (await active(request.requestId)).created_at
+        if (!dependencies.preview)
+          await check(request.requestId, request.text)
+        const confirmation = /^(?:yes|ok|好|好的|是|是的|打开|打开吧|确认|可以)[！!。.\s]*$/i.test(request.text)
+        const pending = request.pendingActionId && request.history.at(-1)?.assistant.blocks.some(block => block.type === 'navigation_confirmation' && block.actionId === request.pendingActionId)
+        if (confirmation && pending && request.pendingActionId) {
+          const action = await repository.action(request.pendingActionId, actor, request.conversationId, now())
+          const article = action?.status === 'pending' ? await content.article(action.article_id) : null
+          if (action && article) {
+            const message = assistantMessageSchema.parse({ id: crypto.randomUUID(), role: 'assistant', references: [], blocks: [
+              { type: 'text', text: `准备打开《${article.title}》。` },
+              { type: 'navigation_confirmation', actionId: action.id, target: { articleId: article.articleId, path: article.path, title: article.title }, expiresAt: action.expires_at },
+            ] })
+            const context = contextMessages({ request, groups: [] })
+            await tracked(request.requestId, '生成导航确认回复', 'reply', async () => {})
+            if (!await repository.authorizeAction(action.id, actor, request.conversationId, now()))
+              throw new AssistantError(409, 'action_expired', '操作已失效，请重新选择')
+            const record = await signTurn(secret, actor, { id: request.requestId, conversationId: request.conversationId, user: request.text, createdAt: now(), assistant: message, durationMs: Math.max(0, now() - startedAt) })
+            await active(request.requestId)
+            await repository.end(request.requestId, actor, 'completed', null, now())
+            return { kind: 'completed', record, contextLimited: context.limited, navigate: action.id }
+          }
         }
+        await repository.cancelPendingActions(actor, request.conversationId)
+        const knownArticles = new Set(request.history.flatMap(turn => [
+          ...turn.assistant.references.map(ref => ref.articleId),
+          ...turn.assistant.blocks.flatMap(block => block.type === 'article_list' ? block.items.map(item => item.articleId) : []),
+        ]))
+        if (request.page.path && await content.article(request.page.path))
+          knownArticles.add(request.page.path)
+        const safeRequest = turnRequestSchema.omit({ turnstileToken: true }).parse({ requestId: request.requestId, conversationId: request.conversationId, text: request.text, page: request.page, history: request.history, pendingActionId: request.pendingActionId })
+        const first = request.history[0]
+        const history = safeRequest.history.map(turn => ({ id: turn.id, text: historyText(turn) }))
+        safeRequest.history = []
+        return run({ request: safeRequest, history, startedAt, groups: [], knownArticles: [...knownArticles], references: [], taxonomyRead: [], contextLimited: false, navigation: null, historyExhausted: false, historyCursor: first ? { id: first.id, createdAt: first.createdAt } : null })
       }
-      await repository.cancelPendingActions(actor, request.conversationId)
-      const knownArticles = new Set(request.history.flatMap(turn => [
-        ...turn.assistant.references.map(ref => ref.articleId),
-        ...turn.assistant.blocks.flatMap(block => block.type === 'article_list' ? block.items.map(item => item.articleId) : []),
-      ]))
-      if (request.page.path && await content.article(request.page.path))
-        knownArticles.add(request.page.path)
-      const safeRequest = turnRequestSchema.omit({ turnstileToken: true }).parse({ requestId: request.requestId, conversationId: request.conversationId, text: request.text, page: request.page, history: request.history, pendingActionId: request.pendingActionId })
-      const first = request.history[0]
-      return run({ request: safeRequest, groups: [], knownArticles: [...knownArticles], references: [], taxonomyRead: [], contextLimited: false, navigation: null, historyExhausted: false, historyCursor: first ? { id: first.id, createdAt: first.createdAt } : null })
+      catch (error) {
+        await repository.end(request.requestId, actor, 'failed', taskFailure(error, Object.values(credentials)), now())
+        throw error
+      }
     },
     async resume(token: string, values: SignedTurn[]): Promise<TurnResponse> {
       const payload = await unseal(secret, actor, 'continuation', token, continuationSchema)
@@ -295,7 +420,7 @@ export function createAssistantEngine(dependencies: EngineDependencies) {
           throw new AssistantError(409, 'invalid_continuation', '继续对话的凭据已过期，请重新提问')
         older = await verifyHistory(secret, actor, state.request.conversationId, values, now())
         const first = state.historyCursor
-        if (older.length > limit || older.some(turn => state.request.history.some(existing => existing.id === turn.id) || (first && turn.createdAt >= first.createdAt)))
+        if (older.length > limit || older.some(turn => state.history.some(existing => existing.id === turn.id) || (first && turn.createdAt >= first.createdAt)))
           throw new AssistantError(400, 'invalid_history', '历史消息顺序无法验证')
         await repository.resume(state.request.requestId, actor, payload.nonce, now())
         await repository.tasks.finishStep(step, now())

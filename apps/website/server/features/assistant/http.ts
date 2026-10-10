@@ -9,7 +9,7 @@ import { AuthError } from '../../../shared/auth/model'
 import { adminOptions, readLimitedBody, requireOrigin } from '../admin/http'
 import { decryptApiKey } from '../ai/crypto'
 import { authCookieOptions } from '../auth/http'
-import { session } from '../auth/session'
+import { requireOwner, session } from '../auth/session'
 import { logApiError } from '../logging/api-error'
 import { canonicalJson, digest, signValue, verifyValue } from './crypto'
 import { createAssistantRepository } from './repository'
@@ -43,16 +43,15 @@ export async function withAssistant<T>(event: H3Event, operation: (repository: A
 }
 export async function configurationHash(settings: unknown, credentials: unknown) {
   const parsed = z.record(z.string(), z.unknown()).parse(settings)
-  const capability = Object.fromEntries(['baseUrl', 'model', 'style', 'region', 'queryService', 'responseService', 'turnstileSiteKey'].map(key => [key, parsed[key]]))
-  return digest(canonicalJson({ settings: capability, credentials }))
+  const capability = Object.fromEntries(['baseUrl', 'model', 'style', 'region', 'queryService', 'turnstileSiteKey'].map(key => [key, parsed[key]]))
+  return digest(canonicalJson({ protocol: 'stream-structures-v2', settings: capability, credentials }))
 }
 export async function assistantConfiguration(event: H3Event, repository: AssistantRepository, requireEnabled = true) {
   const stored = await repository.settings()
   const secret = assistantSecret(event)
   const credentials = stored.encryptedCredentials ? assistantCredentialsSchema.parse(JSON.parse(await decryptApiKey(stored.encryptedCredentials, secret))) : assistantCredentialsSchema.parse({})
   const hash = await configurationHash(stored.settings, credentials)
-  const legacyHash = await digest(canonicalJson({ settings: { ...z.record(z.string(), z.unknown()).parse(stored.legacySettings), enabled: false }, credentials }))
-  const verified = !!stored.verifiedHash && (stored.verifiedHash === hash || stored.verifiedHash === legacyHash)
+  const verified = !!stored.verifiedHash && stored.verifiedHash === hash
   const ready = configurationReady(stored.settings, credentials) && verified
   if (requireEnabled && (!stored.settings.enabled || !ready))
     throw new AssistantError(503, 'disabled', '助手暂未开放')
@@ -86,6 +85,17 @@ export async function assistantIdentity(event: H3Event, write = false) {
       throw new AssistantError(403, 'invalid_session', '会话校验失败，请刷新后重试')
   }
   return { actor: `anonymous:${id}`, namespace: 'anonymous', csrf, authenticated: false }
+}
+export async function previewIdentity(event: H3Event) {
+  const current = await requireOwner(event)
+  const actor = `admin-preview:${await digest(current.user.id)}`
+  return { actor, namespace: actor, csrf: current.csrf, authenticated: true }
+}
+export async function previewConfiguration(event: H3Event, repository: AssistantRepository) {
+  const config = await assistantConfiguration(event, repository, false)
+  if (!config.settings.baseUrl || !config.settings.model || !config.credentials.modelKey || !config.secret)
+    throw new AssistantError(503, 'preview_unconfigured', '请先在后台保存模型地址、名称和 API Key')
+  return config
 }
 export function trustedClientIp(event: H3Event): string {
   if (event.context.cloudflare)

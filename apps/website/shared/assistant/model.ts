@@ -1,26 +1,11 @@
 import { z } from 'zod'
+import { assistantLimits } from './limits'
+import { articlePathSchema } from './paths'
+import { presentationSchemas, presentationText, sourceIdsSchema } from './presentation'
 
-export const assistantLimits = {
-  bodyBytes: 65_536,
-  inputLength: 500,
-  contextLength: 2000,
-  visibleLength: 1800,
-  outputTokens: 1024,
-  modelCalls: 5,
-  toolCalls: 8,
-  historyCalls: 2,
-  turnMs: 180_000,
-  modelMs: 60_000,
-  moderationMs: 5000,
-} as const
+export { assistantLimits } from './limits'
+export { articlePathSchema } from './paths'
 
-export const articlePathSchema = z.string().max(500).regex(/^\/posts\/[^?#\\\s]+$/).refine((path) => {
-  try {
-    const decoded = decodeURIComponent(path)
-    return !/[\s?#\\\p{Cc}]/u.test(decoded) && !decoded.split('/').some(part => part === '.' || part === '..')
-  }
-  catch { return false }
-}, '文章地址无效')
 export const pageContextSchema = z.object({ path: articlePathSchema.nullable() }).strict()
 export type AssistantPage = z.infer<typeof pageContextSchema>
 export const referenceSchema = z.object({
@@ -28,6 +13,9 @@ export const referenceSchema = z.object({
   title: z.string().min(1).max(200),
   path: articlePathSchema,
   sectionId: z.string().min(1).max(200).regex(/^[^\s#?\\]+$/).optional(),
+  sourceId: z.string().max(720).optional(),
+  excerpt: z.string().max(300).optional(),
+  sectionTitle: z.string().max(200).optional(),
 }).strict()
 export type ArticleReference = z.infer<typeof referenceSchema>
 export const articleCardSchema = referenceSchema.omit({ sectionId: true }).extend({ description: z.string().max(300) })
@@ -39,7 +27,8 @@ export const taxonomyItemSchema = z.object({
   path: z.string().max(500).regex(/^\/(?:categories|tags)\/[^?#\\\s]+$/),
 }).strict()
 export const assistantBlockSchema = z.discriminatedUnion('type', [
-  z.object({ type: z.literal('text'), text: z.string().min(1).max(1800) }).strict(),
+  z.object({ type: z.literal('text'), text: z.string().min(1).max(assistantLimits.visibleLength), sourceIds: sourceIdsSchema.optional() }).strict(),
+  ...presentationSchemas,
   z.object({ type: z.literal('article_list'), items: z.array(articleCardSchema).min(1).max(5) }).strict(),
   z.object({ type: z.literal('taxonomy_list'), items: z.array(taxonomyItemSchema).min(1).max(12) }).strict(),
   z.object({ type: z.literal('navigation_confirmation'), actionId: z.uuid(), target: referenceSchema, expiresAt: z.number() }).strict(),
@@ -49,8 +38,9 @@ export type AssistantBlock = z.infer<typeof assistantBlockSchema>
 export const assistantMessageSchema = z.object({
   id: z.uuid(),
   role: z.literal('assistant'),
-  blocks: z.array(assistantBlockSchema).min(1).max(8),
+  blocks: z.array(assistantBlockSchema).min(1).max(assistantLimits.blocks),
   references: z.array(referenceSchema).max(8),
+  suggestions: z.array(z.string().min(1).max(100)).max(3).optional(),
 }).strict()
 export type AssistantMessage = z.infer<typeof assistantMessageSchema>
 export const signedTurnSchema = z.object({
@@ -60,6 +50,7 @@ export const signedTurnSchema = z.object({
   user: z.string().min(1).max(assistantLimits.inputLength),
   assistant: assistantMessageSchema,
   proof: z.string().min(1).max(500),
+  durationMs: z.number().int().nonnegative().optional(),
 }).strict()
 export type SignedTurn = z.infer<typeof signedTurnSchema>
 export const turnRequestSchema = z.object({
@@ -105,6 +96,8 @@ export function visibleText(message: AssistantMessage): string {
   return [...message.blocks.map((block) => {
     switch (block.type) {
       case 'text': return block.text
+      case 'architecture': case 'checklist': case 'comparison': case 'media': case 'workflow': return presentationText(block)
+      case 'html': return `${presentationText(block)}\n${block.html.replace(/<[^>]*>/g, ' ')}`
       case 'article_list': return block.items.map(item => `${item.title}\n${item.description}\n${item.path}`).join('\n')
       case 'taxonomy_list': return block.items.map(item => `${item.name} ${item.count}\n${item.path}`).join('\n')
       case 'navigation_confirmation': return `是否打开《${block.target.title}》？\n${block.target.path}`
@@ -115,5 +108,6 @@ export function visibleText(message: AssistantMessage): string {
 }
 
 export function historyText(turn: SignedTurn): string {
-  return `用户：${turn.user}\n助手：${visibleText(turn.assistant)}`
+  const text = visibleText({ ...turn.assistant, blocks: turn.assistant.blocks.map(block => 'summary' in block ? { type: 'text', text: `${block.title}\n${block.summary}` } : block) })
+  return `用户：${turn.user}\n助手：${text.length > 1600 ? `${text.slice(0, 1550)}…［历史摘要已截断］` : text}`
 }

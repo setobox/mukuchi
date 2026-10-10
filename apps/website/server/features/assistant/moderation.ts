@@ -71,7 +71,7 @@ export function moderationPassed(value: unknown): boolean {
   return data.Suggestion === 'pass' && data.Detail.every(item => item.Suggestion === 'pass')
 }
 export async function moderate(text: string, direction: 'input' | 'output', settings: AssistantSettings, credentials: AssistantCredentials, signal: AbortSignal, fetcher: Fetch = fetch): Promise<boolean> {
-  if (!text || text.length > assistantLimits.contextLength)
+  if (!text || text.length > (direction === 'input' ? assistantLimits.inputLength : assistantLimits.visibleLength))
     throw new AssistantError(400, 'context_limit', '本次上下文过长，请缩小问题范围')
   return withTimeout(signal, assistantLimits.moderationMs, async (activeSignal) => {
     const host = `green-cip.${settings.region}.aliyuncs.com`

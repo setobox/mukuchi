@@ -1,0 +1,18 @@
+export const assistantLimits = {
+  bodyBytes: 262_144,
+  historyUploadBytes: 180_000,
+  inputLength: 500,
+  contextLength: 16_000,
+  visibleLength: 8000,
+  outputTokens: 4096,
+  blocks: 24,
+  modelBlocks: 20,
+  htmlBytes: 12_288,
+  cssBytes: 8192,
+  modelCalls: 5,
+  toolCalls: 8,
+  historyCalls: 2,
+  turnMs: 180_000,
+  modelMs: 60_000,
+  moderationMs: 5000,
+} as const

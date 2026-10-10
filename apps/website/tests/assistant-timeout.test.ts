@@ -39,7 +39,11 @@ test.each(['headers', 'body'])('模型等待 %s 达到 60 秒时明确报告超�
       signal.addEventListener('abort', () => controller.error(signal.reason), { once: true })
     } }))
   })
-  const checked = expect(callModel(settings, credentials, body, new AbortController().signal, fetcher)).rejects.toMatchObject({ statusCode: 504, code: 'upstream_timeout', message: '模型请求超过 60 秒未完成，请稍后重试' })
+  const checked = expect(callModel(settings, credentials, body, new AbortController().signal, fetcher)).rejects.toMatchObject({
+    statusCode: 504,
+    code: 'upstream_timeout',
+    message: phase === 'headers' ? '模型服务超过 60 秒未返回响应，请稍后重试' : '模型响应超过 60 秒未完成，请稍后重试',
+  })
   await vi.advanceTimersByTimeAsync(assistantLimits.modelMs)
   await checked
   expect(fetcher).toHaveBeenCalledTimes(1)

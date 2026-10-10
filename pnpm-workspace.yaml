@@ -44,6 +44,7 @@ catalog:
   '@nuxt/eslint': ^1.17.0
   '@nuxtjs/color-mode': 4.0.1
   '@nuxtjs/mdc': 0.23.1
+  '@streamparser/json': ^0.0.26
   '@tiptap/core': 3.31.3
   '@tiptap/extension-image': 3.31.3
   '@tiptap/extension-table': 3.31.3
@@ -53,6 +54,7 @@ catalog:
   '@tiptap/starter-kit': 3.31.3
   '@tiptap/vue-3': 3.31.3
   '@types/node': ^26.1.1
+  '@types/sanitize-html': ^2.16.2
   '@unocss/eslint-plugin': ^66.10.2
   '@unocss/nuxt': 66.10.2
   '@vitejs/plugin-vue': 6.0.8
@@ -69,6 +71,7 @@ catalog:
   nuxt: 4.5.2
   openid-client: ^6.8.8
   reka-ui: 2.9.2
+  sanitize-html: ^2.18.0
   slugify: 1.6.9
   typescript: ^6.0.3
   unocss: 66.10.2

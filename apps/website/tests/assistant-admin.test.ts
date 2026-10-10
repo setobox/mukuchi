@@ -51,9 +51,9 @@ test.each([
     const blocked = { Code: 200, Data: { Suggestion: 'block', Detail: [{ Type: 'contentModeration', Suggestion: 'pass' }, { Type: 'promptAttack', Suggestion: 'block' }] } }
     const usage = undefined
     const tool = { choices: [{ finish_reason: 'tool_calls', message: { role: 'assistant', content: null, tool_calls: [{ id: 'site', type: 'function', function: { name: 'get_site_info', arguments: '{"scope":"site"}' } }] } }], usage }
-    const intent = malformed ? { PRIVATE_SECRET: 'PRIVATE_SECRET', articles: [], references: [], taxonomy: null } : { text: '个人技术博客。', articles: [], references: [], taxonomy: null }
+    const intent = malformed ? { PRIVATE_SECRET: 'PRIVATE_SECRET', articles: [], references: [], taxonomy: null } : { blocks: [{ type: 'text', text: '个人技术博客。', sourceIds: [] }], articles: [], references: [], taxonomy: null, suggestions: [] }
     const final = { choices: [{ finish_reason: 'stop', message: { role: 'assistant', content: JSON.stringify(intent) } }], usage }
-    const replies = [clear, blocked, clear, tool, clear, clear, final, clear]
+    const replies = [clear, blocked, tool, final]
     const started = [Promise.withResolvers<void>(), Promise.withResolvers<void>()]
     let modelCalls = 0
     if (slow)
@@ -74,6 +74,12 @@ test.each([
           }, { once: true })
         })
       }
+      if ('choices' in reply) {
+        const choice = reply.choices[0]!
+        const delta = 'tool_calls' in choice.message ? { tool_calls: choice.message.tool_calls.map((call, index) => ({ ...call, index })) } : { content: choice.message.content }
+        const chunks = [{ choices: [{ index: 0, delta, finish_reason: null }] }, { choices: [{ index: 0, delta: {}, finish_reason: choice.finish_reason }] }]
+        return new Response(`${chunks.map(chunk => `data: ${JSON.stringify(chunk)}\n\n`).join('')}data: [DONE]\n\n`, { headers: { 'content-type': 'text/event-stream' } })
+      }
       return Response.json(reply)
     })
     vi.stubGlobal('fetch', fetcher)
@@ -91,7 +97,7 @@ test.each([
       const error: unknown = await assistantTestRoute(event).catch(cause => cause)
       expect(error).toMatchObject({ statusCode: 422, code: 'invalid_model_response', message: expect.stringContaining('模型结构化回答测试：模型返回的 JSON 不符合回答约定（text：缺失或类型错误，应为字符串') })
       expect(JSON.stringify(error)).not.toContain('PRIVATE_SECRET')
-      expect(fetcher).toHaveBeenCalledTimes(7)
+      expect(fetcher).toHaveBeenCalledTimes(4)
       expect(db.prepare('SELECT status, model_calls FROM assistant_requests').get()).toMatchObject({ status: 'failed', model_calls: 2 })
       expect((await repo.settings()).verifiedHash).toBe('')
     }
@@ -104,7 +110,7 @@ test.each([
         }
       }
       await checked
-      expect(fetcher).toHaveBeenCalledTimes(8)
+      expect(fetcher).toHaveBeenCalledTimes(4)
       expect(db.prepare('SELECT status, model_calls FROM assistant_requests').get()).toMatchObject({ status: 'completed', model_calls: 2 })
       expect(db.prepare('SELECT COUNT(*) AS count FROM assistant_charges').get()).toEqual({ count: 0 })
       expect((await repo.settings()).verifiedHash).not.toBe('')

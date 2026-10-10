@@ -1,5 +1,6 @@
 import type { H3Event } from 'h3'
-import { queryCollectionSearchSections } from '@nuxt/content/server'
+import { queryCollection, queryCollectionSearchSections } from '@nuxt/content/server'
+import { articleImageSchema } from '../../../shared/assistant/paths'
 import { prepareSearchDocuments } from '../../../shared/content/search'
 import { publicSite } from '../../../shared/content/site'
 import { createPublicContent } from './content'
@@ -14,6 +15,12 @@ export function publicContent(event: H3Event) {
   }).then(prepareSearchDocuments)
   return createPublicContent({
     sections,
+    async image(articleId) {
+      const article = await queryCollection(event, 'posts').where('path', '=', articleId).select('cover').first()
+      const cover = article?.cover
+      const parsed = articleImageSchema.safeParse(cover)
+      return parsed.success ? parsed.data : undefined
+    },
     async siteInfo(scope) {
       const about = await queryCollectionSearchSections(event, 'about', { ignoredTags: ['script', 'style'], minHeading: 'h1', maxHeading: 'h6' })
       return {

@@ -8,6 +8,7 @@ import { taxonomyPath } from '../../../shared/content/taxonomy'
 export interface PublicContentSource {
   sections: () => Promise<SearchDocument[]>
   siteInfo: (scope: 'site' | 'author' | 'all') => Promise<unknown>
+  image?: (articleId: string) => Promise<string | undefined>
 }
 export interface ArticleReading { article: ArticleCard, sectionId: string | null, text: string, partial: boolean, sections: { id: string, title: string }[] }
 function clip(value: string, limit: number) {
@@ -22,6 +23,7 @@ export function createPublicContent(source: PublicContentSource) {
   }
   return {
     siteInfo: source.siteInfo,
+    image: async (articleId: string) => source.image?.(articleId),
     async article(path: string) {
       const document = (await source.sections()).find(item => item.path === path)
       return document ? card(document) : null
@@ -54,7 +56,7 @@ export function createPublicContent(source: PublicContentSource) {
       return items.sort((a, b) => b.count - a.count || a.name.localeCompare(b.name)).slice(0, 12)
     },
     reference(reading: ArticleReading) {
-      return referenceSchema.parse({ articleId: reading.article.articleId, path: reading.article.path, title: reading.article.title, ...(reading.sectionId ? { sectionId: reading.sectionId } : {}) })
+      return referenceSchema.parse({ articleId: reading.article.articleId, path: reading.article.path, title: reading.article.title, sourceId: `${reading.article.articleId}${reading.sectionId ? `#${reading.sectionId}` : ''}`, excerpt: clip(reading.text, 240), ...(reading.sectionId ? { sectionId: reading.sectionId, sectionTitle: reading.sections.find(section => section.id === reading.sectionId)?.title } : {}) })
     },
   }
 }

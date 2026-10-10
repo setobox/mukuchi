@@ -72,6 +72,17 @@ export function createAssistantRepository(db: AdminDatabase) {
         throw new AssistantError(409, 'settings_conflict', '助手设置已改变，请重新测试')
     },
     request,
+    async admitPreview(input: { id: string, actor: string, conversationId: string, fingerprint: string, configVersion: number }, now: number) {
+      if (!input.actor.startsWith('admin-preview:'))
+        throw new AssistantError(403, 'invalid_preview', '测试身份无效')
+      const [inserted] = await db.batch([
+        { sql: `INSERT INTO assistant_requests (id,actor,ip_hash,conversation_id,fingerprint,day,created_at,lease_until,status) VALUES (?,?,?,?,?,?,?,?,'active') ON CONFLICT DO NOTHING RETURNING id`, params: [input.id, input.actor, input.actor, input.conversationId, input.fingerprint, billingDay(now), now, now + assistantLimits.turnMs + 5000] },
+        { sql: 'INSERT INTO assistant_tasks(id,kind,config_version,created_at,updated_at,deadline) SELECT ?,\'test\',?,?,?,? WHERE changes() = 1', params: [input.id, input.configVersion, now, now, now + assistantLimits.turnMs + 5000] },
+        { sql: `INSERT INTO assistant_task_steps(id,task_id,stage,label,status,started_at,finished_at) SELECT ?,?,'task','管理员真实对话测试（不审核、不计配额）','completed',?,? WHERE changes() = 1`, params: [crypto.randomUUID(), input.id, now, now] },
+      ])
+      if (!inserted?.length)
+        throw new AssistantError(409, 'duplicate_request', '该请求已处理或正在处理，请勿重复发送')
+    },
     async admit(input: { id: string, actor: string, ipHash: string, conversationId: string, fingerprint: string, authenticated: boolean, kind?: 'conversation' | 'test', configVersion?: number }, settings: AssistantSettings, now: number) {
       const day = billingDay(now)
       const minute = input.authenticated ? settings.userMinute : settings.guestMinute
@@ -85,7 +96,7 @@ export function createAssistantRepository(db: AdminDatabase) {
               AND (SELECT COUNT(*) FROM assistant_requests WHERE ip_hash = ? AND created_at > ?) < ?
               AND (SELECT COUNT(*) FROM assistant_requests WHERE ip_hash = ? AND day = ?) < ?
               AND (SELECT COUNT(*) FROM assistant_requests WHERE actor = ? AND status IN ('active','waiting','cancelled') AND lease_until > ?) = 0
-              AND (SELECT COUNT(*) FROM assistant_requests WHERE status IN ('active','waiting','cancelled') AND lease_until > ?) < ?
+              AND (SELECT COUNT(*) FROM assistant_requests WHERE actor NOT LIKE 'admin-preview:%' AND status IN ('active','waiting','cancelled') AND lease_until > ?) < ?
             ON CONFLICT DO NOTHING RETURNING id`,
           params: [input.id, input.actor, input.ipHash, input.conversationId, input.fingerprint, day, now, now + assistantLimits.turnMs + 5000, input.actor, now - 60_000, minute, input.actor, day, daily, input.ipHash, now - 60_000, settings.ipMinute, input.ipHash, day, settings.ipDay, input.actor, now, now, settings.concurrency],
         },

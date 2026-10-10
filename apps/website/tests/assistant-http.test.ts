@@ -64,7 +64,7 @@ test('账号与匿名隔离，登录后旧匿名 CSRF 不能提交请求', async
 })
 
 test('JSON 按实际字节限制，Content-Length 缺失也不能绕过；错误不暴露供应商细节', async () => {
-  body = JSON.stringify({ text: '文'.repeat(22_000) })
+  body = JSON.stringify({ text: '文'.repeat(90_000) })
   await expect(assistantJson(event)).rejects.toMatchObject({ statusCode: 413 })
   body = '{'
   await expect(assistantJson(event)).rejects.toMatchObject({ statusCode: 400 })

@@ -1,5 +1,7 @@
 import { z } from 'zod'
+import { assistantLimits } from './limits'
 import { articlePathSchema } from './model'
+import { architectureSchema, checklistSchema, comparisonSchema, htmlSchema, mediaSchema, sourceIdsSchema, workflowSchema } from './presentation'
 
 export const toolInputs = {
   get_site_info: z.object({ scope: z.enum(['site', 'author', 'all']) }).strict(),
@@ -35,6 +37,25 @@ export const finalIntentSchema = z.object({
   references: z.array(z.object({ articleId: articlePathSchema, sectionId: z.string().min(1).max(200).nullable() }).strict()).max(5),
 }).strict()
 export type FinalIntent = z.infer<typeof finalIntentSchema>
+
+export const intentBlockSchema = z.discriminatedUnion('type', [
+  z.object({ type: z.literal('text'), text: z.string().min(1).max(assistantLimits.visibleLength), sourceIds: sourceIdsSchema }).strict(),
+  architectureSchema,
+  checklistSchema,
+  comparisonSchema,
+  mediaSchema.omit({ image: true }),
+  workflowSchema,
+  htmlSchema,
+])
+export const richIntentSchema = z.object({
+  blocks: z.array(intentBlockSchema).min(1).max(assistantLimits.modelBlocks),
+  articles: z.array(articlePathSchema).max(3),
+  taxonomy: z.enum(['category', 'tag', 'all']).nullable(),
+  references: finalIntentSchema.shape.references,
+  suggestions: z.array(z.string().min(1).max(100)).max(3),
+}).strict()
+export type RichIntent = z.infer<typeof richIntentSchema>
+export type IntentBlock = z.infer<typeof intentBlockSchema>
 
 export const modelMessageSchema = z.discriminatedUnion('role', [
   z.object({ role: z.literal('user'), content: z.string() }).strict(),
