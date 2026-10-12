@@ -1,6 +1,6 @@
 # 环境变量
 
-配置模板见 [.env.example](.env.example)。项目业务变量使用无框架前缀的名称，公开配置保留 `PUBLIC_`。`MUKUCHI_*` 构建工具参数和 `CLOUDFLARE_*` 部署参数沿用现有名称。
+Token、密钥与 Giscus 的精简模板见 [.env.example](.env.example)；启用 OIDC 时还须配齐下表登录与管理员配置。项目业务变量使用无框架前缀的名称，公开配置保留 `PUBLIC_`。`MUKUCHI_*` 构建工具参数和 `CLOUDFLARE_*` 部署参数沿用现有名称。
 
 ## 配置读取
 
@@ -22,7 +22,6 @@
 | AI 凭据 | `AI_ENCRYPTION_KEY` | 同名 Secret，生产值须与 Worker 相同 |
 | 音频同步 | `AUDIO_SYNC_TOKEN` | 同名 Secret，生产值须与 Worker 相同 |
 | 统计 | `STATS_ADMIN_TOKEN`、`STATS_HASH_SECRET` | 无须配置 |
-| 本地文件 | `ADMIN_ASSETS_DIRECTORY`、`ADMIN_DATABASE_PATH`、`ADMIN_IMAGES_DIRECTORY`、`ADMIN_POSTS_DIRECTORY`、`STATS_DATABASE_PATH` | 不用于生产 Workers |
 | 部署 | 无须写入 Worker | `CLOUDFLARE_API_TOKEN` Secret、`CLOUDFLARE_ACCOUNT_ID` Variable |
 | 构建 / 验收 | `MUKUCHI_GITHUB_TOKEN`、`MUKUCHI_SMOKE_URL` | 前者由临时 GitHub token 提供，后者为 Variable |
 
