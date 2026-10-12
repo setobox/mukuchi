@@ -8,7 +8,7 @@ import { defaultAiSettings } from '../shared/ai/model.ts'
 
 const origin = new URL(process.env.MUKUCHI_SMOKE_URL || 'http://localhost:3000').origin
 assert.ok(['localhost', '127.0.0.1', '[::1]'].includes(new URL(origin).hostname), '摘要写入验收仅允许本地地址')
-const database = new DatabaseSync(process.env.NUXT_ADMIN_DATABASE_PATH || '.data/admin.sqlite')
+const database = new DatabaseSync(process.env.ADMIN_DATABASE_PATH || '.data/admin.sqlite')
 const previous = database.prepare('SELECT config, encrypted_key, version FROM admin_ai_settings WHERE id = 1').get()
 const cacheCount = database.prepare('SELECT COUNT(*) AS total FROM admin_ai_cache').get()!.total
 let cookie = ''
@@ -26,7 +26,7 @@ try {
   cookie = login.headers.get('set-cookie')!.split(';')[0]!
   csrf = (await (await call('/api/auth/session')).json() as { csrf: string }).csrf
   let settings = await (await call('/api/admin/ai/settings')).json() as AiSettingsView
-  assert.equal(settings.encryptionReady, true, '本地服务须加载 NUXT_AI_ENCRYPTION_KEY')
+  assert.equal(settings.encryptionReady, true, '本地服务须加载 AI_ENCRYPTION_KEY')
   const fixture = { ...defaultAiSettings, enabled: true, baseUrl: 'https://example.invalid/v1', model: 'smoke-fixture', apiKey: 'local-smoke-key-never-send' }
   await call('/api/admin/ai/settings', 'PUT', { ...fixture, version: settings.version }, 403, { 'x-csrf-token': 'invalid' })
   await call('/api/admin/ai/settings', 'PUT', { ...fixture, version: settings.version }, 403, { origin: 'https://untrusted.example' })
@@ -36,7 +36,7 @@ try {
   assert.deepEqual(Object.keys(settings).sort(), ['baseUrl', 'enabled', 'encryptionReady', 'keyConfigured', 'model', 'prompt', 'version'])
   const encrypted = String(database.prepare('SELECT encrypted_key FROM admin_ai_settings WHERE id = 1').get()!.encrypted_key)
   assert.ok(!encrypted.includes(fixture.apiKey))
-  assert.equal(await decryptApiKey(encrypted, process.env.NUXT_AI_ENCRYPTION_KEY || ''), fixture.apiKey)
+  assert.equal(await decryptApiKey(encrypted, process.env.AI_ENCRYPTION_KEY || ''), fixture.apiKey)
   await call('/api/admin/ai/settings', 'PUT', { ...fixture, version: settings.version - 1 }, 409)
   draft = await (await call('/api/admin/drafts', 'POST', { path: `_ai-smoke-${crypto.randomUUID()}.md` })).json() as Draft
   const path = `/api/admin/drafts/${draft.id}`

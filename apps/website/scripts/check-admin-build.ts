@@ -9,16 +9,16 @@ import './stats-environment.ts'
 function files(directory: string): string[] {
   return readdirSync(directory, { withFileTypes: true }).flatMap(entry => entry.isDirectory() ? files(join(directory, entry.name)) : [join(directory, entry.name)])
 }
-const forbidden = ['NUXT_OIDC_CLIENT_SECRET', 'NUXT_AUTH_SESSION_KEY', 'NUXT_GITHUB_CLIENT_SECRET', 'NUXT_GOOGLE_CLIENT_SECRET', 'NUXT_AUTH_SECRET', 'NUXT_RESEND_API_KEY', 'NUXT_GITHUB_PUBLISH_TOKEN', 'NUXT_STATS_HASH_SECRET', 'NUXT_STATS_ADMIN_TOKEN', 'NUXT_AI_ENCRYPTION_KEY', 'NUXT_AUDIO_SYNC_TOKEN'].map(key => process.env[key]).filter((value): value is string => !!value)
+const forbidden = ['OIDC_CLIENT_SECRET', 'AUTH_SESSION_KEY', 'GITHUB_PUBLISH_TOKEN', 'STATS_HASH_SECRET', 'STATS_ADMIN_TOKEN', 'AI_ENCRYPTION_KEY', 'AUDIO_SYNC_TOKEN'].map(key => process.env[key]).filter((value): value is string => !!value)
 // A contact already published literally on the privacy page is public information.
 // Still check every other administrator address, and all secrets without exceptions.
 const privacy = existsSync('app/pages/privacy.vue') ? readFileSync('app/pages/privacy.vue', 'utf8') : ''
 const publicContacts = new Set([...privacy.matchAll(/href="mailto:([^"\s]+)"/g)].map(match => match[1]))
-for (const email of (process.env.NUXT_AUTH_ADMIN_EMAILS || '').split(',').map(value => value.trim()).filter(Boolean)) {
+for (const email of (process.env.AUTH_ADMIN_EMAILS || '').split(',').map(value => value.trim()).filter(Boolean)) {
   if (!publicContacts.has(email))
     forbidden.push(email)
 }
-const filename = process.env.NUXT_ADMIN_DATABASE_PATH || '.data/admin.sqlite'
+const filename = process.env.ADMIN_DATABASE_PATH || '.data/admin.sqlite'
 if (existsSync(filename)) {
   const database = new DatabaseSync(filename, { readOnly: true })
   try {

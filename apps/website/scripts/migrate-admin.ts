@@ -4,7 +4,7 @@ import process from 'node:process'
 import { DatabaseSync } from 'node:sqlite'
 import { fileURLToPath } from 'node:url'
 
-const filename = resolve(process.env.NUXT_ADMIN_DATABASE_PATH || '.data/admin.sqlite')
+const filename = resolve(process.env.ADMIN_DATABASE_PATH || '.data/admin.sqlite')
 const directory = fileURLToPath(new URL('../migrations/admin/', import.meta.url))
 mkdirSync(dirname(filename), { recursive: true })
 const db = new DatabaseSync(filename)

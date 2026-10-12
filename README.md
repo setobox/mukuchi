@@ -1,5 +1,7 @@
 # mukuchi
 
+环境变量的命名、配置位置及迁移说明见 [环境变量文档](apps/website/ENVIRONMENT.md)，本地填写模板见 [.env.example](apps/website/.env.example)。
+
 mukuchi（無口）取自萌属性「三无」——无心、无口、无表情中的「无口」。
 
 ## 功能与技术栈

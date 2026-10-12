@@ -32,19 +32,23 @@ const env = {
   ...process.env,
   HOST: '127.0.0.1',
   PORT: String(port),
-  NUXT_ADMIN_DATABASE_PATH: filename,
-  NUXT_APP_ORIGIN: 'https://blog.test',
-  NUXT_OIDC_ISSUER: 'https://id.test/api/auth',
-  NUXT_OIDC_CLIENT_ID: 'mukuchi-test',
-  NUXT_OIDC_CLIENT_SECRET: randomBytes(32).toString('hex'),
-  NUXT_OIDC_REDIRECT_URI: 'https://blog.test/api/auth/sso/callback',
-  NUXT_OIDC_POST_LOGOUT_REDIRECT_URI: 'https://blog.test',
-  NUXT_OIDC_SCOPES: 'openid profile email',
-  NUXT_AUTH_SESSION_KEY: randomBytes(32).toString('base64'),
-  NUXT_AUTH_SESSION_MAX_AGE: '28800',
-  NUXT_AUTH_ADMIN_EMAILS: 'oidc-smoke@example.invalid',
+  ADMIN_DATABASE_PATH: filename,
+  APP_ORIGIN: 'https://blog.test',
+  OIDC_ISSUER: 'https://id.test/api/auth',
+  OIDC_CLIENT_ID: 'mukuchi-test',
+  OIDC_CLIENT_SECRET: randomBytes(32).toString('hex'),
+  OIDC_REDIRECT_URI: 'https://blog.test/api/auth/sso/callback',
+  OIDC_POST_LOGOUT_REDIRECT_URI: 'https://blog.test',
+  OIDC_SCOPES: 'openid profile email',
+  AUTH_SESSION_KEY: randomBytes(32).toString('base64'),
+  AUTH_SESSION_MAX_AGE: '28800',
+  AUTH_ADMIN_EMAILS: 'oidc-smoke@example.invalid',
+  AI_ENCRYPTION_KEY: randomBytes(32).toString('base64'),
+  AUDIO_SYNC_TOKEN: randomBytes(32).toString('hex'),
+  PUBLIC: 'C:\\Users\\Public',
+  PUBLIC_GISCUS_REPO: 'environment-smoke/comments',
 }
-const invalid = spawn(process.execPath, ['.output/server/index.mjs'], { env: { ...env, NUXT_OIDC_CLIENT_SECRET: '' }, windowsHide: true, stdio: 'pipe' })
+const invalid = spawn(process.execPath, ['.output/server/index.mjs'], { env: { ...env, OIDC_CLIENT_SECRET: '' }, windowsHide: true, stdio: 'pipe' })
 let diagnostic = ''
 invalid.stdout.on('data', () => {})
 invalid.stderr.on('data', chunk => diagnostic += String(chunk))
@@ -82,15 +86,29 @@ try {
   assert.equal(info.ssoAvailable, true)
   assert.equal(info.localAvailable, false)
   assert.match(me.headers.get('cache-control') ?? '', /no-store/)
-  assert.equal((await request('/api/auth/local', { 'origin': env.NUXT_APP_ORIGIN, 'x-admin-request': '1' }, 'POST')).status, 403)
+  const html = await (await request('/admin')).text()
+  assert.ok(html.includes(env.PUBLIC_GISCUS_REPO), 'SSR 必须读取新名称的公开配置')
+  for (const secret of [env.OIDC_CLIENT_SECRET, env.AUTH_SESSION_KEY, env.AI_ENCRYPTION_KEY, env.AUDIO_SYNC_TOKEN])
+    assert.ok(!html.includes(secret), 'SSR 不得暴露私有配置')
+  assert.equal((await request('/api/admin/articles')).status, 401)
+  for (const [credential, status] of [['incorrect', 401], [env.AUDIO_SYNC_TOKEN, 409]] as const) {
+    const response = await fetch(`${base}/api/internal/audio/sync`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'authorization': `Bearer ${credential}` },
+      body: JSON.stringify({ revision: 'environment-smoke-not-a-deployment' }),
+      signal: AbortSignal.timeout(10000),
+    })
+    assert.equal(response.status, status, '音频同步必须读取新令牌；版本不匹配时在调度任务前退出')
+  }
+  assert.equal((await request('/api/auth/local', { 'origin': env.APP_ORIGIN, 'x-admin-request': '1' }, 'POST')).status, 403)
   const callback = await request('/api/auth/sso/callback?state=invalid&code=invalid')
   assert.equal(callback.status, 302)
   assert.match(callback.headers.get('location') ?? '', /auth_error=expired/)
   assert.equal((await request('/api/auth/logout', { cookie, 'origin': 'https://evil.test', 'x-csrf-token': csrf }, 'POST')).status, 403)
-  assert.equal((await request('/api/auth/logout', { cookie, 'origin': env.NUXT_APP_ORIGIN, 'x-csrf-token': 'wrong' }, 'POST')).status, 403)
-  assert.equal((await request('/api/auth/logout', { cookie, 'origin': env.NUXT_APP_ORIGIN, 'x-csrf-token': csrf }, 'POST')).status, 200)
+  assert.equal((await request('/api/auth/logout', { cookie, 'origin': env.APP_ORIGIN, 'x-csrf-token': 'wrong' }, 'POST')).status, 403)
+  assert.equal((await request('/api/auth/logout', { cookie, 'origin': env.APP_ORIGIN, 'x-csrf-token': csrf }, 'POST')).status, 200)
   assert.equal((await (await request('/api/auth/me', { cookie })).json() as { user: unknown }).user, null)
-  console.log('OIDC Node HTTP 验收通过：配置拒绝启动、会话接口、回调失败、生产禁用本地登录、CSRF 与退出。')
+  console.log('Node HTTP 验收通过：配置拒绝启动、登录会话与权限、公开配置与密钥隔离、Windows PUBLIC、音频同步鉴权（未调度任务）、CSRF 与退出。')
 }
 finally {
   server.kill()

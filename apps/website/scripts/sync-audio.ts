@@ -2,7 +2,7 @@ import process from 'node:process'
 
 const target = process.env.MUKUCHI_SMOKE_URL
 const revision = process.env.GITHUB_SHA
-const token = process.env.NUXT_AUDIO_SYNC_TOKEN
+const token = process.env.AUDIO_SYNC_TOKEN
 if (!target || !revision || !token || token.length < 32)
   throw new Error('缺少音频部署同步地址、版本或认证配置')
 const url = new URL(`${target.replace(/\/$/, '')}/api/internal/audio/sync`)

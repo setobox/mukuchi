@@ -45,7 +45,7 @@ if (remote) {
   }
 }
 else {
-  const path = process.env.NUXT_ADMIN_DATABASE_PATH || '.data/admin.sqlite'
+  const path = process.env.ADMIN_DATABASE_PATH || '.data/admin.sqlite'
   if (existsSync(path))
     database = new DatabaseSync(path)
   query = async (sql, params = []) => {
@@ -68,7 +68,7 @@ try {
     async generate(input, signal) {
       if (process.env.CI && !remote)
         throw new Error('验证构建不调用 AI')
-      apiKey ??= await decryptApiKey(stored!.encryptedKey, process.env.NUXT_AI_ENCRYPTION_KEY || '')
+      apiKey ??= await decryptApiKey(stored!.encryptedKey, process.env.AI_ENCRYPTION_KEY || '')
       return generateSummary(stored!.settings, apiKey, input, { signal })
     },
     warn: (path, reason) => console.warn(`[AI 摘要] ${path}：${reason || '未获得有效摘要'}，使用原简介。`),

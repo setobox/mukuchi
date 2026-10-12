@@ -19,7 +19,7 @@ let body: unknown
 let id = ''
 let fixture: ReturnType<typeof audioDatabase>
 const storage = audioBucket()
-const event = { method: 'GET', context: { cloudflare: { env: { NUXT_AUDIO_ENABLED: 'true', NUXT_AI_ENCRYPTION_KEY: btoa('a'.repeat(32)), ADMIN_DB: {}, AUDIO_ASSETS: storage.bucket, ARTICLE_AUDIO_WORKFLOW: {} } } } } as unknown as H3Event
+const event = { method: 'GET', context: { cloudflare: { env: { NUXT_AUDIO_ENABLED: 'true', AI_ENCRYPTION_KEY: btoa('a'.repeat(32)), ADMIN_DB: {}, AUDIO_ASSETS: storage.bucket, ARTICLE_AUDIO_WORKFLOW: {} } } } } as unknown as H3Event
 beforeEach(async () => {
   fixture = audioDatabase()
   state.db = fixture.db

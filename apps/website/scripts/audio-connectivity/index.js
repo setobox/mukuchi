@@ -14,7 +14,7 @@ const podcast = args.has('--podcast-handshake')
 
 if (args.has('--help') || (!queryId && !submit && !podcast)) {
   console.log('Usage: node scripts/audio-connectivity/index.js --from-remote [--query TASK_ID] [--podcast-handshake] [--submit]')
-  console.log('--from-remote reads saved settings from D1. Set VOLC_API_KEY locally or use a matching NUXT_AI_ENCRYPTION_KEY in .env. --submit creates a paid two-character TTS task.')
+  console.log('--from-remote reads saved settings from D1. Set VOLC_API_KEY locally or use a matching AI_ENCRYPTION_KEY in .env. --submit creates a paid two-character TTS task.')
   process.exit(args.has('--help') ? 0 : 1)
 }
 
@@ -30,13 +30,13 @@ function remoteSettings() {
 async function decrypt(value, secret) {
   const [version, iv, data] = value.split('.')
   if (version !== 'v1' || !iv || !data || !secret)
-    throw new Error('Encrypted key or NUXT_AI_ENCRYPTION_KEY is missing')
+    throw new Error('Encrypted key or AI_ENCRYPTION_KEY is missing')
   const key = await webcrypto.subtle.importKey('raw', Buffer.from(secret, 'base64'), 'AES-GCM', false, ['decrypt'])
   try {
     return new TextDecoder().decode(await webcrypto.subtle.decrypt({ name: 'AES-GCM', iv: Buffer.from(iv, 'base64') }, key, Buffer.from(data, 'base64')))
   }
   catch {
-    throw new Error('Local NUXT_AI_ENCRYPTION_KEY does not match the key used for remote audio settings; use VOLC_API_KEY or update the local .env')
+    throw new Error('Local AI_ENCRYPTION_KEY does not match the key used for remote audio settings; use VOLC_API_KEY or update the local .env')
   }
 }
 
@@ -46,7 +46,7 @@ if (args.has('--from-remote')) {
   process.loadEnvFile(fileURLToPath(new URL('../../.env', import.meta.url)))
   const row = remoteSettings()
   settings = JSON.parse(row.config)
-  apiKey = process.env.VOLC_API_KEY || await decrypt(row.encrypted_key, process.env.NUXT_AI_ENCRYPTION_KEY)
+  apiKey = process.env.VOLC_API_KEY || await decrypt(row.encrypted_key, process.env.AI_ENCRYPTION_KEY)
 }
 else {
   settings = {
@@ -59,7 +59,7 @@ else {
   apiKey = process.env.VOLC_API_KEY
 }
 if (!apiKey)
-  throw new Error('Set VOLC_API_KEY or use --from-remote with a matching local NUXT_AI_ENCRYPTION_KEY')
+  throw new Error('Set VOLC_API_KEY or use --from-remote with a matching local AI_ENCRYPTION_KEY')
 if (submit && !settings.narrationSpeaker)
   throw new Error('Set VOLC_NARRATION_SPEAKER or use --from-remote before submitting a test task')
 

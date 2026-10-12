@@ -8,7 +8,7 @@ import './stats-environment.ts'
 function files(directory: string): string[] {
   return readdirSync(directory, { withFileTypes: true }).flatMap(entry => entry.isDirectory() ? files(join(directory, entry.name)) : [join(directory, entry.name)])
 }
-const secrets = [process.env.NUXT_STATS_HASH_SECRET, process.env.NUXT_STATS_ADMIN_TOKEN].filter((value): value is string => !!value)
+const secrets = [process.env.STATS_HASH_SECRET, process.env.STATS_ADMIN_TOKEN].filter((value): value is string => !!value)
 for (const filename of files('.output/public').filter(filename => /\.(?:html|json|js|mjs|map)$/.test(filename))) {
   const text = readFileSync(filename, 'utf8')
   for (const secret of secrets)

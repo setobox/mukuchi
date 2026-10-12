@@ -7,6 +7,7 @@ import adminPreview from './modules/admin-preview/module'
 import audio from './modules/audio/module'
 import coverIcons from './modules/cover-icons/module'
 import { localRequestAllowed } from './server/features/auth/policy.ts'
+import { readPublicEnvironment } from './shared/config/environment.ts'
 import { codeHighlight } from './shared/content/code.ts'
 import { rssCacheControl, rssContentType, rssPath } from './shared/rss/config.ts'
 import { themeCookieBootstrap, themeCookieKey, themeCookieOptions } from './shared/theme/preference.ts'
@@ -39,7 +40,7 @@ export default defineNuxtConfig({
     statsHashSecret: '',
     statsAdminToken: '',
     statsDatabasePath: fileURLToPath(new URL('./.data/stats.sqlite', import.meta.url)),
-    public: { siteUrl: 'https://blog.seto.box', giscusRepo: 'setobox/mukuchi', giscusRepoId: '', giscusCategoryId: '' },
+    public: readPublicEnvironment(process.env),
   },
   alias: {
     '#stats-driver': fileURLToPath(new URL('./server/features/stats/drivers/node', import.meta.url)),

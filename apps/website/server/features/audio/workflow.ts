@@ -8,12 +8,12 @@ import { runAudioJob } from './engine'
 
 export class ArticleAudioWorkflow extends WorkflowEntrypoint<AudioEnv, AudioWorkflowPayload> {
   async run(event: WorkflowEvent<AudioWorkflowPayload>, step: WorkflowStep) {
-    if (!this.env.AUDIO_ASSETS || !this.env.NUXT_AI_ENCRYPTION_KEY)
+    if (!this.env.AUDIO_ASSETS || !this.env.AI_ENCRYPTION_KEY)
       throw new Error('Audio infrastructure is not configured')
     await runAudioJob({
       repo: cloudflareAudioRepository(this.env),
       bucket: this.env.AUDIO_ASSETS,
-      secret: this.env.NUXT_AI_ENCRYPTION_KEY,
+      secret: this.env.AI_ENCRYPTION_KEY,
       manifest,
       id: event.payload.id,
       attempt: event.payload.attempt,

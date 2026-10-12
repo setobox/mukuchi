@@ -15,6 +15,6 @@ export function validateStatsRelease(input: { enabled: boolean, statsId: unknown
   if (!input.enabled)
     return
   validateStatsBinding(input)
-  if (!input.secretNames.includes('NUXT_STATS_HASH_SECRET'))
-    throw new Error('启用统计前须配置 Worker Secret：NUXT_STATS_HASH_SECRET')
+  if (!input.secretNames.includes('STATS_HASH_SECRET'))
+    throw new Error('启用统计前须配置 Worker Secret：STATS_HASH_SECRET')
 }

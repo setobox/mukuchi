@@ -17,9 +17,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 25
     env:
-      NUXT_PUBLIC_GISCUS_REPO: ${{ vars.MUKUCHI_GISCUS_REPO || 'setobox/mukuchi' }}
-      NUXT_PUBLIC_GISCUS_REPO_ID: ${{ vars.MUKUCHI_GISCUS_REPO_ID }}
-      NUXT_PUBLIC_GISCUS_CATEGORY_ID: ${{ vars.MUKUCHI_GISCUS_CATEGORY_ID }}
+      PUBLIC_GISCUS_REPO: ${{ vars.MUKUCHI_GISCUS_REPO || 'setobox/mukuchi' }}
+      PUBLIC_GISCUS_REPO_ID: ${{ vars.MUKUCHI_GISCUS_REPO_ID }}
+      PUBLIC_GISCUS_CATEGORY_ID: ${{ vars.MUKUCHI_GISCUS_CATEGORY_ID }}
     steps:
       - uses: actions/checkout@v4
       - uses: voidzero-dev/setup-vp@v1.15.0
@@ -38,7 +38,7 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && secrets.CLOUDFLARE_API_TOKEN || '' }}
           CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
           MUKUCHI_ADMIN_DATABASE_ID: 3453b53f-aba4-43cf-8103-f5a69fb59f87
-          NUXT_AI_ENCRYPTION_KEY: ${{ github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && secrets.NUXT_AI_ENCRYPTION_KEY || '' }}
+          AI_ENCRYPTION_KEY: ${{ github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && secrets.AI_ENCRYPTION_KEY || '' }}
       - run: vp run -r build
         env:
           MUKUCHI_GITHUB_TOKEN: ${{ github.token }}
@@ -47,6 +47,7 @@ jobs:
       - run: vp run website#stats:check-build
       - run: vp run website#admin:check-build
       - run: vp run website#audio:check-build
+      - run: vp run website#auth:smoke
       - run: vp run website#build:cloudflare
         env:
           MUKUCHI_GITHUB_TOKEN: ${{ github.token }}
@@ -55,6 +56,7 @@ jobs:
       - run: vp run website#stats:check-build
       - run: vp run website#admin:check-build
       - run: vp run website#audio:check-build
+      - run: vp run website#environment:smoke:worker
       - name: Deploy production
         if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         run: vp run website#deploy:cloudflare
@@ -74,4 +76,4 @@ jobs:
         run: vp run website#audio:sync
         env:
           MUKUCHI_SMOKE_URL: ${{ vars.MUKUCHI_SMOKE_URL }}
-          NUXT_AUDIO_SYNC_TOKEN: ${{ secrets.NUXT_AUDIO_SYNC_TOKEN }}
+          AUDIO_SYNC_TOKEN: ${{ secrets.AUDIO_SYNC_TOKEN }}

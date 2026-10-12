@@ -4,6 +4,10 @@ import { defineConfig } from 'vite-plus'
 export default defineConfig({
   run: {
     tasks: {
+      'environment:smoke:worker': {
+        command: 'node scripts/smoke-worker-environment.ts',
+        cache: false,
+      },
       'auth:smoke': {
         command: 'node scripts/smoke-auth.ts',
         cache: false,

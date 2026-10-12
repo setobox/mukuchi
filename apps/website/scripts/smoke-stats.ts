@@ -8,8 +8,8 @@ import './stats-environment.ts'
 
 const root = new URL(process.env.MUKUCHI_SMOKE_URL || 'http://127.0.0.1:8787')
 assert.ok(['127.0.0.1', 'localhost', '[::1]'].includes(root.hostname), '统计写入验收仅允许本地地址')
-const adminToken = process.env.NUXT_STATS_ADMIN_TOKEN
-assert.ok(adminToken, '本地验收需要 NUXT_STATS_ADMIN_TOKEN')
+const adminToken = process.env.STATS_ADMIN_TOKEN
+assert.ok(adminToken, '本地验收需要 STATS_ADMIN_TOKEN')
 const url = (path: string) => new URL(`${root.pathname.replace(/\/$/, '')}${path}`, root)
 const content = new DatabaseSync('.data/content/contents.sqlite', { readOnly: true })
 const article = z.string().parse(content.prepare('SELECT path FROM _content_posts ORDER BY path LIMIT 1').get()?.path)

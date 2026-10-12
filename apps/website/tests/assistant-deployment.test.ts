@@ -14,7 +14,8 @@ test('旧部署开关无论真假均保留数据库和后台资产绑定', () =>
     for (const assistantEnabled of [true, false]) {
       writeFileSync(configPath, JSON.stringify({ d1_databases: [{ binding: 'ADMIN_DB' }, { binding: 'CONTENT_DB' }], r2_buckets: [{ binding: 'ADMIN_ASSETS' }], vars: {} }))
       execFileSync(process.execPath, [fileURLToPath(new URL('../scripts/finalize-admin-build.ts', import.meta.url))], { cwd: directory, windowsHide: true, env: { ...process.env, NUXT_ADMIN_ENABLED: 'false', NUXT_PUBLIC_AUTH_ENABLED: 'false', NUXT_ASSISTANT_ENABLED: String(assistantEnabled) } })
-      const config: { d1_databases: { binding: string }[], r2_buckets: { binding: string }[], vars: Record<string, string> } = JSON.parse(readFileSync(configPath, 'utf8'))
+      const config: { keep_vars: boolean, d1_databases: { binding: string }[], r2_buckets: { binding: string }[], vars: Record<string, string> } = JSON.parse(readFileSync(configPath, 'utf8'))
+      expect(config.keep_vars).toBe(true)
       expect(config.d1_databases.some(db => db.binding === 'ADMIN_DB')).toBe(true)
       expect(config.d1_databases.some(db => db.binding === 'CONTENT_DB')).toBe(true)
       expect(config.r2_buckets).toEqual([{ binding: 'ADMIN_ASSETS' }])
