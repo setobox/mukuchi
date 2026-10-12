@@ -6,11 +6,13 @@ import { aiStatusLabels, aiTypeLabels, aiTypes, filterArticleRows } from '#share
 definePageMeta({ layout: 'admin' })
 useSeoMeta({ title: '文章管理' })
 const { current, request } = useAdminSession()
-const rows = ref<AdminArticleRow[]>([])
+const rows = shallowRef<AdminArticleRow[]>([])
 const query = ref('')
 const filter = ref('all')
 const aiType = ref('all')
 const aiStatus = ref('all')
+const aiTypeOptions = [{ value: 'all', label: '全部 AI 类型' }, ...aiTypes.map(value => ({ value, label: aiTypeLabels[value] }))]
+const aiStatusOptions = [{ value: 'all', label: '全部 AI 状态' }, ...Object.entries(aiStatusLabels).map(([value, label]) => ({ value, label }))]
 const page = ref(1)
 const error = ref('')
 const loading = ref(false)
@@ -35,7 +37,7 @@ async function load() {
   loading.value = true
   error.value = ''
   try {
-    const result = await request<{ rows: AdminArticleRow[] }>('articles')
+    const result = await request<{ rows: AdminArticleRow[] }>('articles?view=rows')
     if (token !== sequence)
       return
     rows.value = result.rows
@@ -98,8 +100,8 @@ watch(() => current.value.user?.role === 'admin', () => {
     <div class="grid mb-5 gap-3 md:grid-cols-[minmax(160px,1fr)_repeat(3,minmax(120px,160px))_auto]">
       <input v-model="query" aria-label="搜索文章" placeholder="搜索标题或文件路径" class="field-control min-w-0 px-4">
       <BaseSelect v-model="filter" aria-label="文章状态" :options="[{ value: 'all', label: '全部文章' }, { value: 'drafts', label: '草稿与待更新' }, { value: 'published', label: '已发布' }]" />
-      <BaseSelect v-model="aiType" aria-label="AI 类型" :options="[{ value: 'all', label: '全部 AI 类型' }, ...aiTypes.map(value => ({ value, label: aiTypeLabels[value] }))]" />
-      <BaseSelect v-model="aiStatus" aria-label="AI 状态" :options="[{ value: 'all', label: '全部 AI 状态' }, ...Object.entries(aiStatusLabels).map(([value, label]) => ({ value, label }))]" />
+      <BaseSelect v-model="aiType" aria-label="AI 类型" :options="aiTypeOptions" />
+      <BaseSelect v-model="aiStatus" aria-label="AI 状态" :options="aiStatusOptions" />
       <BaseButton variant="border" :loading="loading" @click="load">
         刷新
       </BaseButton>
@@ -114,7 +116,7 @@ watch(() => current.value.user?.role === 'admin', () => {
       <div class="article-row hidden bg-surface px-5 py-3 text-xs text-muted lg:grid" aria-hidden="true">
         <span>文章</span><span>发布 / 更新</span><span>发布状态</span><span>AI 生成状态</span><span>操作</span>
       </div>
-      <article v-for="row in visibleRows" :key="row.path" class="article-row grid items-center gap-4 border-t border-line px-5 py-4 first:border-t-0">
+      <article v-for="row in visibleRows" :key="row.path" v-memo="[row, editing.includes(row.path)]" class="article-row grid items-center gap-4 border-t border-line px-5 py-4 first:border-t-0">
         <div class="min-w-0">
           <button class="control-base ui-link max-w-full break-words text-left text-heading font-semibold" :disabled="editing.includes(row.path)" @click="edit(row.path)">
             {{ row.title }}

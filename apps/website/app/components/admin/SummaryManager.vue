@@ -17,6 +17,7 @@ const loaded = ref(false)
 const error = ref('')
 const query = ref('')
 const status = ref('all')
+const statusOptions = [{ value: 'all', label: '全部状态' }, ...(['disabled', 'missing', 'valid', 'stale', 'unavailable'] as const).map(value => ({ value, label: aiStatusLabels[value] }))]
 const page = ref(1)
 const selected = ref<string[]>([])
 const items = ref<BatchItem[]>([])
@@ -68,7 +69,7 @@ async function load() {
   loading.value = true
   error.value = ''
   try {
-    const result = await request<{ rows: AdminArticleRow[] }>('articles')
+    const result = await request<{ rows: AdminArticleRow[] }>('articles?view=rows')
     if (token !== sequence)
       return
     rows.value = result.rows
@@ -202,7 +203,7 @@ onBeforeUnmount(() => {
     </p>
     <div class="mb-4 flex flex-wrap gap-3">
       <input v-model="query" class="field-control min-w-0 flex-1 px-3" placeholder="搜索文章标题或路径" aria-label="搜索摘要文章">
-      <BaseSelect v-model="status" aria-label="摘要状态" :options="[{ value: 'all', label: '全部状态' }, ...['disabled', 'missing', 'valid', 'stale', 'unavailable'].map(value => ({ value, label: aiStatusLabels[value as keyof typeof aiStatusLabels] }))]" class="w-40" />
+      <BaseSelect v-model="status" aria-label="摘要状态" :options="statusOptions" class="w-40" />
     </div>
     <div class="mb-4 flex flex-wrap items-center gap-3">
       <BaseButton variant="border" :disabled="running || saving" @click="selectVisible">

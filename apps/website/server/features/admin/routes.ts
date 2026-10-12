@@ -20,12 +20,19 @@ export async function adminRoute(event: H3Event) {
   const method = event.method
   const id = rawId ? z.uuid().parse(rawId) : ''
   if (resource === 'articles' && method === 'GET') {
-    const files = import.meta.dev ? await listContent(adminOptions(event)) : await githubClient(event).list()
-    const drafts = await withAdmin(event, repo => repo.drafts())
+    const [files, drafts] = await Promise.all([
+      import.meta.dev ? listContent(adminOptions(event)) : githubClient(event).list(),
+      withAdmin(event, repo => repo.drafts()),
+    ])
+    const rows = await listArticleRows(event, files, drafts)
+    // List screens do not need the legacy response's duplicated draft bodies.
+    if (getQuery(event).view === 'rows')
+      return { rows, local: import.meta.dev }
+    const draftMap = new Map(drafts.map(draft => [draft.path, draft]))
     return { articles: files.map((file) => {
-      const draft = drafts.find(draft => draft.path === file.path) ?? null
+      const draft = draftMap.get(file.path) ?? null
       return { path: file.path, title: articleTitle(file.source, file.path), hash: file.hash, draft, publication: articlePublication(draft, file.source) }
-    }), drafts, rows: await listArticleRows(event, files, drafts), local: import.meta.dev }
+    }), drafts, rows, local: import.meta.dev }
   }
   if (resource === 'drafts') {
     if (!id && method === 'POST') {

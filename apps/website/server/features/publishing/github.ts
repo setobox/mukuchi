@@ -1,6 +1,7 @@
 import type { ContentFile, PublishImage } from '../admin/database'
 import { z } from 'zod'
 import { AdminError, articleRoute, filePathSchema } from '../../../shared/admin/model'
+import { createGithubContentCache } from './content-cache'
 
 const shaResult = z.object({ sha: z.string().regex(/^[\da-f]{40}$/) })
 const treeResult = z.object({ sha: z.string(), truncated: z.boolean().optional(), tree: z.array(z.object({ path: z.string(), type: z.string(), sha: z.string(), mode: z.string().optional() })) })
@@ -9,7 +10,7 @@ function encode(bytes: Uint8Array) {
   for (let offset = 0; offset < bytes.length; offset += 8192) binary += String.fromCharCode(...bytes.subarray(offset, offset + 8192))
   return btoa(binary)
 }
-export function createGithub(options: { repository: string, branch: string, token: string }, request: typeof fetch = fetch) {
+export function createGithub(options: { repository: string, branch: string, token: string }, request: typeof fetch = fetch, cache = createGithubContentCache()) {
   if (!/^[\w.-]+\/[\w.-]+$/.test(options.repository) || !options.branch)
     throw new AdminError(503, '仓库配置无效')
   const root = `https://api.github.com/repos/${options.repository}`
@@ -33,10 +34,15 @@ export function createGithub(options: { repository: string, branch: string, toke
     return { commit: ref.object.sha, tree }
   }
   async function blob(sha: string) {
+    const cached = cache.get(options.repository, sha)
+    if (cached !== undefined)
+      return cached
     const result = z.object({ content: z.string(), encoding: z.literal('base64'), size: z.number() }).parse(await api(`/git/blobs/${sha}`))
     if (result.size > 512 * 1024)
       throw new AdminError(413, '文章超过 512 KiB，不能在后台编辑')
-    return new TextDecoder().decode(Uint8Array.from(atob(result.content.replace(/\s/g, '')), c => c.charCodeAt(0)))
+    const source = new TextDecoder().decode(Uint8Array.from(atob(result.content.replace(/\s/g, '')), c => c.charCodeAt(0)))
+    cache.set(options.repository, sha, source)
+    return source
   }
   async function files() {
     const snapshot = await head()
@@ -47,7 +53,14 @@ export function createGithub(options: { repository: string, branch: string, toke
     async list(): Promise<ContentFile[]> {
       const { entries } = await files()
       const result: ContentFile[] = []
-      for (const entry of entries) result.push({ path: entry.path.slice('content/posts/'.length), source: await blob(entry.sha), hash: entry.sha })
+      // Bound connections while avoiding one network round trip per article.
+      for (let offset = 0; offset < entries.length; offset += 6) {
+        result.push(...await Promise.all(entries.slice(offset, offset + 6).map(async entry => ({
+          path: entry.path.slice('content/posts/'.length),
+          source: await blob(entry.sha),
+          hash: entry.sha,
+        }))))
+      }
       return result
     },
     async read(path: string): Promise<ContentFile | null> {

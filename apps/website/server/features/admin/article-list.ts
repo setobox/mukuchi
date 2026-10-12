@@ -73,17 +73,16 @@ export async function buildArticleRows(files: ContentFile[], drafts: Draft[], su
 
 export async function listArticleRows(event: H3Event, files: ContentFile[], drafts: Draft[]) {
   // Read settings/cache once for the list, instead of opening a database per row.
-  const summaries = await withAi(event, async (repo) => {
+  const [summaries, audio] = await Promise.all([withAi(event, async (repo) => {
     const { settings } = await repo.settings()
     const configHash = await summaryConfigHash(settings)
     const records = await repo.cacheForConfig(configHash)
     return { settings, configHash, cache: new Map<string, SummaryRecord>(records.map(record => [record.inputHash, summaryRecordSchema.parse(record)])) }
-  }).catch(() => null)
-  const audio = await withAudio(event, async (repo) => {
+  }).catch(() => null), withAudio(event, async (repo) => {
     const { settings } = await repo.settings()
     const hashes = { narration: await audioConfigHash(settings, 'narration'), podcast: await audioConfigHash(settings, 'podcast') }
     return { settings, hashes, jobs: await repo.statusJobs(hashes) }
-  }).catch(() => null)
+  }).catch(() => null)])
   return buildArticleRows(files, drafts, async (source): Promise<SummaryState> => {
     try {
       const article = await summaryInput(source)

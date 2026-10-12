@@ -4,12 +4,15 @@ import type { publicationInput } from '../../../shared/admin/model'
 import { publishLocal } from '#admin-driver'
 import { adminOptions, adminStorage, withAdmin } from '../admin/http'
 import { imageReferences } from '../drafts/content'
+import { createGithubContentCache } from './content-cache'
 import { executePublication } from './engine'
 import { createGithub } from './github'
 
+const contentCache = createGithubContentCache()
+
 export function githubClient(event: H3Event) {
   const config = useRuntimeConfig(event)
-  return createGithub({ repository: config.githubRepository, branch: config.githubBranch, token: config.githubPublishToken })
+  return createGithub({ repository: config.githubRepository, branch: config.githubBranch, token: config.githubPublishToken }, fetch, contentCache)
 }
 async function cleanupAssets(event: H3Event, draftId: string, source: string) {
   const references = await imageReferences(source)
