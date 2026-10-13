@@ -66,11 +66,27 @@ async function login() {
   return (await session(event))!
 }
 
+test.each(['github', 'google'])('快捷登录传递 %s 并要求重新认证，回调保留原页面', async (provider) => {
+  query.provider = provider
+  const url = await begin()
+  expect(url.searchParams.get('mu3_provider')).toBe(provider)
+  expect(url.searchParams.get('prompt')).toBe('login')
+  expect(await finishOAuth(event)).toBe('/posts?tag=x#title')
+})
+
+test.each(['', 'facebook', 'GITHUB'])('拒绝无效快捷登录平台 %s，不创建登录事务', async (provider) => {
+  query.provider = provider
+  expect(String(await startLogin(event))).toContain('auth_error=failed')
+  expect(await fixture.repo.query('SELECT * FROM auth_login_transactions')).toHaveLength(0)
+})
+
 test('完整 OIDC 登录使用 Basic + PKCE，令牌仅留服务端，轮换会话并返回原页面', async () => {
   const auth = await begin()
   expect(auth.searchParams.get('scope')).toBe('openid profile email')
   expect(auth.searchParams.get('code_challenge_method')).toBe('S256')
   expect(auth.searchParams.has('resource')).toBe(false)
+  expect(auth.searchParams.has('mu3_provider')).toBe(false)
+  expect(auth.searchParams.has('prompt')).toBe(false)
   expect(await finishOAuth(event)).toBe('/posts?tag=x#title')
   expect(cookies.has(transactionCookie)).toBe(false)
   const original = cookies.get(sessionCookie)!

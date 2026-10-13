@@ -9,6 +9,7 @@ const { site } = useAppConfig()
         class="flex flex-wrap items-center justify-center gap-x-6 gap-y-3 text-center text-sm text-muted"
       >
         <span>2020 - PRESENT © {{ site.name.toUpperCase() }}</span>
+        <a href="https://privacy.seto.box/" class="ui-link min-h-11 inline-flex items-center">隐私政策</a>
         <a
           href="https://icp.gov.moe/?keyword=20232190"
           target="_blank"

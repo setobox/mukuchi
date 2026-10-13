@@ -64,23 +64,54 @@ function mount(role?: 'admin' | 'user', path = '/posts') {
   }
   return { host, auth, route, navigate, dialog, button, openMenu }
 }
-test('未登录打开登录弹窗，展示统一账号与注册提示，关闭恢复焦点', async () => {
+test('未登录仅展示三个登录入口，关闭恢复焦点', async () => {
   const { button, dialog, auth, navigate } = mount()
   button().focus()
   button().click()
   await flush()
   expect(dialog.open).toBe(true)
-  expect(dialog.textContent).toContain('注册与账号资料由账号中心管理')
-  const github = [...dialog.querySelectorAll('button')].find(item => item.textContent?.includes('使用 MU³ ID'))!
-  expect(dialog.textContent).toContain('使用 MU³ ID 登录')
-  github.click()
+  expect(dialog.textContent).toContain('GET STARTED')
+  expect(dialog.textContent).toContain('选择你登录的方式')
+  expect(dialog.textContent).not.toContain('账号中心管理')
+  expect(dialog.textContent).not.toContain('进入本地后台')
+  expect([...dialog.querySelectorAll('button')].map(item => item.textContent?.trim()).filter(Boolean)).toEqual(['邮箱', 'GitHub', 'Google'])
+  const email = [...dialog.querySelectorAll('button')].find(item => item.textContent?.includes('邮箱'))!
+  email.click()
   await flush()
-  expect(auth.loginUrl).toHaveBeenCalledWith('/posts')
+  expect(auth.loginUrl).toHaveBeenCalledWith('/posts', undefined)
   expect(navigate).toHaveBeenCalledWith('/api/auth/sso/login?returnTo=%2Fposts', { external: true })
   dialog.dispatchEvent(new Event('cancel', { cancelable: true }))
   await flush()
   expect(dialog.open).toBe(false)
   expect(document.activeElement).toBe(button())
+})
+
+test.each(['github', 'google'] as const)('%s 直接传入所选平台，阻止重复点击并保留原页面', async (provider) => {
+  const { button, dialog, auth, navigate } = mount(undefined, '/posts/article?q=1#part')
+  button().click()
+  await flush()
+  const target = [...dialog.querySelectorAll('button')].find(item => item.textContent?.trim().toLowerCase() === provider)!
+  target.click()
+  target.click()
+  await flush()
+  expect(auth.loginUrl).toHaveBeenCalledExactlyOnceWith('/posts/article?q=1#part', provider)
+  expect(navigate).toHaveBeenCalledTimes(1)
+  expect([...dialog.querySelectorAll('button')].filter(item => !item.getAttribute('aria-label')).every(item => item.disabled)).toBe(true)
+})
+
+test('跳转失败后显示错误并恢复登录按钮', async () => {
+  const { button, dialog, navigate } = mount()
+  navigate.mockRejectedValueOnce(new Error('navigation failed'))
+  button().click()
+  await flush()
+  const target = [...dialog.querySelectorAll('button')].find(item => item.textContent?.includes('GitHub'))!
+  target.click()
+  await flush()
+  expect(dialog.querySelector('[role="alert"]')?.textContent).toContain('无法打开登录页面')
+  expect(target.disabled).toBe(false)
+  target.click()
+  await flush()
+  expect(navigate).toHaveBeenCalledTimes(2)
 })
 test('已登录菜单无头像，导航头像显示登录平台，Esc 返回触发器', async () => {
   const { button, dialog, openMenu } = mount('user')
