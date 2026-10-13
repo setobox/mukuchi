@@ -52,6 +52,9 @@ export async function withAssistant<T>(event: H3Event, operation: (repository: A
 export async function configurationHash(settings: unknown, credentials: unknown) {
   const parsed = z.record(z.string(), z.unknown()).parse(settings)
   const capability = Object.fromEntries(['baseUrl', 'model', 'style', 'region', 'queryService', 'turnstileSiteKey'].map(key => [key, parsed[key]]))
+  // Preserve verification hashes for existing Chat Completions configurations.
+  if (parsed.apiFormat === 'responses')
+    capability.apiFormat = 'responses'
   return digest(canonicalJson({ protocol: 'stream-structures-v2', settings: capability, credentials }))
 }
 export async function assistantConfiguration(event: H3Event, repository: AssistantRepository, requireEnabled = true) {

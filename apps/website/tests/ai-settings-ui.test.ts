@@ -72,6 +72,34 @@ function assistant() {
   return { settings: { ...defaultAssistantSettings, enabled: true, baseUrl: 'https://api.example.com/v1', model: 'fixture-model', turnstileSiteKey: 'fixture-site' }, version: 1, configured: { modelKey: true, aliyunKeyId: true, aliyunKeySecret: true, turnstileSecret: true }, encryptionReady: true, verified: true } satisfies AssistantSettingsView
 }
 
+test('助手切换 Responses 协议后保存并停用，使用新版本执行能力测试', async () => {
+  let stored = assistant()
+  const request = vi.fn(async (path: string, options?: RequestOptions) => {
+    if (path === 'assistant/test')
+      return { message: 'Responses 测试通过', taskId: 'fixture-task' }
+    if (options?.method === 'PUT') {
+      stored = { ...stored, settings: options.body?.settings as AssistantSettingsView['settings'], version: 2, verified: false }
+    }
+    return stored
+  })
+  const ui = mount(AssistantSettings, request)
+  await flush()
+  const trigger = ui.field('模型接口协议')
+  expect(trigger.textContent).toContain('Chat Completions')
+  trigger.focus()
+  trigger.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }))
+  await vi.waitFor(() => expect(document.querySelector('[role="listbox"]')).not.toBeNull())
+  const option = [...document.querySelectorAll<HTMLElement>('[role="option"]')].find(item => item.textContent?.includes('Responses'))!
+  option.focus()
+  option.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
+  await vi.waitFor(() => expect(trigger.textContent).toContain('Responses'))
+  expect(ui.host.textContent).toContain('需重新验证')
+  ui.button('保存并测试').click()
+  await flush()
+  expect(request.mock.calls.find(([, options]) => options?.method === 'PUT')?.[1]?.body).toMatchObject({ settings: { apiFormat: 'responses', enabled: false }, version: 1 })
+  expect(request.mock.calls.find(([path]) => path === 'assistant/test')?.[1]?.body).toMatchObject({ version: 2 })
+})
+
 test.each([
   { component: SummarySettings, response: summary, kind: 'narration' as const, label: '生成与测试说明', title: '摘要生成', content: '下次构建会更新摘要' },
   { component: AudioSettings, response: () => ({ ...defaultAudioSettings, version: 1, keyConfigured: true, encryptionReady: true, executionReady: true }), kind: 'narration' as const, label: 'AI 朗读生成与额度说明', title: 'AI 朗读参数', content: '额度按北京时间重置' },

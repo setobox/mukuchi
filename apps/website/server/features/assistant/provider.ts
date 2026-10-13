@@ -1,5 +1,5 @@
 import type { AssistantCredentials, AssistantSettings } from '../../../shared/assistant/settings'
-import type { FinalIntent, IntentBlock, ModelMessage, RichIntent, ToolCall } from '../../../shared/assistant/tools'
+import type { FinalIntent, IntentBlock, ModelMessage, ResponseToolItem, RichIntent, ToolCall } from '../../../shared/assistant/tools'
 import type { LogValue, ModelLogContext } from './diagnostics'
 import type { Fetch } from './network'
 import { JSONParser } from '@streamparser/json'
@@ -10,6 +10,7 @@ import { readSse, SseProtocolError } from '../../../shared/assistant/stream'
 import { finalIntentSchema, intentBlockSchema, richIntentSchema, toolCallSchema, toolDefinitions } from '../../../shared/assistant/tools'
 import { createModelTrace, logFullModelRequest, modelErrorDetails } from './diagnostics'
 import { boundedJson, readBoundedJson, UpstreamResponseError, withTimeout } from './network'
+import { readResponses, responsesBody, responsesResult } from './responses'
 
 const usageSchema = z.object({ prompt_tokens: z.number().int().nonnegative().max(10_000_000), completion_tokens: z.number().int().nonnegative().max(10_000_000) })
 const providerResponseSchema = z.object({
@@ -56,7 +57,28 @@ export class ModelResponseError extends AssistantError {
   constructor(issues: readonly z.core.$ZodIssue[]) {
     super(503, 'invalid_model_response', '模型返回格式不符合要求，请稍后重试')
     this.name = 'ModelResponseError'
-    this.adminMessage = `模型返回的 JSON 不符合回答约定（${finalIssueSummary(issues)}）。请检查当前模型及兼容接口的 JSON Schema 支持和 response_format 参数传递。`
+    this.adminMessage = `模型返回的 JSON 不符合回答约定（${finalIssueSummary(issues)}）。请检查当前模型及兼容接口的 JSON Schema 支持和 response_format / text.format 参数传递。`
+  }
+}
+
+export class ModelContentError extends AssistantError {
+  readonly adminMessage: string
+
+  constructor(content: string, incomplete = false) {
+    super(503, 'invalid_model_response', '模型返回格式不符合要求，请稍后重试')
+    this.name = 'ModelContentError'
+    // Classify the prefix without exposing provider content or parser messages.
+    const prefix = content.trimStart()
+    const reason = prefix.startsWith('`')
+      ? '回答正文以 Markdown 代码围栏开头，未直接返回 JSON 对象'
+      : prefix.startsWith('<')
+        ? '回答正文以标记文本开头，未直接返回 JSON 对象'
+        : !prefix.startsWith('{')
+            ? '回答正文未以 JSON 对象开头'
+            : incomplete
+              ? '回答 JSON 未完整结束'
+              : '回答 JSON 存在语法错误或对象外的额外内容'
+    this.adminMessage = `${reason}（已收到 ${content.length} 个正文字符）。请检查兼容接口是否正确传递 response_format / text.format，并使用所选协议的工具调用字段。`
   }
 }
 
@@ -76,7 +98,7 @@ export function modelBody(settings: AssistantSettings, messages: ModelMessage[],
     throw new AssistantError(400, 'context_limit', '本次上下文过长，请缩小问题范围')
   return {
     model: settings.model,
-    messages: [{ role: 'system', content: `${assistantSystemPrompt}\n交流风格：${settings.style}\n${presentationInstructions}\n${outputInstructions}` }, ...messages],
+    messages: [{ role: 'system' as const, content: `${assistantSystemPrompt}\n交流风格：${settings.style}\n${presentationInstructions}\n${settings.apiFormat === 'responses' ? outputInstructions.replaceAll('tool_calls', 'function_call').replaceAll('response_format', 'text.format') : outputInstructions}` }, ...messages],
     tools: toolDefinitions,
     tool_choice: toolChoice,
     parallel_tool_calls: false,
@@ -87,14 +109,14 @@ export function modelBody(settings: AssistantSettings, messages: ModelMessage[],
 }
 export type ModelEvent = { type: 'text', index: number, text: string } | { type: 'block', index: number, block: IntentBlock } | { type: 'retry', attempt: number } | { type: 'stream' } | { type: 'structure' }
 export type ModelObserver = (event: ModelEvent) => void | Promise<void>
-export type ModelResult = { kind: 'tools', calls: ToolCall[], usage?: ModelUsage } | { kind: 'final', intent: FinalIntent | RichIntent, usage?: ModelUsage }
+export type ModelResult = { kind: 'tools', calls: ToolCall[], usage?: ModelUsage, responseItems?: ResponseToolItem[] } | { kind: 'final', intent: FinalIntent | RichIntent, usage?: ModelUsage }
 
 function parseIntent(content: string): FinalIntent | RichIntent {
   let value: unknown
   try {
     value = JSON.parse(content)
   }
-  catch { throw new AssistantError(503, 'invalid_model_response', '模型返回格式不正确，请重试') }
+  catch { throw new ModelContentError(content) }
   const rich = typeof value === 'object' && value !== null && 'blocks' in value
   const parsed = rich ? richIntentSchema.safeParse(value) : finalIntentSchema.safeParse(value)
   if (!parsed.success)
@@ -114,8 +136,20 @@ const chunkSchema = z.object({
   })).max(1),
   usage: usageSchema.nullable().optional(),
 })
+export type ModelChunk = z.infer<typeof chunkSchema>
 
-async function streamModel(response: Response, signal: AbortSignal, observer: ModelObserver, diagnostics: { frame: (data: string) => void, finish: (reason: string | null) => void }): Promise<ModelResult> {
+async function* readChatChunks(body: ReadableStream<Uint8Array>, signal: AbortSignal, frame: (data: string) => void): AsyncGenerator<ModelChunk | '[DONE]'> {
+  for await (const data of readSse(body, signal, assistantLimits.bodyBytes)) {
+    frame(data)
+    if (data === '[DONE]') {
+      yield data
+      return
+    }
+    yield chunkSchema.parse(JSON.parse(data))
+  }
+}
+
+async function streamModel(response: Response, signal: AbortSignal, observer: ModelObserver, diagnostics: { frame: (data: string) => void, finish: (reason: string | null, done: boolean) => void }, apiFormat: AssistantSettings['apiFormat']): Promise<ModelResult> {
   if (!response.body)
     throw new AssistantError(503, 'invalid_model_response', '模型没有返回流式响应')
   const parser = new JSONParser({ emitPartialTokens: true, emitPartialValues: true, paths: ['$.blocks.*', '$.blocks.*.type', '$.blocks.*.text', '$.text'] })
@@ -138,8 +172,12 @@ async function streamModel(response: Response, signal: AbortSignal, observer: Mo
       }
     }
     if (typeof key === 'number' && stack.length === 2) {
-      if (!partial)
-        updates.push({ type: 'block', index: key, block: intentBlockSchema.parse(value) })
+      if (!partial) {
+        const parsed = intentBlockSchema.safeParse(value)
+        if (!parsed.success)
+          throw new ModelResponseError(parsed.error.issues.map(issue => ({ ...issue, path: ['blocks', key, ...issue.path] })))
+        updates.push({ type: 'block', index: key, block: parsed.data })
+      }
     }
   }
   const calls = new Map<number, { id: string, type: 'function', function: { name: string, arguments: string } }>()
@@ -147,13 +185,15 @@ async function streamModel(response: Response, signal: AbortSignal, observer: Mo
   let finish: string | null = null
   let done = false
   let usage: ModelUsage | undefined
-  for await (const data of readSse(response.body, signal, assistantLimits.bodyBytes)) {
-    diagnostics.frame(data)
-    if (data === '[DONE]') {
+  let responseItems: ResponseToolItem[] | undefined
+  const chunks = apiFormat === 'responses'
+    ? readResponses(response.body, signal, diagnostics.frame, (items) => { responseItems = items })
+    : readChatChunks(response.body, signal, diagnostics.frame)
+  for await (const chunk of chunks) {
+    if (chunk === '[DONE]') {
       done = true
       break
     }
-    const chunk = chunkSchema.parse(JSON.parse(data))
     await observer({ type: 'stream' })
     usage = chunk.usage ?? usage
     const choice = chunk.choices[0]
@@ -171,7 +211,7 @@ async function streamModel(response: Response, signal: AbortSignal, observer: Mo
       catch (error) {
         if (error instanceof AssistantError)
           throw error
-        throw new AssistantError(503, 'invalid_model_response', '模型返回的结构无效，请重试')
+        throw new ModelContentError(content)
       }
       for (const update of updates.splice(0)) {
         signal.throwIfAborted()
@@ -189,18 +229,22 @@ async function streamModel(response: Response, signal: AbortSignal, observer: Mo
     }
     finish = choice.finish_reason ?? finish
   }
-  diagnostics.finish(finish)
+  diagnostics.finish(finish, done)
   if (!done || !finish)
     throw new AssistantError(503, 'invalid_model_response', '模型响应已中断，请重试')
   if (finish === 'tool_calls' && calls.size && !content.trim())
-    return { kind: 'tools', calls: [...calls.entries()].sort(([a], [b]) => a - b).map(([, call]) => toolCallSchema.parse(call)), usage }
+    return { kind: 'tools', calls: [...calls.entries()].sort(([a], [b]) => a - b).map(([, call]) => toolCallSchema.parse(call)), usage, ...(responseItems ? { responseItems } : {}) }
   if (finish !== 'stop' || calls.size || !content)
     throw new AssistantError(503, 'invalid_model_response', '模型返回内容不完整，请缩小问题范围后重试')
   if (!parser.isEnded) {
     try {
       parser.end()
     }
-    catch { throw new AssistantError(503, 'invalid_model_response', '模型返回的 JSON 不完整，请重试') }
+    catch (error) {
+      if (error instanceof AssistantError)
+        throw error
+      throw new ModelContentError(content, true)
+    }
   }
   return { kind: 'final', intent: parseIntent(content), usage }
 }
@@ -226,8 +270,19 @@ export async function callModel(settings: AssistantSettings, credentials: Assist
   if (!settings.baseUrl || !publicHttpsEndpoint(settings.baseUrl))
     throw new AssistantError(503, 'not_configured', '模型地址尚未配置')
   const trace = createModelTrace(logContext, Object.values(credentials))
-  const endpoint = new URL(`${settings.baseUrl}/chat/completions`)
-  const encodedBody = JSON.stringify(body)
+  const endpoint = new URL(`${settings.baseUrl}/${settings.apiFormat === 'responses' ? 'responses' : 'chat/completions'}`)
+  const requestBody = settings.apiFormat === 'responses'
+    ? responsesBody(body)
+    : {
+        ...body,
+        messages: body.messages.map((message) => {
+          if (message.role !== 'assistant')
+            return message
+          const { responseItems: _items, ...chat } = message
+          return chat
+        }),
+      }
+  const encodedBody = JSON.stringify(requestBody)
   const encoder = new TextEncoder()
   let received = false
   const notify: ModelObserver = async (event) => {
@@ -253,6 +308,7 @@ export async function callModel(settings: AssistantSettings, credentials: Assist
       endpoint: `${endpoint.origin}${endpoint.pathname}`,
       headers: { 'content-type': 'application/json', 'authorization': '[REDACTED]' },
       model: body.model,
+      apiFormat: settings.apiFormat,
       stream: body.stream,
       maxTokens: body.max_tokens,
       timeoutMs: assistantLimits.modelMs,
@@ -308,10 +364,11 @@ export async function callModel(settings: AssistantSettings, credentials: Assist
                 done ||= data === '[DONE]'
                 if (receivedFrames === 1)
                   trace('first_frame', attemptNumber, progress())
-              }, finish: (reason) => {
+              }, finish: (reason, complete) => {
+                done = complete
                 phase = 'validating_response'
                 trace('stream_end', attemptNumber, { ...progress(), finishReason: reason && ['stop', 'tool_calls', 'length', 'content_filter', 'function_call'].includes(reason) ? reason : 'unknown' })
-              } })
+              } }, settings.apiFormat)
             }
             catch (error) {
               if (error instanceof z.ZodError || error instanceof SyntaxError || error instanceof SseProtocolError)
@@ -319,7 +376,14 @@ export async function callModel(settings: AssistantSettings, credentials: Assist
               throw error
             }
           }
-          const parsed = providerResponseSchema.safeParse(await boundedJson(response))
+          const value = await boundedJson(response)
+          if (settings.apiFormat === 'responses') {
+            const result = responsesResult(value)
+            return result.calls.length
+              ? { kind: 'tools' as const, calls: result.calls, responseItems: result.responseItems, usage: result.usage }
+              : { kind: 'final' as const, intent: parseIntent(result.content), usage: result.usage }
+          }
+          const parsed = providerResponseSchema.safeParse(value)
           if (!parsed.success)
             throw new AssistantError(503, 'invalid_model_response', '模型返回内容不完整或格式不受支持，请稍后再试')
           const choice = parsed.data.choices[0]!

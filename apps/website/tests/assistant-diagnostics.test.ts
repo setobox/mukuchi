@@ -68,6 +68,22 @@ test('生产普通对话仍只记录摘要', async () => {
   expect(JSON.stringify(logs)).not.toContain('PRIVATE_USER_CONTENT')
 })
 
+test('收到两个 SSE 事件后正文解析失败时，日志保留分类诊断且不泄漏正文', async () => {
+  const logs: ModelLogRecord[] = []
+  const chunks = [{ role: 'assistant' }, { content: 'PRIVATE_ANSWER PRIVATE_MODEL_KEY' }]
+  const fetcher = async () => new Response(chunks.map(delta => `data: ${JSON.stringify({ choices: [{ index: 0, delta }] })}\n\n`).join(''), { headers: { 'content-type': 'text/event-stream' } })
+  await expect(callModel(settings, credentials, body, new AbortController().signal, fetcher, undefined, { requestId, source: 'capability_test', log: entry => logs.push(entry) })).rejects.toMatchObject({ code: 'invalid_model_response' })
+  expect(logs.at(-1)?.details).toMatchObject({
+    phase: 'reading_stream',
+    receivedFrames: 2,
+    textChars: 0,
+    retry: false,
+    error: [{ name: 'ModelContentError', diagnostic: expect.stringContaining('未以 JSON 对象开头') }],
+  })
+  expect(JSON.stringify(logs)).not.toContain('PRIVATE_ANSWER')
+  expect(JSON.stringify(logs)).not.toContain('PRIVATE_MODEL_KEY')
+})
+
 test('底层错误码在异常映射前保留，重试沿用 callId 且增加 attempt', async () => {
   vi.useFakeTimers()
   const logs: ModelLogRecord[] = []

@@ -53,6 +53,27 @@ async function setup(model: EngineDependencies['model'], moderation: EngineDepen
 }
 const readCall = { id: 'call_1', type: 'function' as const, function: { name: 'get_article' as const, arguments: JSON.stringify({ articleId: '/posts/vue', sectionId: null }) } }
 
+test.each(['get_site_info', 'get_history'] as const)('Responses %s 工具轮保留加密推理，历史续传后仍可回传', async (name) => {
+  const call = { id: 'call_1', type: 'function' as const, function: { name, arguments: name === 'get_history' ? '{"limit":2}' : '{"scope":"site"}' } }
+  const responseItems = [
+    { type: 'reasoning' as const, id: 'rs_1', summary: [], encrypted_content: 'ENCRYPTED_REASONING' },
+    { type: 'function_call' as const, id: 'fc_1', call_id: call.id, name, arguments: call.function.arguments },
+  ]
+  const model = vi.fn<NonNullable<EngineDependencies['model']>>().mockResolvedValueOnce({ kind: 'tools', calls: [call], responseItems }).mockResolvedValueOnce(final)
+  const { engine, request } = await setup(model)
+  const result = await engine.start(request)
+  if (name === 'get_history') {
+    expect(result.kind).toBe('needs_history')
+    if (result.kind !== 'needs_history')
+      throw new Error('Expected history continuation')
+    await expect(engine.resume(result.continuation, [])).resolves.toMatchObject({ kind: 'completed' })
+  }
+  else {
+    expect(result.kind).toBe('completed')
+  }
+  expect(model.mock.calls[1]?.[2].messages).toContainEqual({ role: 'assistant', content: null, tool_calls: [call], responseItems })
+})
+
 test('管理员预览不审核、不要求公开启用或能力验证，不占日常配额和并发，签名不能混入公开历史', async () => {
   const model = vi.fn<NonNullable<EngineDependencies['model']>>(async () => final)
   const moderation = vi.fn(async () => {

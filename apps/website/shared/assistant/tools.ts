@@ -59,9 +59,31 @@ export const richIntentSchema = z.object({
 export type RichIntent = z.infer<typeof richIntentSchema>
 export type IntentBlock = z.infer<typeof intentBlockSchema>
 
+// Keep stateless Responses context with the matching tool round, including
+// encrypted reasoning. These items are never part of the visible answer.
+export const responseToolItemSchema = z.discriminatedUnion('type', [
+  z.object({
+    type: z.literal('reasoning'),
+    id: z.string().min(1).max(200),
+    summary: z.array(z.object({ type: z.literal('summary_text'), text: z.string().max(8000) })).max(20),
+    encrypted_content: z.string().max(assistantLimits.bodyBytes).nullable().optional(),
+    status: z.enum(['in_progress', 'completed', 'incomplete']).optional(),
+  }),
+  z.object({
+    type: z.literal('function_call'),
+    id: z.string().min(1).max(200).optional(),
+    call_id: toolCallSchema.shape.id,
+    name: toolCallSchema.shape.function.shape.name,
+    arguments: toolCallSchema.shape.function.shape.arguments,
+    status: z.enum(['in_progress', 'completed', 'incomplete']).optional(),
+  }),
+])
+export const responseToolItemsSchema = z.array(responseToolItemSchema).max(16)
+export type ResponseToolItem = z.infer<typeof responseToolItemSchema>
+
 export const modelMessageSchema = z.discriminatedUnion('role', [
   z.object({ role: z.literal('user'), content: z.string() }).strict(),
-  z.object({ role: z.literal('assistant'), content: z.string().nullable(), tool_calls: z.array(toolCallSchema).min(1).max(3) }).strict(),
+  z.object({ role: z.literal('assistant'), content: z.string().nullable(), tool_calls: z.array(toolCallSchema).min(1).max(3), responseItems: responseToolItemsSchema.optional() }).strict(),
   z.object({ role: z.literal('tool'), tool_call_id: z.string(), content: z.string() }).strict(),
 ])
 export type ModelMessage = z.infer<typeof modelMessageSchema>

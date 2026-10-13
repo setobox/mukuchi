@@ -3,7 +3,7 @@ import { afterEach, expect, test, vi } from 'vite-plus/test'
 import { encryptApiKey } from '../server/features/ai/crypto'
 import { canonicalJson, digest } from '../server/features/assistant/crypto'
 import { assistantConfiguration, configurationHash } from '../server/features/assistant/http'
-import { assistantCredentialsSchema, defaultAssistantSettings } from '../shared/assistant/settings'
+import { assistantCredentialsSchema, assistantSettingsSchema, defaultAssistantSettings } from '../shared/assistant/settings'
 import { assistantDatabase } from './fixtures/assistant-database'
 
 afterEach(() => vi.unstubAllGlobals())
@@ -31,6 +31,10 @@ test('旧设置保留但流式协议需要重测；次数及废弃输出审核�
     expect(await configurationHash({ ...settings, responseService: 'response_security_check_pro_unused' }, credentials)).toBe(config.verifiedHash)
     expect(await configurationHash({ ...settings, model: 'changed' }, credentials)).not.toBe(config.verifiedHash)
     expect(await configurationHash(settings, { ...credentials, modelKey: 'changed' })).not.toBe(config.verifiedHash)
+    const { apiFormat: _format, ...oldSettings } = settings
+    expect(assistantSettingsSchema.parse(oldSettings).apiFormat).toBe('chat-completions')
+    expect(await configurationHash(oldSettings, credentials)).toBe(config.verifiedHash)
+    expect(await configurationHash({ ...settings, apiFormat: 'responses' }, credentials)).not.toBe(config.verifiedHash)
   }
   finally { connection.close() }
 })

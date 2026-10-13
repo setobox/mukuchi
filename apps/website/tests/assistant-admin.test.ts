@@ -17,6 +17,7 @@ vi.mock('../server/features/assistant/http', async original => ({
   assistantConfiguration: async () => ({ settings, credentials: assistantCredentialsSchema.parse({ modelKey: 'test-key', aliyunKeyId: 'test-id', aliyunKeySecret: 'test-secret', turnstileSecret: 'test-turnstile' }), version: 1, secret: btoa('a'.repeat(32)), ready: false, verifiedHash: '' }),
 }))
 afterEach(() => {
+  settings.apiFormat = 'chat-completions'
   vi.unstubAllGlobals()
   vi.useRealTimers()
 })
@@ -24,9 +25,12 @@ afterEach(() => {
 test.each([
   { name: 'NoPermission 返回可操作配置错误，停止后续调用并保存诊断', denied: true, malformed: false, slow: false },
   { name: '仅开启内容合规与提示词攻击检测可通过完整能力测试', denied: false, malformed: false, slow: false },
+  { name: 'Responses 协议完成工具调用与结构化回复，回传加密推理项目', denied: false, malformed: false, slow: false, responses: true },
   { name: '模型第二次响应字段不符合约定时返回字段诊断且不标记验证通过', denied: false, malformed: true, slow: false },
+  { name: '模型工具调用阶段返回普通文本时保留格式诊断且不标记验证通过', denied: false, malformed: false, slow: false, prose: true },
   { name: '两次模型各耗时 55 秒，整轮超过旧 90 秒后仍能通过且记录耗时', denied: false, malformed: false, slow: true },
-])('后台能力测试：$name', async ({ denied, malformed, slow }) => {
+])('后台能力测试：$name', async ({ denied, malformed, slow, prose, responses }) => {
+  settings.apiFormat = responses ? 'responses' : 'chat-completions'
   const db = new DatabaseSync(':memory:')
   try {
     db.exec(readFileSync(new URL('../migrations/admin/0006_assistant.sql', import.meta.url), 'utf8'))
@@ -77,7 +81,21 @@ test.each([
       }
       if ('choices' in reply) {
         const choice = reply.choices[0]!
-        const delta = 'tool_calls' in choice.message ? { tool_calls: choice.message.tool_calls.map((call, index) => ({ ...call, index })) } : { content: choice.message.content }
+        if (responses) {
+          expect(_url).toBe('https://model.example.com/v1/responses')
+          const request = JSON.parse(String(init?.body))
+          expect(request).toMatchObject({ stream: true, store: false, text: { format: { type: 'json_schema' } } })
+          const reasoning = { type: 'reasoning', id: 'rs_site', summary: [], encrypted_content: 'ENCRYPTED_REASONING' }
+          const output = 'tool_calls' in choice.message
+            ? [reasoning, ...choice.message.tool_calls.map(call => ({ type: 'function_call', id: 'fc_site', call_id: call.id, ...call.function }))]
+            : [{ type: 'message', role: 'assistant', content: [{ type: 'output_text', text: choice.message.content }] }]
+          if (!('tool_calls' in choice.message)) {
+            expect(request.input).toContainEqual(reasoning)
+            expect(request.input).toContainEqual({ type: 'function_call_output', call_id: 'site', output: JSON.stringify({ name: 'Setobox Blog', description: '个人技术博客' }) })
+          }
+          return new Response(`data: ${JSON.stringify({ type: 'response.completed', response: { status: 'completed', output } })}\n\n`, { headers: { 'content-type': 'text/event-stream' } })
+        }
+        const delta = prose ? { content: 'PRIVATE_SECRET' } : 'tool_calls' in choice.message ? { tool_calls: choice.message.tool_calls.map((call, index) => ({ ...call, index })) } : { content: choice.message.content }
         const chunks = [{ choices: [{ index: 0, delta, finish_reason: null }] }, { choices: [{ index: 0, delta: {}, finish_reason: choice.finish_reason }] }]
         return new Response(`${chunks.map(chunk => `data: ${JSON.stringify(chunk)}\n\n`).join('')}data: [DONE]\n\n`, { headers: { 'content-type': 'text/event-stream' } })
       }
@@ -92,6 +110,17 @@ test.each([
       expect(fetcher).toHaveBeenCalledTimes(1)
       expect(db.prepare('SELECT status, model_calls FROM assistant_requests').get()).toMatchObject({ status: 'failed', model_calls: 0 })
       expect(db.prepare('SELECT COUNT(*) AS count FROM assistant_charges').get()).toEqual({ count: 0 })
+      expect((await repo.settings()).verifiedHash).toBe('')
+    }
+    else if (prose) {
+      const error: unknown = await assistantTestRoute(event).catch(cause => cause)
+      expect(error).toMatchObject({ statusCode: 422, code: 'invalid_model_response', message: expect.stringContaining('模型工具调用测试：回答正文未以 JSON 对象开头') })
+      expect(JSON.stringify(error)).not.toContain('PRIVATE_SECRET')
+      expect(fetcher).toHaveBeenCalledTimes(3)
+      expect(db.prepare('SELECT status, model_calls FROM assistant_requests').get()).toMatchObject({ status: 'failed', model_calls: 1 })
+      const task = db.prepare('SELECT status, error FROM assistant_tasks').get()
+      expect(task).toMatchObject({ status: 'failed', error: expect.stringContaining('回答正文未以 JSON 对象开头') })
+      expect(JSON.stringify(task)).not.toContain('PRIVATE_SECRET')
       expect((await repo.settings()).verifiedHash).toBe('')
     }
     else if (malformed) {

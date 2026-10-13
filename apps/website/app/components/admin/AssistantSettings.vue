@@ -19,7 +19,7 @@ const taskRevision = ref(0)
 const focusTask = ref('')
 const keyLabels: Record<keyof AssistantCredentials, string> = { modelKey: '模型 API 密钥', aliyunKeyId: '阿里云 AccessKey ID', aliyunKeySecret: '阿里云 AccessKey Secret', turnstileSecret: 'Turnstile Secret Key' }
 const moderationKeys = ['aliyunKeyId', 'aliyunKeySecret'] as const
-const capabilityKeys = ['baseUrl', 'model', 'style', 'region', 'queryService', 'turnstileSiteKey'] as const
+const capabilityKeys = ['baseUrl', 'model', 'apiFormat', 'style', 'region', 'queryService', 'turnstileSiteKey'] as const
 const credentialChanged = computed(() => clearing.value.length > 0 || Object.values(credentials.value).some(Boolean))
 const requiresVerification = computed(() => credentialChanged.value || capabilityKeys.some(key => saved.value[key] !== view.value.settings[key]))
 const dirty = computed(() => loaded.value && (credentialChanged.value || JSON.stringify(saved.value) !== JSON.stringify(view.value.settings)))
@@ -128,6 +128,7 @@ async function testCapabilities() {
               <label class="block text-sm text-muted">服务地址<input v-model="view.settings.baseUrl" type="url" autocomplete="off" placeholder="https://服务地址/v1" class="field-control mt-2 w-full px-3"></label>
               <label class="block text-sm text-muted">模型名称<input v-model="view.settings.model" autocomplete="off" class="field-control mt-2 w-full px-3"></label>
             </div>
+            <BaseSelect v-model="view.settings.apiFormat" label="模型接口协议" :disabled="saving || testing" :options="[{ value: 'chat-completions', label: 'Chat Completions（/chat/completions）' }, { value: 'responses', label: 'Responses（/responses）' }]" />
             <SavedCredential v-model="credentials.modelKey" service="assistant" field="modelKey" :label="keyLabels.modelKey" :configured="view.configured.modelKey" :revision="view.version" :active="credentialActive" :disabled="!view.encryptionReady" />
             <label v-if="view.configured.modelKey" class="checkbox-field min-h-11 flex items-center gap-3 text-xs text-error"><input v-model="clearing" value="modelKey" type="checkbox" class="accent-error">删除模型密钥</label>
             <label class="block text-sm text-muted">交流风格<textarea v-model="view.settings.style" maxlength="1000" rows="3" class="field-control mt-2 w-full p-3" /></label>

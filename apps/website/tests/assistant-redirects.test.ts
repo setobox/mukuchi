@@ -23,6 +23,14 @@ const clients: { name: string, invoke: (fetcher: Fetch) => Promise<unknown>, suc
     },
   },
   {
+    name: 'Responses SSE 请求',
+    invoke: fetcher => callModel({ ...settings, apiFormat: 'responses' }, credentials, modelBody({ ...settings, apiFormat: 'responses' }, [{ role: 'user', content: '你好' }]), signal, fetcher, () => {}),
+    success: () => {
+      const intent = { text: '你好', articles: [], references: [], taxonomy: null }
+      return new Response(`data: ${JSON.stringify({ type: 'response.completed', response: { status: 'completed', output: [{ type: 'message', role: 'assistant', content: [{ type: 'output_text', text: JSON.stringify(intent) }] }] } })}\n\n`, { headers: { 'content-type': 'text/event-stream' } })
+    },
+  },
+  {
     name: 'Turnstile 验证',
     invoke: fetcher => verifyTurnstile({ secret: 'test-secret', token: 'test-token', hostname: 'blog.example.com', ip: 'unknown' }, signal, fetcher),
     success: () => Response.json({ success: true, hostname: 'blog.example.com', action: 'assistant', challenge_ts: new Date().toISOString() }),

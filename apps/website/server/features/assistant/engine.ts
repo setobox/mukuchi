@@ -8,7 +8,7 @@ import type { AssistantRepository } from './repository'
 import { z as schema } from 'zod'
 import { cleanAssistantHtml } from '../../../shared/assistant/html'
 import { AssistantError, assistantLimits, assistantMessageSchema, historyText, referenceSchema, turnRequestSchema, visibleText } from '../../../shared/assistant/model'
-import { modelMessageSchema, toolCallSchema, toolInputs } from '../../../shared/assistant/tools'
+import { modelMessageSchema, responseToolItemsSchema, toolCallSchema, toolInputs } from '../../../shared/assistant/tools'
 import { digest, seal, signTurn, unseal, verifyHistory } from './crypto'
 import { moderate } from './moderation'
 import { callModel, modelBody } from './provider'
@@ -34,6 +34,7 @@ const continuationSchema = schema.object({
   nonce: schema.uuid(),
   expiresAt: schema.number(),
   call: toolCallSchema,
+  responseItems: responseToolItemsSchema.optional(),
 }).strict()
 export interface EngineDependencies {
   repository: AssistantRepository
@@ -290,8 +291,9 @@ export function createAssistantEngine(dependencies: EngineDependencies) {
             await repository.countCall(request.requestId, actor, 'tool', now())
             const nonce = crypto.randomUUID()
             await status(request.requestId, '正在读取会话历史…', 'get_history')
-            // Leave room for the call and envelope in the 30 KiB encrypted payload.
-            while (new TextEncoder().encode(JSON.stringify(state)).byteLength > 27_000) {
+            const continuation = { state, call: historyCall, nonce, expiresAt: now() + 60_000, ...(result.responseItems ? { responseItems: result.responseItems } : {}) }
+            // Include encrypted reasoning in the 30 KiB continuation budget.
+            while (new TextEncoder().encode(JSON.stringify(continuation)).byteLength > 29_000) {
               state.contextLimited = true
               if (state.history.length)
                 state.history.shift()
@@ -299,11 +301,11 @@ export function createAssistantEngine(dependencies: EngineDependencies) {
                 state.groups.shift()
               else throw new AssistantError(400, 'context_limit', '本次材料过长，请缩小问题范围')
             }
-            const token = await seal(secret, actor, 'continuation', { state, call: historyCall, nonce, expiresAt: now() + 60_000 })
+            const token = await seal(secret, actor, 'continuation', continuation)
             await repository.waitForHistory(request.requestId, actor, nonce, now())
             return { kind: 'needs_history', requestId: request.requestId, conversationId: request.conversationId, continuation: token, historyRequest: { before: state.historyCursor?.id ?? null, limit: toolInputs.get_history.parse(JSON.parse(historyCall.function.arguments)).limit } }
           }
-          const group: ModelMessage[] = [{ role: 'assistant', content: null, tool_calls: result.calls }]
+          const group: ModelMessage[] = [{ role: 'assistant', content: null, tool_calls: result.calls, ...(result.responseItems ? { responseItems: result.responseItems } : {}) }]
           for (const call of result.calls) {
             await active(request.requestId)
             group.push({ role: 'tool', tool_call_id: call.id, content: JSON.stringify(await tracked(request.requestId, `工具：${call.function.name}`, 'reply', () => execute(state, call))) })
@@ -438,7 +440,7 @@ export function createAssistantEngine(dependencies: EngineDependencies) {
         throw error
       }
       state.historyExhausted = older.length < limit
-      state.groups.push([{ role: 'assistant', content: null, tool_calls: [payload.call] }, { role: 'tool', tool_call_id: payload.call.id, content: JSON.stringify({ history: older.map(historyText), hasMore: !state.historyExhausted }) }])
+      state.groups.push([{ role: 'assistant', content: null, tool_calls: [payload.call], ...(payload.responseItems ? { responseItems: payload.responseItems } : {}) }, { role: 'tool', tool_call_id: payload.call.id, content: JSON.stringify({ history: older.map(historyText), hasMore: !state.historyExhausted }) }])
       // Older records live in the tool result; keep recent conversation context intact.
       if (older[0])
         state.historyCursor = { id: older[0].id, createdAt: older[0].createdAt }

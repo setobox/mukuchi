@@ -2,7 +2,7 @@ import type { Fetch } from '../server/features/assistant/network'
 import type { ModelEvent } from '../server/features/assistant/provider'
 import { afterEach, expect, test, vi } from 'vite-plus/test'
 import { readTurnResponse } from '../app/features/assistant/transport'
-import { callModel, modelBody } from '../server/features/assistant/provider'
+import { callModel, modelBody, ModelContentError, ModelResponseError } from '../server/features/assistant/provider'
 import { assistantCredentialsSchema, defaultAssistantSettings } from '../shared/assistant/settings'
 import { readSse } from '../shared/assistant/stream'
 
@@ -133,6 +133,39 @@ test('缺少终止帧、无效 JSON 和无效块都不能写入完成历史', as
     await expect(callModel(settings, credentials, body, new AbortController().signal, fetcher, () => {})).rejects.toMatchObject({ code: 'invalid_model_response' })
     expect(fetcher).toHaveBeenCalledOnce()
   }
+})
+
+test.each([
+  { content: 'PRIVATE_CONTENT', detail: '未以 JSON 对象开头' },
+  { content: '```json\nPRIVATE_CONTENT', detail: 'Markdown 代码围栏' },
+  { content: '<think>PRIVATE_CONTENT', detail: '标记文本' },
+  { content: '{"blocks":PRIVATE_CONTENT}', detail: '语法错误' },
+  { content: '{"blocks":[', detail: '未完整结束' },
+])('流式正文格式错误提供分类诊断而不泄漏内容：$detail', async ({ content, detail }) => {
+  const fetcher = vi.fn<Fetch>(async () => response(`${frame({ role: 'assistant' })}${frame({ content }, 'stop')}data: [DONE]\n\n`))
+  const events: ModelEvent[] = []
+  const error: unknown = await callModel(settings, credentials, body, new AbortController().signal, fetcher, (event) => {
+    events.push(event)
+  }).catch(cause => cause)
+  expect(error).toBeInstanceOf(ModelContentError)
+  expect(error).toMatchObject({ code: 'invalid_model_response', adminMessage: expect.stringContaining(detail) })
+  expect(JSON.stringify(error)).not.toContain('PRIVATE_CONTENT')
+  expect(events.every(event => event.type === 'stream')).toBe(true)
+  expect(fetcher).toHaveBeenCalledOnce()
+})
+
+test('完整回答块校验错误保留字段路径，不误报为 JSON 语法错误', async () => {
+  const content = JSON.stringify({ ...intent, blocks: [{ type: 'text', text: 'PRIVATE_CONTENT', sourceIds: null }] })
+  const events: ModelEvent[] = []
+  const fetcher = vi.fn<Fetch>(async () => response(`${frame({ role: 'assistant' })}${frame({ content }, 'stop')}data: [DONE]\n\n`))
+  const error: unknown = await callModel(settings, credentials, body, new AbortController().signal, fetcher, (event) => {
+    events.push(event)
+  }).catch(cause => cause)
+  expect(error).toBeInstanceOf(ModelResponseError)
+  expect(error).toMatchObject({ adminMessage: expect.stringContaining('blocks.[].sourceIds：缺失或类型错误，应为数组') })
+  expect(JSON.stringify(error)).not.toContain('PRIVATE_CONTENT')
+  expect(events.some(event => event.type === 'block')).toBe(false)
+  expect(fetcher).toHaveBeenCalledOnce()
 })
 
 test('429 和网络失败仅在正文之前最多重试两次，按 1 秒与 2 秒退避', async () => {

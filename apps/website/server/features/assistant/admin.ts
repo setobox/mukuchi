@@ -10,7 +10,7 @@ import { requireOwner } from '../auth/session'
 import { digest, signValue } from './crypto'
 import { assistantConfiguration, assistantJson, assistantSecret, configurationHash, trustedClientIp, withAssistant } from './http'
 import { AliyunModerationError, moderate } from './moderation'
-import { callModel, modelBody, ModelResponseError } from './provider'
+import { callModel, modelBody, ModelContentError, ModelResponseError } from './provider'
 import { taskFailure } from './tasks'
 
 const credentialNames = ['modelKey', 'aliyunKeyId', 'aliyunKeySecret', 'turnstileSecret'] as const
@@ -119,7 +119,7 @@ export async function assistantTestRoute(event: H3Event) {
       toolInputs.get_site_info.parse(JSON.parse(call.function.arguments))
       await repository.countCall(requestId, actor, 'tool', Date.now())
       await tracked('工具：get_site_info', 'reply', async () => {})
-      messages.push({ role: 'assistant', content: null, tool_calls: first.calls }, { role: 'tool', tool_call_id: call.id, content: JSON.stringify({ name: 'Setobox Blog', description: '个人技术博客' }) })
+      messages.push({ role: 'assistant', content: null, tool_calls: first.calls, ...(first.responseItems ? { responseItems: first.responseItems } : {}) }, { role: 'tool', tool_call_id: call.id, content: JSON.stringify({ name: 'Setobox Blog', description: '个人技术博客' }) })
       const final = await generate(messages, false)
       if (final.kind !== 'final' || !('blocks' in final.intent) || final.intent.articles.length || final.intent.references.length || final.intent.taxonomy)
         throw new AssistantError(422, 'capability_failed', '模型没有返回要求的结构化最终结果')
@@ -133,7 +133,7 @@ export async function assistantTestRoute(event: H3Event) {
       await repository.end(requestId, actor, 'failed', taskFailure(error, Object.values(credentials)))
       if (error instanceof AliyunModerationError)
         throw new AssistantError(error.adminStatusCode, error.code, error.adminMessage)
-      if (error instanceof ModelResponseError)
+      if (error instanceof ModelResponseError || error instanceof ModelContentError)
         throw new AssistantError(422, error.code, `${stage}：${error.adminMessage}`)
       if (error instanceof AssistantError)
         throw new AssistantError(error.statusCode, error.code, `${stage}：${error.message}`)

@@ -18,6 +18,7 @@ export const assistantSettingsSchema = z.object({
   enabled: z.boolean().default(false),
   baseUrl: z.string().trim().max(500).refine(publicHttpsEndpoint, '模型地址须为公共 HTTPS 地址').transform(value => value.replace(/\/+$/, '')).default(''),
   model: z.string().trim().max(200).default(''),
+  apiFormat: z.enum(['chat-completions', 'responses']).default('chat-completions'),
   style: z.string().trim().max(1000).default('自然、简洁、适度幽默。'),
   region: z.enum(['cn-shanghai', 'cn-beijing', 'cn-hangzhou', 'cn-shenzhen', 'cn-chengdu', 'cn-hongkong', 'ap-southeast-1']).default('cn-shanghai'),
   queryService: z.string().regex(/^query_security_check(?:_pro)?(?:_[a-z0-9]+)*$/).default('query_security_check_pro'),
