@@ -1,13 +1,16 @@
 import type { AssistantMessage, AssistantPage, AssistantSession, SignedTurn } from '#shared/assistant/model'
 import type { StreamPayload } from '#shared/assistant/stream'
+import type { HistoryRequest } from './cloud-sync'
 import type { DeletedConversation, LocalHistory } from './history'
 import type { Conversation, LocalTurn } from './local-model'
 import { computed, reactive, ref, shallowRef } from 'vue'
 import { z } from 'zod'
 import { articlePathSchema, assistantLimits, assistantSessionSchema, turnResponseSchema } from '#shared/assistant/model'
+import { syncCloudHistory, turnBatches } from './cloud-sync'
 import { groupConversations } from './local-model'
 
 export interface AssistantTransport {
+  history?: HistoryRequest
   session: () => Promise<unknown>
   post: (path: string, body: unknown, csrf: string, signal?: AbortSignal) => Promise<unknown>
   stream?: (path: string, body: unknown, csrf: string, requestId: string, receive: (payload: StreamPayload) => void, signal?: AbortSignal) => Promise<unknown>
@@ -25,6 +28,12 @@ export function createAssistantController(options: { history: Promise<LocalHisto
   const drafts = reactive<Record<string, string>>({})
   const page = ref<AssistantPage>({ path: null })
   const pageTitle = ref('')
+  const routePath = ref('')
+  const feedback = ref('')
+  const syncWarning = ref('')
+  const loadingConversation = ref(false)
+  let selectionRevision = 0
+  let syncing: Promise<void> | null = null
   const active = shallowRef<ActiveTurn | null>(null)
   const previews = shallowRef<Record<string, LiveReply>>({})
   const live = new Map<string, LiveReply>()
@@ -64,13 +73,53 @@ export function createAssistantController(options: { history: Promise<LocalHisto
   let disposed = false
   let sessionRevision = 0
   const recoveredNamespaces = new Set<string>()
-  const draft = computed({ get: () => drafts[currentId.value] ?? '', set: value => drafts[currentId.value] = value })
+  const draft = computed({ get: () => drafts[currentId.value] ?? '', set: value => drafts[currentId.value] = value.replace(/[\r\n]+/g, ' ') })
   const groups = computed(() => groupConversations(conversations.value, new Date(clock.value)))
   const unread = computed(() => conversations.value.some(item => item.unread))
   const enabled = computed(() => session.value?.enabled ?? false)
   const busy = computed(() => !!active.value || busyElsewhere.value)
   function showError(cause: unknown) {
     error.value = cause instanceof Error ? cause.message : '操作失败，请重试'
+  }
+  async function syncHistory(importLocal = false) {
+    const identity = session.value
+    const request = options.transport.history
+    if (!identity?.authenticated || !request || disposed)
+      return
+    if (syncing) {
+      await syncing
+      if (identity.namespace !== session.value?.namespace)
+        return syncHistory(importLocal)
+      return
+    }
+    const identityRevision = sessionRevision
+    const valid = () => !disposed && sessionRevision === identityRevision && session.value?.namespace === identity.namespace
+    syncing = (async () => {
+      try {
+        await syncCloudHistory({ history: await options.history, request, identity, valid, activeId: active.value?.id, importLocal })
+        if (valid())
+          syncWarning.value = ''
+      }
+      catch (cause) {
+        if (valid())
+          syncWarning.value = cause instanceof Error ? cause.message : '历史暂未同步，联网后会重试。本地记录仍保留。'
+      }
+      finally { syncing = null }
+    })()
+    await syncing
+    if (valid())
+      await reload()
+  }
+  async function refreshQuota() {
+    const identity = session.value
+    if (!identity || disposed)
+      return
+    try {
+      const next = assistantSessionSchema.parse(await options.transport.session())
+      if (!disposed && session.value === identity && next.namespace === identity.namespace)
+        session.value = next
+    }
+    catch { /* Keep the last known server quota until the next refresh. */ }
   }
   async function reload() {
     const identity = session.value
@@ -108,6 +157,8 @@ export function createAssistantController(options: { history: Promise<LocalHisto
     if (active.value === running)
       active.value = null
     await reload()
+    await refreshQuota()
+    await syncHistory()
   }
   async function refreshSession() {
     const version = ++sessionRevision
@@ -117,8 +168,12 @@ export function createAssistantController(options: { history: Promise<LocalHisto
         return
       const identityChanged = session.value?.namespace !== value.namespace
       if (identityChanged) {
+        selectionRevision++
+        loadingConversation.value = false
         queuedSend.value = false
         await stop()
+        if (version !== sessionRevision || disposed)
+          return
         revision++
         turns.value = []
         live.clear()
@@ -140,10 +195,8 @@ export function createAssistantController(options: { history: Promise<LocalHisto
           recoveredNamespaces.add(value.namespace)
         }
         await history.interruptExpired(value.namespace, now() - assistantLimits.turnMs - 5000)
-        const recent = await history.recent(value.namespace)
-        if (identityChanged && recent && !(await history.list(value.namespace)).every(item => item.id !== recent))
-          currentId.value = recent
         await reload()
+        await syncHistory(true)
       }
     }
     catch { error.value = '助手暂不可用，请稍后重试' }
@@ -152,19 +205,32 @@ export function createAssistantController(options: { history: Promise<LocalHisto
     const identity = session.value
     if (!identity)
       return
+    const version = ++selectionRevision
+    loadingConversation.value = true
     try {
       const history = await options.history
+      await syncHistory()
+      if (session.value?.namespace !== identity.namespace || version !== selectionRevision)
+        return
       await history.select(identity.namespace, id)
       currentId.value = id
       turns.value = []
       drawer.value = false
       error.value = ''
+      feedback.value = ''
       await reload()
     }
     catch (cause) { showError(cause) }
+    finally {
+      if (version === selectionRevision)
+        loadingConversation.value = false
+    }
   }
   async function newConversation() {
+    selectionRevision++
+    loadingConversation.value = false
     queuedSend.value = false
+    feedback.value = ''
     currentId.value = crypto.randomUUID()
     turns.value = []
     limited.value = false
@@ -173,12 +239,12 @@ export function createAssistantController(options: { history: Promise<LocalHisto
     if (session.value)
       await (await options.history).select(session.value.namespace, null)
   }
-  async function open(text?: string, submit = false) {
+  async function open(text?: string, submit = false, target: 'floating' | 'fullscreen' = 'fullscreen') {
     if (!enabled.value)
       await refreshSession()
     if (!enabled.value)
       return
-    mode.value = 'fullscreen'
+    mode.value = target
     if (text !== undefined)
       draft.value = text
     queuedSend.value = submit
@@ -192,11 +258,15 @@ export function createAssistantController(options: { history: Promise<LocalHisto
     drawer.value = false
   }
   function routeChanged(path: string, title = '') {
-    if (mode.value !== 'hidden')
-      mode.value = 'floating'
+    if (routePath.value && routePath.value !== path) {
+      void newConversation()
+      if (mode.value !== 'hidden')
+        mode.value = 'floating'
+    }
+    routePath.value = path
     const parsed = articlePathSchema.safeParse(path)
     page.value = { path: parsed.success ? parsed.data : null }
-    pageTitle.value = title
+    pageTitle.value = title.replace(/\s*[-|·]\s*Setobox(?: Blog)?\s*$/i, '')
   }
   async function navigateAction(actionId: string, conversationId: string, clicked: boolean) {
     const identity = session.value
@@ -231,7 +301,8 @@ export function createAssistantController(options: { history: Promise<LocalHisto
     if (!identity?.enabled || !text || busy.value)
       return
     if (text.length > assistantLimits.inputLength) {
-      error.value = '问题最多 500 个字符'
+      queuedSend.value = false
+      feedback.value = '您的问题内容太多了，精简一下再问吧~'
       return
     }
     if (!identity.authenticated && !turnstileToken) {
@@ -244,6 +315,7 @@ export function createAssistantController(options: { history: Promise<LocalHisto
     live.set(running.id, { label: '正在连接…', message: { id: running.id, role: 'assistant', blocks: [], references: [] } })
     flushPreviews()
     error.value = ''
+    feedback.value = ''
     limited.value = false
     const history = await options.history
     const timer = setTimeout(() => running.controller.abort(), assistantLimits.turnMs + 5000)
@@ -308,7 +380,8 @@ export function createAssistantController(options: { history: Promise<LocalHisto
       const visible = mode.value !== 'hidden' && currentId.value === running.conversationId && session.value?.namespace === running.namespace
       const stored = await history.finish(running.namespace, running.conversationId, running.id, { status: 'completed', record: response.record }, !visible, now())
       if (stored && session.value?.namespace === running.namespace) {
-        limited.value = response.contextLimited
+        if (currentId.value === running.conversationId)
+          limited.value = response.contextLimited
         for (const block of response.record.assistant.blocks) {
           if (block.type === 'navigation_confirmation')
             liveActions.add(block.actionId)
@@ -334,6 +407,8 @@ export function createAssistantController(options: { history: Promise<LocalHisto
       if (active.value === running)
         active.value = null
       await reload()
+      await refreshQuota()
+      await syncHistory()
       if (disposed)
         history.close()
     }
@@ -343,16 +418,62 @@ export function createAssistantController(options: { history: Promise<LocalHisto
       return
     if (active.value?.conversationId === id)
       await stop()
-    undoSnapshot.value = await (await options.history).remove(session.value.namespace, id)
+    const identity = session.value
+    const history = await options.history
+    const row = await history.snapshot(identity.namespace, id)
+    if (identity.authenticated && options.transport.history && row?.syncVersion !== undefined) {
+      try {
+        await options.transport.history(`/conversations/${id}`, 'DELETE', { version: row.syncVersion }, identity.csrf)
+      }
+      catch (cause) {
+        showError(cause)
+        await syncHistory()
+        return
+      }
+      if (session.value?.namespace !== identity.namespace)
+        return
+    }
+    undoSnapshot.value = await history.remove(identity.namespace, id)
+    if (undoSnapshot.value?.conversation.syncVersion !== undefined)
+      undoSnapshot.value.conversation.syncVersion++
     delete drafts[id]
     if (currentId.value === id)
       await newConversation()
     await reload()
+    await syncHistory()
   }
   async function undo() {
     if (!undoSnapshot.value || undoSnapshot.value.conversation.namespace !== session.value?.namespace)
       return
     const history = await options.history
+    const identity = session.value!
+    const snapshot = undoSnapshot.value
+    if (identity.authenticated && options.transport.history && snapshot.conversation.syncVersion !== undefined) {
+      const batches = turnBatches(snapshot.messages)
+      try {
+        await options.transport.history(`/conversations/${snapshot.conversation.id}/restore`, 'POST', { version: snapshot.conversation.syncVersion, ...(batches[0] ?? { records: [], messages: [] }) }, identity.csrf)
+        for (const batch of batches.slice(1)) await options.transport.history('/conversations/import', 'POST', { source: 'account', conversationId: snapshot.conversation.id, ...batch }, identity.csrf)
+      }
+      catch (cause) {
+        showError(cause)
+        await syncHistory()
+        return
+      }
+      if (session.value?.namespace !== identity.namespace)
+        return
+      await syncHistory()
+      const restored = await history.snapshot(identity.namespace, snapshot.conversation.id)
+      if (restored && !restored.deleted) {
+        const messages = await history.messages(identity.namespace, restored.id)
+        await history.merge(restored, messages.map((turn) => {
+          const original = snapshot.messages.find(item => item.id === turn.id)
+          return original?.preview && !turn.record ? { ...turn, preview: original.preview, durationMs: original.durationMs } : turn
+        }))
+      }
+      await select(snapshot.conversation.id)
+      undoSnapshot.value = null
+      return
+    }
     if (await history.undo(undoSnapshot.value))
       await select(undoSnapshot.value.conversation.id)
     undoSnapshot.value = null
@@ -362,7 +483,19 @@ export function createAssistantController(options: { history: Promise<LocalHisto
     if (!session.value)
       return
     await stop()
-    await (await options.history).clear(session.value.namespace)
+    const identity = session.value
+    if (identity.authenticated && options.transport.history) {
+      try {
+        await options.transport.history('/conversations', 'DELETE', {}, identity.csrf)
+      }
+      catch (cause) {
+        showError(cause)
+        return
+      }
+      if (session.value?.namespace !== identity.namespace)
+        return
+    }
+    await (await options.history).clear(identity.namespace)
     undoSnapshot.value = null
     for (const id of Object.keys(drafts)) delete drafts[id]
     await newConversation()
@@ -370,6 +503,9 @@ export function createAssistantController(options: { history: Promise<LocalHisto
   }
   async function tick() {
     clock.value = now()
+    await refreshQuota()
+    if (mode.value !== 'hidden')
+      await syncHistory(true)
     if (session.value?.namespace) {
       await (await options.history).interruptExpired(session.value.namespace, now() - assistantLimits.turnMs - 5000)
       await reload()
@@ -386,6 +522,6 @@ export function createAssistantController(options: { history: Promise<LocalHisto
       void options.history.then(history => history.close())
     }
   }
-  return { session, mode, drawer, currentId, conversations, turns, draft, page, pageTitle, active, previews, error, storageWarning, limited, groups, unread, busy, busyElsewhere, enabled, undoSnapshot, navigationResults, actionBusy, queuedSend, refreshSession, reload, select, newConversation, open, close, routeChanged, send, stop, remove, undo, clear, tick, dispose, navigateAction }
+  return { loadingConversation, routePath, feedback, syncWarning, syncHistory, refreshQuota, session, mode, drawer, currentId, conversations, turns, draft, page, pageTitle, active, previews, error, storageWarning, limited, groups, unread, busy, busyElsewhere, enabled, undoSnapshot, navigationResults, actionBusy, queuedSend, refreshSession, reload, select, newConversation, open, close, routeChanged, send, stop, remove, undo, clear, tick, dispose, navigateAction }
 }
 export type AssistantController = ReturnType<typeof createAssistantController>

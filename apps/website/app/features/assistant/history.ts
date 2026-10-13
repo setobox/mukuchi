@@ -25,6 +25,30 @@ export function createLocalHistory(db: LocalDatabase, notify: (change: HistoryCh
     return result
   }
   return {
+    snapshot: (namespace: string, id: string) => db.run(false, async tx => conversation(tx, namespace, id)),
+    async merge(value: Conversation, incoming: LocalTurn[], activeId?: string) {
+      const row = conversationSchema.parse(value)
+      const checked = incoming.map(turn => localTurnSchema.parse(turn))
+      return write(row.namespace, async (tx) => {
+        const previous = await conversation(tx, row.namespace, row.id)
+        if (previous?.syncVersion !== undefined && previous.syncVersion > (row.syncVersion ?? 0))
+          return
+        if (row.deleted) {
+          for (const turn of await messages(tx, row.namespace, row.id)) await tx.remove('messages', [row.namespace, turn.id])
+        }
+        else {
+          for (const turn of checked) {
+            if (turn.namespace !== row.namespace || turn.conversationId !== row.id)
+              throw new LocalHistoryConflict()
+            const raw = await tx.get('messages', [row.namespace, turn.id])
+            const local = raw ? localTurnSchema.parse(raw) : undefined
+            // Preserve local partial responses and live-tab ownership, never promote them to signed history.
+            await tx.put('messages', { ...turn, ...(local?.preview && !turn.record ? { preview: local.preview, durationMs: local.durationMs } : {}), ...(turn.id === activeId && local?.ownerId ? { ownerId: local.ownerId } : {}) })
+          }
+        }
+        await tx.put('conversations', { ...row, version: (previous?.version ?? 0) + 1, unread: previous?.unread ?? false })
+      })
+    },
     list: (namespace: string) => db.run(false, async tx => (await tx.all('conversations', namespace)).map(row => conversationSchema.parse(row)).filter(row => !row.deleted).sort((a, b) => b.updatedAt - a.updatedAt || a.id.localeCompare(b.id))),
     pending: (namespace: string) => db.run(false, async tx => (await tx.all('messages', namespace)).map(row => localTurnSchema.parse(row)).filter(row => row.status === 'pending')),
     messages: (namespace: string, id: string) => db.run(false, async tx => (await conversation(tx, namespace, id))?.deleted === false ? messages(tx, namespace, id) : []),
