@@ -1,5 +1,11 @@
 import { AdminError } from '../../../shared/admin/model.ts'
 
+export class CredentialDecryptionError extends AdminError {
+  constructor() {
+    super(503, 'AI 服务密钥无法解密，请检查服务端配置')
+  }
+}
+
 function decode(value: string) {
   return Uint8Array.from(atob(value), char => char.charCodeAt(0))
 }
@@ -29,7 +35,7 @@ export async function decryptApiKey(value: string, secret: string) {
       throw new Error('Invalid ciphertext')
     return new TextDecoder().decode(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: decode(iv) }, key, decode(data)))
   }
-  catch { throw new AdminError(503, 'AI 服务密钥无法解密，请检查服务端配置') }
+  catch { throw new CredentialDecryptionError() }
 }
 export async function encryptionReady(secret: string) {
   try {

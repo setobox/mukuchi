@@ -33,6 +33,8 @@ Worker 的七项凭据使用 Secrets：`AI_ENCRYPTION_KEY`、`AUDIO_SYNC_TOKEN`�
 
 轮换 `AI_ENCRYPTION_KEY` 后，在读取新名称的生产后台重新输入并保存 AI 摘要、助手及音频供应商 API Key，让新密钥重新加密；只保留原有密文再点击保存无效。供应商 API Key 与这把本地生成的加密密钥是不同的凭据。保存不要求生成音频任务。`AUTH_SESSION_KEY` 轮换影响旧 ID token 解密，`STATS_HASH_SECRET` 轮换改变访客标识。
 
+助手的四项凭据一起加密：模型 API Key、阿里云 AccessKey ID、阿里云 AccessKey Secret、Turnstile Secret Key。旧密文无法解密时，管理员设置页仍保留模型等普通配置，显示为未配置凭据；须完整重填四项并保持助手关闭后保存，再运行原有能力测试并启用。读取页面或不完整提交不会清除旧密文，正常聊天仍拒绝使用无法解密的配置。
+
 本次采用一次发布窗口：完成构建和测试后添加新名称，填写并核对全部生产配置，再发布对应代码和工作流；验收成功后删除旧项。失败时保留旧变量并恢复之前的 Worker 版本及工作流。不要提前删除旧名称或把配置缺失的版本发布到生产。生成的部署配置设置 `keep_vars: true`，避免发布时自动移除面板中的旧明文变量；验收通过并确认清单后再显式删除（[Cloudflare 配置说明](https://developers.cloudflare.com/workers/wrangler/configuration/#source-of-truth)）。
 
 废弃清单：

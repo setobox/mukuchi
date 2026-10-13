@@ -1,10 +1,11 @@
 import type { H3Event } from 'h3'
 import type { ModelMessage } from '../../../shared/assistant/tools'
+import type { AssistantRepository } from './repository'
 import { z } from 'zod'
 import { AssistantError, assistantLimits } from '../../../shared/assistant/model'
 import { assistantCredentialsSchema, assistantSettingsSchema, configurationReady, missingAssistantConfiguration } from '../../../shared/assistant/settings'
 import { toolInputs } from '../../../shared/assistant/tools'
-import { encryptApiKey, encryptionReady } from '../ai/crypto'
+import { CredentialDecryptionError, encryptApiKey, encryptionReady } from '../ai/crypto'
 import { requireOwner } from '../auth/session'
 import { digest, signValue } from './crypto'
 import { assistantConfiguration, assistantJson, assistantSecret, configurationHash, trustedClientIp, withAssistant } from './http'
@@ -17,14 +18,29 @@ const saveSchema = z.object({ settings: assistantSettingsSchema, version: z.numb
 async function owner(event: H3Event) {
   return requireOwner(event)
 }
+// Only the owner settings route may recover after key rotation. Runtime calls
+// continue to fail closed, and GET never overwrites the existing ciphertext.
+async function editableConfiguration(event: H3Event, repository: AssistantRepository) {
+  try {
+    return { ...await assistantConfiguration(event, repository, false), needsReplacement: false }
+  }
+  catch (error) {
+    if (!(error instanceof CredentialDecryptionError))
+      throw error
+    const stored = await repository.settings()
+    return { ...stored, settings: { ...stored.settings, enabled: false }, credentials: assistantCredentialsSchema.parse({}), secret: assistantSecret(event), ready: false, verifiedHash: '', needsReplacement: true }
+  }
+}
 export async function assistantSettingsRoute(event: H3Event) {
   await owner(event)
   const input = event.method === 'PUT' ? saveSchema.parse(await assistantJson(event)) : null
   return withAssistant(event, async (repository) => {
-    let config = await assistantConfiguration(event, repository, false)
+    let config = await editableConfiguration(event, repository)
     if (input) {
       if (input.version !== config.version)
         throw new AssistantError(409, 'settings_conflict', '助手设置已改变，请刷新后重试')
+      if (config.needsReplacement && (input.settings.enabled || input.clearCredentials.length || credentialNames.some(name => !input.credentials[name]?.trim())))
+        throw new AssistantError(422, 'credentials_required', '旧凭据无法解密，请完整重填四项密钥并保持助手关闭，再保存和测试')
       const credentials = { ...config.credentials }
       for (const name of credentialNames) {
         if (input.clearCredentials.includes(name))
@@ -38,7 +54,7 @@ export async function assistantSettingsRoute(event: H3Event) {
         throw new AssistantError(422, 'not_verified', '请先保存完整配置并通过能力测试，再启用助手')
       const encrypted = await encryptApiKey(JSON.stringify(credentials), assistantSecret(event))
       await repository.saveSettings(input.settings, encrypted, input.version, verifiedHash)
-      config = await assistantConfiguration(event, repository, false)
+      config = await editableConfiguration(event, repository)
     }
     return { settings: config.settings, version: config.version, configured: { modelKey: !!config.credentials.modelKey, aliyunKeyId: !!config.credentials.aliyunKeyId, aliyunKeySecret: !!config.credentials.aliyunKeySecret, turnstileSecret: !!config.credentials.turnstileSecret }, encryptionReady: await encryptionReady(config.secret), verified: config.ready }
   })
