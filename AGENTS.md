@@ -40,3 +40,4 @@ Use `vp run check` for ESLint and TypeScript checks, and `vp run lint:fix` for a
 - Worker 的 Token / 密钥使用 Secrets，Giscus 使用明文 Variables；GitHub 的 AI_ENCRYPTION_KEY、AUDIO_SYNC_TOKEN 必须分别与 Worker 相同。
 - 本次只改名，不重新生成密钥。原值从密码管理器或安全部署备份找回；找不到时保留旧项并暂停切换。AI_ENCRYPTION_KEY 改值会导致已有模型凭据无法解密。
 - 新配置齐全并完成发布验收后，再列出准确清单，确认后删除平台旧项。
+- 批量配置使用 `vp run website#environment:sync`，默认只预览；`--init` 创建被 Git 忽略的空模板，`--apply` 才写入平台。共享值只填一次，旧项保留；操作说明见 [ENVIRONMENT.md](apps/website/ENVIRONMENT.md#批量同步配置)。

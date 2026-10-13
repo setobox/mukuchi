@@ -48,3 +48,26 @@ Worker 当前私有项保持 Secrets 类型；评论配置保持普通 Variables
 Cloudflare 构建后运行 `vp run website#environment:smoke:worker`，使用本地临时绑定验证缺失配置、认证顺序、公开配置和音频同步鉴权，不访问生产资源。
 
 平台面板不支持自定义注释或分组顺序；本模板和配置表是维护说明，平台保留其默认名称排序。
+
+## 批量同步配置
+
+只需在一份本地 JSON 中填写生产原值，脚本自动将 Giscus 映射到 GitHub 与 Worker，并将 AI / 音频共享密钥写入两处。默认只离线预览名称，不访问平台、不显示值。
+
+在仓库根目录运行：
+
+```powershell
+vp run website#environment:sync --init
+vp run website#environment:sync
+vp run website#environment:sync --apply
+```
+
+- `--init` 创建 `.data/environment.production.json`，已有文件不会覆盖；默认位置已被 Git 忽略。模板只列 Token、密钥与 Giscus；不从本地开发 `.env` 复制值，也不自动生成密钥。
+- 编辑模板后先运行预览。空字符串跳过，Giscus 三项须同时填写；AI / 音频共享值只填一次。此命令可分批添加，写入成功不代表全部发布配置已齐全。
+- 执行前用 `gh auth login` 登录有仓库 Secrets / Variables 管理权限的账号，并在当前终端环境中提供 `CLOUDFLARE_API_TOKEN`（目标账户 Workers Scripts 编辑权限）。此 Token 仅用于调用 API，不写入 JSON，不自动修改 GitHub 中现有部署 Token。
+- `--apply` 会写入 GitHub `setobox/mukuchi` 和 Cloudflare `mukuchi-blog`。Worker 设置更新会产生配置版本，沿用线上代码；运行时避免其他发布或面板编辑。检测到未发布版本或流量分流时会停止。
+- 已存在的新名称 Secret 默认拒绝覆盖；确认仍是原值后，才使用 `--apply --replace-secrets`。旧名称和所有未修改绑定会继承保留；本脚本没有删除功能。
+- 如需迁移登录地址等普通配置，可在同一 JSON 添加上表中的八项登录与管理员配置；按现有加密类型写入。也支持 `CLOUDFLARE_ACCOUNT_ID`、`MUKUCHI_SMOKE_URL`，只写 GitHub Variables。其他字段一律拒绝。
+- 可用 `--file 文件.json` 指定另一文件；自行确保它不会提交到 Git。平台写入不是跨平台事务，失败会停止后续操作；查看已完成的名称，核对状态后重试，不自动删除或回退。
+- 输出不包含密钥；GitHub 值通过标准输入传递，Cloudflare 使用 HTTPS 请求正文。平台不能读回原密钥，因此只能确认提交的是同一输入值，不能与平台原密钥做明文比较。Secret 原值仍需从安全记录获取。
+
+实现依据：[GitHub CLI Secrets](https://cli.github.com/manual/gh_secret_set)、[GitHub CLI Variables](https://cli.github.com/manual/gh_variable_set)、[Cloudflare 设置接口与绑定继承](https://developers.cloudflare.com/api/resources/workers/subresources/scripts/subresources/script_and_version_settings/methods/edit/)。
