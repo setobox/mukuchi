@@ -64,7 +64,7 @@ test('首次补齐后重建零调用，仅变化文章重新生成，关闭文�
   const options = { settings, ...store, generate, warn }
   const first = await prepareSummaries(articles, options)
   expect(generate).toHaveBeenCalledTimes(2)
-  expect(Object.keys(first.records)).toEqual(['a.md', 'b.md'])
+  expect(Object.keys(first.records).sort()).toEqual(['a.md', 'b.md'])
   expect(await prepareSummaries(articles, options)).toEqual(first)
   expect(generate).toHaveBeenCalledTimes(2)
   await prepareSummaries([{ path: 'a.md', source: `${source}修改` }, articles[1]!], options)
