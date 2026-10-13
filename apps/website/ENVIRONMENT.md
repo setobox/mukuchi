@@ -25,13 +25,15 @@ Token、密钥与 Giscus 的精简模板见 [.env.example](.env.example)；启�
 | 部署 | 无须写入 Worker | `CLOUDFLARE_API_TOKEN` Secret、`CLOUDFLARE_ACCOUNT_ID` Variable |
 | 构建 / 验收 | `MUKUCHI_GITHUB_TOKEN`、`MUKUCHI_SMOKE_URL` | 前者由临时 GitHub token 提供，后者为 Variable |
 
-Worker 当前私有项保持 Secrets 类型；评论配置保持普通 Variables。D1、R2 和 Workflow 绑定不是待清理的环境变量，不删除。
+Worker 的七项凭据使用 Secrets：`AI_ENCRYPTION_KEY`、`AUDIO_SYNC_TOKEN`、`AUTH_SESSION_KEY`、`GITHUB_PUBLISH_TOKEN`、`OIDC_CLIENT_SECRET`、`STATS_ADMIN_TOKEN`、`STATS_HASH_SECRET`。登录地址、客户端 ID、管理员邮箱、会话时长、scopes 和 Giscus 共十一项使用普通 Variables；普通变量仍仅按代码映射公开，管理员邮箱不会因此发送到浏览器。发布检查也接受普通服务端配置继续存为 Secret。D1、R2 和 Workflow 绑定不是待清理的环境变量，不删除。
 
 ## 从旧名称迁移
 
-对仍在使用的 `NUXT_*` 项，仅移除 `NUXT_`，原值逐字保留。密钥不能从 GitHub 或 Cloudflare 编辑页读回，须从原始记录重新填写；缺失时停止切换，不能用随机新值代替。特别是 `AI_ENCRYPTION_KEY`、`AUTH_SESSION_KEY` 改值会影响已加密数据。
+对仍在使用的 `NUXT_*` 项，仅移除 `NUXT_`。单纯改名保留原值；用户已另行授权本次生产密钥轮换。平台不能读回密钥，必须从安全记录填写已确定的值，不能推定本地与生产相同。
 
-本次采用一次发布窗口：完成构建和测试后添加新名称，填写并核对全部生产原值，再发布对应代码和工作流；验收成功后删除旧项。失败时保留旧变量并恢复之前的 Worker 版本及工作流。不要提前删除旧名称或把配置缺失的版本发布到生产。生成的部署配置设置 `keep_vars: true`，避免发布时自动移除面板中的旧明文变量；验收通过并确认清单后再显式删除（[Cloudflare 配置说明](https://developers.cloudflare.com/workers/wrangler/configuration/#source-of-truth)）。
+轮换 `AI_ENCRYPTION_KEY` 后，在读取新名称的生产后台重新输入并保存 AI 摘要、助手及音频供应商 API Key，让新密钥重新加密；只保留原有密文再点击保存无效。供应商 API Key 与这把本地生成的加密密钥是不同的凭据。保存不要求生成音频任务。`AUTH_SESSION_KEY` 轮换影响旧 ID token 解密，`STATS_HASH_SECRET` 轮换改变访客标识。
+
+本次采用一次发布窗口：完成构建和测试后添加新名称，填写并核对全部生产配置，再发布对应代码和工作流；验收成功后删除旧项。失败时保留旧变量并恢复之前的 Worker 版本及工作流。不要提前删除旧名称或把配置缺失的版本发布到生产。生成的部署配置设置 `keep_vars: true`，避免发布时自动移除面板中的旧明文变量；验收通过并确认清单后再显式删除（[Cloudflare 配置说明](https://developers.cloudflare.com/workers/wrangler/configuration/#source-of-truth)）。
 
 废弃清单：
 
@@ -51,7 +53,7 @@ Cloudflare 构建后运行 `vp run website#environment:smoke:worker`，使用本
 
 ## 批量同步配置
 
-只需在一份本地 JSON 中填写生产原值，脚本自动将 Giscus 映射到 GitHub 与 Worker，并将 AI / 音频共享密钥写入两处。默认只离线预览名称，不访问平台、不显示值。
+只需在一份本地 JSON 中填写已确定的生产值，脚本自动将 Giscus 映射到 GitHub 与 Worker，并将 AI / 音频共享密钥写入两处。默认只离线预览名称，不访问平台、不显示值。
 
 在仓库根目录运行：
 
@@ -65,8 +67,8 @@ vp run website#environment:sync --apply
 - 编辑模板后先运行预览。空字符串跳过，Giscus 三项须同时填写；AI / 音频共享值只填一次。此命令可分批添加，写入成功不代表全部发布配置已齐全。
 - 执行前用 `gh auth login` 登录有仓库 Secrets / Variables 管理权限的账号，并在当前终端环境中提供 `CLOUDFLARE_API_TOKEN`（目标账户 Workers Scripts 编辑权限）。此 Token 仅用于调用 API，不写入 JSON，不自动修改 GitHub 中现有部署 Token。
 - `--apply` 会写入 GitHub `setobox/mukuchi` 和 Cloudflare `mukuchi-blog`。Worker 设置更新会产生配置版本，沿用线上代码；运行时避免其他发布或面板编辑。检测到未发布版本或流量分流时会停止。
-- 已存在的新名称 Secret 默认拒绝覆盖；确认仍是原值后，才使用 `--apply --replace-secrets`。旧名称和所有未修改绑定会继承保留；本脚本没有删除功能。
-- 如需迁移登录地址等普通配置，可在同一 JSON 添加上表中的八项登录与管理员配置；按现有加密类型写入。也支持 `CLOUDFLARE_ACCOUNT_ID`、`MUKUCHI_SMOKE_URL`，只写 GitHub Variables。其他字段一律拒绝。
+- 已存在的新名称 Secret 默认拒绝覆盖；确认填入的是本次需要保留或已授权轮换的新值后，才使用 `--apply --replace-secrets`。旧名称和所有未修改绑定会继承保留；本脚本没有删除功能。
+- 如需迁移登录地址等普通配置，可在同一 JSON 添加上表中的八项登录与管理员配置；新建默认为普通 Variables，已有加密配置保留 Secret 类型。也支持 `CLOUDFLARE_ACCOUNT_ID`、`MUKUCHI_SMOKE_URL`，只写 GitHub Variables。其他字段一律拒绝。
 - 可用 `--file 文件.json` 指定另一文件；自行确保它不会提交到 Git。平台写入不是跨平台事务，失败会停止后续操作；查看已完成的名称，核对状态后重试，不自动删除或回退。
 - 输出不包含密钥；GitHub 值通过标准输入传递，Cloudflare 使用 HTTPS 请求正文。平台不能读回原密钥，因此只能确认提交的是同一输入值，不能与平台原密钥做明文比较。Secret 原值仍需从安全记录获取。
 

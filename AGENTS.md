@@ -24,20 +24,20 @@ Use `vp run check` for ESLint and TypeScript checks, and `vp run lint:fix` for a
 ## 必要的 Token、密钥与 Giscus
 
 - 环境变量示例只列 Token、密钥和 Giscus；不添加目录、数据库路径等可选参数。完整登录配置见 [ENVIRONMENT.md](apps/website/ENVIRONMENT.md)。
-- 改名只移除 NUXT_，保留原值；公开变量保留 PUBLIC_。本地与生产分开，真实密钥不写入文档、提交或聊天。
+- 改名只移除 NUXT_；单纯改名应保留原值，明确授权轮换时按轮换流程处理。公开变量保留 PUBLIC_。本地与生产分开，真实密钥不写入文档、提交或聊天。
 
 | 配置 | 获取方式 |
 | --- | --- |
 | PUBLIC_GISCUS_REPO / PUBLIC_GISCUS_REPO_ID / PUBLIC_GISCUS_CATEGORY_ID | 在 [Giscus 配置页](https://giscus.app/zh-CN) 选择原评论仓库和分类，分别取生成代码的 data-repo、data-repo-id、data-category-id；这三项可公开。 |
-| GITHUB_PUBLISH_TOKEN | 使用原 GitHub fine-grained PAT；管理入口为 Settings → Developer settings → Personal access tokens → Fine-grained tokens。目标仓库 setobox/mukuchi，Contents 读写、Actions 只读。 |
-| MUKUCHI_GITHUB_TOKEN | 本地 GitHub 卡片构建用 Token，从原安全记录获取；CI 使用自动提供的临时 GitHub Token。 |
+| GITHUB_PUBLISH_TOKEN | 在 GitHub 创建或轮换 fine-grained PAT；管理入口为 Settings → Developer settings → Personal access tokens → Fine-grained tokens。目标仓库 setobox/mukuchi，Contents 读写、Actions 只读。 |
+| MUKUCHI_GITHUB_TOKEN | 本地 GitHub 卡片构建用 Token，在 GitHub 创建具有所需仓库只读权限的 PAT；CI 使用自动提供的临时 GitHub Token。 |
 | OIDC_CLIENT_SECRET | MU³ ID 账号中心签发生产客户端 mukuchi 时保存的密钥；启用登录还需完整客户端配置。 |
 | AI_ENCRYPTION_KEY / AUTH_SESSION_KEY | 初次部署时分别生成并保存的密钥，均为 32 字节随机数的 Base64 编码；前者加密模型凭据，后者加密 ID token。 |
 | AUDIO_SYNC_TOKEN / STATS_HASH_SECRET | 初次部署时分别生成并保存的随机值，至少 32 字符；分别用于音频同步鉴权和统计访客哈希。 |
-| STATS_ADMIN_TOKEN | 原统计查询 Bearer Token，从部署记录或私有监控配置获取。 |
-| CLOUDFLARE_API_TOKEN | 保留 GitHub Actions 中现有部署 Token，无须重新获取。 |
+| STATS_ADMIN_TOKEN | 自行生成至少 32 字符随机值，同时更新私有监控调用方。 |
+| CLOUDFLARE_API_TOKEN | Cloudflare 个人资料 → API Tokens 创建或轮换部署 Token，沿用项目所需 Workers、D1、R2 权限；写入 GitHub Actions Secret。 |
 
 - Worker 的 Token / 密钥使用 Secrets，Giscus 使用明文 Variables；GitHub 的 AI_ENCRYPTION_KEY、AUDIO_SYNC_TOKEN 必须分别与 Worker 相同。
-- 本次只改名，不重新生成密钥。原值从密码管理器或安全部署备份找回；找不到时保留旧项并暂停切换。AI_ENCRYPTION_KEY 改值会导致已有模型凭据无法解密。
+- 用户已另行授权本次生产密钥轮换。AI_ENCRYPTION_KEY 改值后，须在采用新配置的后台重新输入并保存 AI 摘要、助手和音频供应商 API Key；仅点击保存并保留原密文无效。AUTH_SESSION_KEY 改值影响旧 ID token 解密，STATS_HASH_SECRET 改值改变访客标识。不要假定本地值与生产相同。
 - 新配置齐全并完成发布验收后，再列出准确清单，确认后删除平台旧项。
 - 批量配置使用 `vp run website#environment:sync`，默认只预览；`--init` 创建被 Git 忽略的空模板，`--apply` 才写入平台。共享值只填一次，旧项保留；操作说明见 [ENVIRONMENT.md](apps/website/ENVIRONMENT.md#批量同步配置)。

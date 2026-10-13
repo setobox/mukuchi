@@ -1,5 +1,6 @@
 import { Buffer } from 'node:buffer'
 import { z } from 'zod'
+import { workerSecrets, workerVariables } from './worker-environment.ts'
 
 export const target = {
   repository: 'setobox/mukuchi',
@@ -7,27 +8,11 @@ export const target = {
   account: 'a710076631754d4af44ad75f975c0c8d',
 } as const
 
-const workerSecrets = [
-  'AI_ENCRYPTION_KEY',
-  'APP_ORIGIN',
-  'AUDIO_SYNC_TOKEN',
-  'AUTH_ADMIN_EMAILS',
-  'AUTH_SESSION_KEY',
-  'AUTH_SESSION_MAX_AGE',
-  'GITHUB_PUBLISH_TOKEN',
-  'OIDC_CLIENT_ID',
-  'OIDC_CLIENT_SECRET',
-  'OIDC_ISSUER',
-  'OIDC_POST_LOGOUT_REDIRECT_URI',
-  'OIDC_REDIRECT_URI',
-  'OIDC_SCOPES',
-  'STATS_ADMIN_TOKEN',
-  'STATS_HASH_SECRET',
-] as const
 const giscusNames = ['PUBLIC_GISCUS_CATEGORY_ID', 'PUBLIC_GISCUS_REPO', 'PUBLIC_GISCUS_REPO_ID'] as const
 const githubShared = new Set(['AI_ENCRYPTION_KEY', 'AUDIO_SYNC_TOKEN'])
 const workerSecretNames = new Set<string>(workerSecrets)
-const allowed = new Set<string>([...workerSecrets, ...giscusNames, 'CLOUDFLARE_ACCOUNT_ID', 'MUKUCHI_SMOKE_URL'])
+const workerVariableNames = new Set<string>(workerVariables)
+const allowed = new Set<string>([...workerSecrets, ...workerVariables, ...giscusNames, 'CLOUDFLARE_ACCOUNT_ID', 'MUKUCHI_SMOKE_URL'])
 
 export class SyncError extends Error {}
 
@@ -94,6 +79,9 @@ export function createPlan(input: unknown): SyncPlan {
       if (githubShared.has(name))
         plan.githubSecrets.push(entry)
     }
+    else if (workerVariableNames.has(name)) {
+      plan.worker.push({ ...entry, type: 'plain_text' })
+    }
     else {
       plan.githubVariables.push(entry)
     }
@@ -154,7 +142,13 @@ export async function applyPlan(plan: SyncPlan, io: SyncAdapters, replaceSecrets
     const before = checked(settingsSchema, await io.cloudflare('/settings'))
     if (new Set(before.bindings.map(item => item.name)).size !== before.bindings.length)
       throw new SyncError('Worker 绑定名称重复，已停止。')
-    for (const item of plan.worker) {
+    // Ordinary server configuration may already be encrypted; preserve that choice.
+    const worker = plan.worker.map((item) => {
+      const existing = before.bindings.find(binding => binding.name === item.name)
+        ?? before.bindings.find(binding => binding.name === `NUXT_${item.name}`)
+      return workerVariableNames.has(item.name) && existing?.type === 'secret_text' ? { ...item, type: 'secret_text' as const } : item
+    })
+    for (const item of worker) {
       for (const name of [item.name, `NUXT_${item.name}`]) {
         const old = before.bindings.find(binding => binding.name === name)
         if (old && old.type !== item.type)
@@ -163,7 +157,7 @@ export async function applyPlan(plan: SyncPlan, io: SyncAdapters, replaceSecrets
       if (!replaceSecrets && item.type === 'secret_text' && before.bindings.some(binding => binding.name === item.name))
         throw new SyncError(`Cloudflare Secret ${item.name} 已存在；确认原值后使用 --replace-secrets。`)
     }
-    const changed = plan.worker.filter(item => item.type === 'secret_text' || !before.bindings.some(binding => binding.name === item.name && binding.text === item.value))
+    const changed = worker.filter(item => item.type === 'secret_text' || !before.bindings.some(binding => binding.name === item.name && binding.text === item.value))
     if (changed.length) {
       if (await deployedVersion(io) !== version)
         throw new SyncError('检查期间 Worker 版本变化，已停止；请在没有其他部署时重试。')
@@ -178,7 +172,7 @@ export async function applyPlan(plan: SyncPlan, io: SyncAdapters, replaceSecrets
       io.log('开始更新 Cloudflare 配置；会生成配置版本，不上传本地代码。')
       await io.cloudflare('/settings', body)
       const after = checked(settingsSchema, await io.cloudflare('/settings'))
-      verifyBindings(before, after, plan)
+      verifyBindings(before, after, { ...plan, worker })
       io.log('Cloudflare 配置已写入；旧名称和其他绑定仍在。')
     }
   }

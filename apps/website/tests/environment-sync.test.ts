@@ -44,6 +44,22 @@ function platform() {
 }
 
 describe('production environment batch configuration', () => {
+  it('writes ordinary server configuration as Variables without sharing it with GitHub', async () => {
+    const { io, getBindings } = platform()
+    const plan = createPlan({ APP_ORIGIN: 'https://blog.example.com', OIDC_CLIENT_ID: 'client' })
+    expect(plan.githubVariables).toEqual([])
+    expect(plan.worker.every(item => item.type === 'plain_text')).toBe(true)
+    await applyPlan(plan, io)
+    expect(getBindings()).toContainEqual({ name: 'APP_ORIGIN', type: 'plain_text', text: 'https://blog.example.com' })
+  })
+
+  it('preserves an ordinary configuration value that was already encrypted', async () => {
+    const { io, getBindings } = platform()
+    getBindings().push({ name: 'NUXT_APP_ORIGIN', type: 'secret_text' })
+    await applyPlan(createPlan({ APP_ORIGIN: 'https://blog.example.com' }), io)
+    expect(getBindings()).toContainEqual({ name: 'APP_ORIGIN', type: 'secret_text', text: 'https://blog.example.com' })
+  })
+
   it('maps shared credentials and public comments from a single value without preview leaks', () => {
     const plan = createPlan({ ...comments, AI_ENCRYPTION_KEY: secret, AUDIO_SYNC_TOKEN: 's'.repeat(32), OIDC_CLIENT_SECRET: 'private-client-secret', STATS_ADMIN_TOKEN: '' })
     expect(plan.githubSecrets).toEqual([{ name: 'AI_ENCRYPTION_KEY', value: secret }, { name: 'AUDIO_SYNC_TOKEN', value: 's'.repeat(32) }])
