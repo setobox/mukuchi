@@ -1,4 +1,6 @@
+import { execFileSync } from 'node:child_process'
 import { readFile } from 'node:fs/promises'
+import process from 'node:process'
 import { expect, test } from 'vite-plus/test'
 import { visibleCategoryCount } from '../app/features/categories/overflow.ts'
 import { readFrontmatter, validateFrontmatter } from '../content/validation.ts'
@@ -7,7 +9,6 @@ import { archiveYears } from '../shared/content/browse.ts'
 import {
   aggregateTerms,
   filterPosts,
-  formatPostDate,
   sortPosts,
 } from '../shared/content/catalog.ts'
 import { postSchema } from '../shared/content/schema.ts'
@@ -73,7 +74,7 @@ test('按置顶权重、发布日期倒序和路径升序排序，更新日期�
   expect(posts[0]?.path).toBe('/posts/b')
 })
 
-test('Markdown 示例按发布先后倒序展示：Markdown 最早，MDC 其次，扩展功能再后', async () => {
+test('Markdown 示例的列表与归档按发布顺序倒序展示', async () => {
   const filenames = ['01.markdown.md', '02.mdc-tutorial.md', '03.markdown-extended.md', '04.video.md', '05.collapse.md']
   const posts = await Promise.all(filenames.map(async (filename) => {
     const source = await readFile(new URL(`../../../content/posts/1.markdown/${filename}`, import.meta.url), 'utf8')
@@ -83,9 +84,9 @@ test('Markdown 示例按发布先后倒序展示：Markdown 最早，MDC 其次�
       path: articleRoute(`1.markdown/${filename}`),
     }
   }))
-  const newestFirst = ['在正文中使用折叠内容', '在文章中嵌入视频', 'Markdown 扩展功能', 'MDC 教程', 'Markdown 教程']
-  expect(sortPosts(posts).map(post => post.title)).toEqual(newestFirst)
-  expect(archiveYears(posts).flatMap(group => group.articles.map(post => post.title))).toEqual(newestFirst)
+  const newestFirst = ['/posts/markdown/collapse', '/posts/markdown/video', '/posts/markdown/markdown-extended', '/posts/markdown/mdc-tutorial', '/posts/markdown/markdown']
+  expect(sortPosts(posts).map(post => post.path)).toEqual(newestFirst)
+  expect(archiveYears(posts).flatMap(group => group.articles.map(post => post.path))).toEqual(newestFirst)
 })
 
 test('同日按文件名序号数值倒序，有序号优先，目录编号不参与排序', () => {
@@ -156,8 +157,17 @@ test('多专栏聚合不重复计数，专栏与标签各自筛选', () => {
   expect(filterPosts(posts, { kind: 'tag', name: '不存在' })).toEqual([])
   expect(filterPosts(posts)).toEqual(posts)
 })
-test('按上海日期展示', () => {
-  expect(formatPostDate('2024-02-29')).toBe('2024-02-29')
+test.each(['UTC', 'America/Los_Angeles', 'Asia/Shanghai'])('宿主时区为 %s 时仍按上海日期展示，闰日和年界不偏移', (timeZone) => {
+  const dates = ['2024-02-29', '2026-01-01', '2026-12-31']
+  const module = new URL('../shared/content/catalog.ts', import.meta.url).href
+  // The formatter captures its timezone at import, so each host timezone needs a fresh process.
+  const script = `import { formatPostDate } from ${JSON.stringify(module)}; process.stdout.write(JSON.stringify(${JSON.stringify(dates)}.map(formatPostDate)))`
+  const output = execFileSync(process.execPath, ['--input-type=module', '--eval', script], {
+    encoding: 'utf8',
+    env: { ...process.env, TZ: timeZone },
+    windowsHide: true,
+  })
+  expect(JSON.parse(output)).toEqual(dates)
 })
 test('分类导航按实际宽度预留更多按钮，临界宽度不溢出', () => {
   expect(visibleCategoryCount([100, 100], 360, 140, 80)).toBe(2)

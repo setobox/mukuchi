@@ -3,13 +3,14 @@ import type { Component } from 'vue'
 import type { ContentTocProps, TocLink } from '../app/features/toc/model'
 import { afterEach, beforeEach, expect, test, vi } from 'vite-plus/test'
 import { createApp, createSSRApp, defineComponent, h, nextTick, reactive, ref } from 'vue'
+import { createMemoryHistory, createRouter } from 'vue-router'
 import { renderToString } from 'vue/server-renderer'
 import BaseCollapsible from '../app/components/base/BaseCollapsible.vue'
 import ContentToc from '../app/components/toc/ContentToc.vue'
 import { flattenToc } from '../app/features/toc/model'
 
-const route = reactive({ path: '/posts/test' })
-const push = vi.fn(async (_target: string) => {})
+const route = reactive({ path: '/posts/test', query: { session: 'preview-session' } })
+const push = vi.fn(async (_target: { hash: string, query: Record<string, string> }) => {})
 const hooks = new Map<string, Set<() => void>>()
 vi.mock('#app', () => ({
   useRouter: () => ({ push }),
@@ -169,7 +170,11 @@ test('点击编码锚点触发 move 并定位和聚焦正文标题', async () =>
   host.querySelector<HTMLAnchorElement>(`a[href="#${encodeURIComponent(heading.id)}"]`)!.click()
   await nextTick()
   await nextTick()
-  expect(push).toHaveBeenCalledWith(`#${encodeURIComponent(heading.id)}`)
+  expect(push).toHaveBeenCalledWith({ hash: `#${heading.id}`, query: { session: 'preview-session' } })
+  const router = createRouter({ history: createMemoryHistory(), routes: [{ path: route.path, component: {} }] })
+  const href = router.resolve({ path: route.path, ...push.mock.lastCall![0] }).href
+  expect(href.split('#')[0]).toBe(`${route.path}?session=preview-session`)
+  expect(decodeURIComponent(href.slice(href.indexOf('#') + 1))).toBe(heading.id)
   expect(move).toHaveBeenCalledWith(heading.id)
   expect(scroll).toHaveBeenCalledWith({ block: 'start', behavior: 'instant' })
   expect(document.activeElement).toBe(heading)

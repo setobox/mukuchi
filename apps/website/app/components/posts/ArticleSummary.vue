@@ -1,13 +1,29 @@
 <script setup lang="ts">
+import { pasteSingleLine } from '~/features/assistant/input'
+
 defineProps<{ text: string }>()
 const assistant = useAssistant()
 const enabled = computed(() => assistant?.enabled.value ?? false)
-const question = ref('')
+const question = computed({ get: () => assistant?.draft.value ?? '', set: (value) => {
+  if (assistant)
+    assistant.draft.value = value
+} })
+const input = useTemplateRef<HTMLInputElement>('input')
+function keydown(event: KeyboardEvent) {
+  if (event.key !== 'Enter')
+    return
+  event.preventDefault()
+  if (!event.shiftKey && !event.isComposing && event.keyCode !== 229)
+    void ask()
+}
+function paste(event: ClipboardEvent) {
+  if (input.value)
+    pasteSingleLine(event, input.value, value => question.value = value)
+}
 async function ask(text = question.value) {
   if (!text.trim() || !assistant)
     return
   await assistant.open(text, true)
-  question.value = ''
 }
 </script>
 
@@ -21,7 +37,7 @@ async function ask(text = question.value) {
     </p>
     <form v-if="enabled" class="mt-4" @submit.prevent="ask()">
       <div class="flex gap-2 border border-line-strong rounded-panel bg-acrylic p-2 backdrop-blur-md">
-        <input v-model="question" class="min-w-0 flex-1 bg-transparent px-2" maxlength="500" placeholder="针对这篇文章提问…" aria-label="针对这篇文章提问" @keydown.enter="($event.isComposing || $event.keyCode === 229) && $event.preventDefault()">
+        <input ref="input" v-model="question" class="min-w-0 flex-1 bg-transparent px-2" placeholder="问点什么？" aria-label="针对这篇文章提问" @keydown="keydown" @paste="paste">
         <button class="control-base control-quiet h-10 w-10 shrink-0" type="submit" title="向助手提问" aria-label="向助手提问" :disabled="!question.trim()">
           <span class="i-lucide-arrow-up" aria-hidden="true" />
         </button>

@@ -1,7 +1,10 @@
+import type { RehypeHighlightOption } from '@nuxtjs/mdc'
 import type { Asset } from '../shared/admin/model'
+import type { SummaryState } from '../shared/ai/model'
 import { expect, test } from 'vite-plus/test'
+import { renderArticlePreview as renderClientArticlePreview } from '../app/features/admin/preview'
 import { markdownWordCount } from '../content/reading'
-import { renderArticlePreview } from '../server/features/admin/preview'
+import { prepareArticlePreview } from '../server/features/admin/preview'
 import { codeHighlight } from '../shared/content/code'
 
 const source = `---
@@ -29,6 +32,18 @@ MDC 内容
 `
 const asset = { id: 'private-image', path: '/images/private.png' } as Asset
 const missing = { status: 'missing', record: null, message: '' } as const
+
+async function renderArticlePreview(input: string, path: string, assets: Asset[], prefix: string, summary: SummaryState, text?: string, highlighter?: RehypeHighlightOption['highlighter']) {
+  return renderClientArticlePreview(input, prepareArticlePreview(input, path, assets, prefix, summary, text), highlighter)
+}
+
+test('Worker 仅准备预览元数据和图片映射，不解析正文或返回高亮树', () => {
+  const context = prepareArticlePreview(source, 'hello.md', [asset], '/blog', missing)
+  expect(Object.keys(context).sort()).toEqual(['assetUrls', 'data'])
+  expect(context.assetUrls).toEqual({ '/images/private.png': '/blog/api/admin/assets/private-image' })
+  expect(context.data.wordCount).toBe(0)
+  expect(JSON.stringify(context)).not.toContain('当前未保存的正文')
+})
 
 test('预览与导入使用相同字数，忽略手写统计和生成摘要', async () => {
   const input = source.replace('title: 未保存标题', 'title: 未保存标题\nwordCount: invalid')
@@ -69,7 +84,7 @@ test('无效元数据返回可重试的解析错误', async () => {
   await expect(renderArticlePreview(source.replace('title: 未保存标题', 'title: [broken'), 'hello.md', [], '', missing)).rejects.toMatchObject({ statusCode: 422 })
 })
 
-test('服务端高亮器应用与前台一致的主题，不依赖公开高亮接口', async () => {
+test('浏览器高亮器应用与前台一致的主题，不依赖公开高亮接口', async () => {
   const result = await renderArticlePreview(source, 'hello.md', [], '', missing, undefined, async (code, language, theme) => {
     expect(language).toBe('ts')
     expect(theme).toEqual(codeHighlight.theme)

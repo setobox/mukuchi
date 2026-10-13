@@ -34,6 +34,11 @@ test('共享会话；网络错误保留现有用户并显示重试错误，实�
   expect(auth.current.value.user).toBeNull()
   expect(fetcher).toHaveBeenLastCalledWith('/blog/api/auth/logout', expect.objectContaining({ headers: { 'x-csrf-token': 'csrf' } }))
   expect(auth.loginUrl('/posts?q=1#h')).toContain('returnTo=%2Fblog%2Fposts%3Fq%3D1%23h')
+  for (const provider of ['github', 'google'] as const) {
+    const url = new URL(auth.loginUrl('/posts?q=1#h', provider), 'https://blog.test')
+    expect(url.searchParams.get('provider')).toBe(provider)
+    expect(url.searchParams.get('returnTo')).toBe('/blog/posts?q=1#h')
+  }
 })
 test('退出时仍在途的会话响应不能恢复已撤销的用户，重复操作被阻止', async () => {
   const auth = useAuthSession()

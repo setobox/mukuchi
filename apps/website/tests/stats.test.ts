@@ -35,6 +35,12 @@ function fixture() {
 const now = Date.parse('2026-09-16T04:00:00Z')
 const visit = (path = '/posts/example') => ({ eventId: randomUUID(), path })
 
+test('助手热门文章按累积阅读量排序，排除非文章和零阅读地址', async () => {
+  const { connection, repository } = fixture()
+  connection.exec('INSERT INTO stats_pages(path,page_views) VALUES (\'/posts/a\',2),(\'/posts/b\',5),(\'/posts/zero\',0),(\'/about\',20)')
+  expect(await repository.popular()).toEqual(['/posts/b', '/posts/a'])
+})
+
 test('内容数量使用完整集合，标签与专栏独立去重，内容增删反映实际数量', () => {
   const posts = [{ tags: ['A', 'A'], categories: ['X', 'Y'] }, { tags: ['A', 'B'], categories: ['X'] }]
   expect(contentCounts(posts)).toEqual({ articles: 2, tags: 2, categories: 2 })

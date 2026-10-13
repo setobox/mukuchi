@@ -3,6 +3,8 @@ import { z } from 'zod'
 // Legacy providers are read only, for migration of existing sessions.
 export const providerSchema = z.enum(['sso', 'github', 'google'])
 export type AuthProvider = z.infer<typeof providerSchema>
+export const socialLoginProviderSchema = z.enum(['github', 'google'])
+export type SocialLoginProvider = z.infer<typeof socialLoginProviderSchema>
 export const emailSchema = z.string().trim().toLowerCase().pipe(z.email().max(254))
 export const avatarSchema = z.string().max(2048).refine(value => !value || (URL.canParse(value) && new URL(value).protocol === 'https:'))
 export const profileSchema = z.object({

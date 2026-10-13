@@ -56,7 +56,7 @@ export type SignedTurn = z.infer<typeof signedTurnSchema>
 export const turnRequestSchema = z.object({
   requestId: z.uuid(),
   conversationId: z.uuid(),
-  text: z.string().trim().min(1, '请输入问题').max(assistantLimits.inputLength, '问题最多 500 个字符'),
+  text: z.string().trim().min(1, '请输入问题').max(assistantLimits.inputLength, '您的问题内容太多了，精简一下再问吧~'),
   page: pageContextSchema,
   history: z.array(signedTurnSchema).max(8).default([]),
   turnstileToken: z.string().max(2048).optional(),
@@ -81,6 +81,7 @@ export const assistantSessionSchema = z.object({
   authenticated: z.boolean(),
   turnstileSiteKey: z.string().max(200),
   remaining: z.number().int().nonnegative(),
+  dailyLimit: z.number().int().nonnegative().default(0),
   inputLimit: z.number().int().positive(),
 }).strict()
 export type AssistantSession = z.infer<typeof assistantSessionSchema>

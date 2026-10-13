@@ -3,12 +3,12 @@ import type { PostMeta } from '#shared/content/schema'
 import { formatPostDate } from '#shared/content/catalog'
 import { taxonomyPath } from '#shared/content/taxonomy'
 
-withDefaults(defineProps<{ post: PostMeta & { path: string }, preview?: boolean }>(), { preview: false })
+defineProps<{ post: PostMeta & { path: string } }>()
 </script>
 
 <template>
   <header class="border-b border-line pb-8">
-    <PostMeta :post="post" detailed :views="!preview" />
+    <PostMeta :post="post" detailed views />
     <h1 class="my-5 break-words text-page text-themed leading-tight">
       {{ post.title }}
     </h1>

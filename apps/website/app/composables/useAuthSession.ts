@@ -1,4 +1,4 @@
-import type { SessionInfo } from '#shared/auth/model'
+import type { SessionInfo, SocialLoginProvider } from '#shared/auth/model'
 import { emptySession } from '#shared/auth/model'
 
 export function authError(error: unknown) {
@@ -69,8 +69,11 @@ export function useAuthSession() {
       await refresh()
     })
   }
-  function loginUrl(returnTo: string) {
-    return `${endpoint('/api/auth/sso/login')}?${new URLSearchParams({ returnTo: `${base}${returnTo}` })}`
+  function loginUrl(returnTo: string, provider?: SocialLoginProvider) {
+    const query = new URLSearchParams({ returnTo: `${base}${returnTo}` })
+    if (provider)
+      query.set('provider', provider)
+    return `${endpoint('/api/auth/sso/login')}?${query}`
   }
   async function linkSso(returnTo: string) {
     return perform(() => $fetch<{ url: string }>(endpoint('/api/auth/sso/link'), { method: 'POST', headers: { 'x-csrf-token': current.value.csrf ?? '' }, body: { returnTo: `${base}${returnTo}` }, retry: 0 }))

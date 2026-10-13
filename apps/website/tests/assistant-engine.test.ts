@@ -67,7 +67,7 @@ test('管理员预览不审核、不要求公开启用或能力验证，不占�
   await repository.admitPreview({ id: preview.requestId, actor: previewActor, conversationId: preview.conversationId, fingerprint: 'preview', configVersion: 1 }, timestamp)
   const ordinary = { id: crypto.randomUUID(), actor, ipHash: 'ip', conversationId: request.conversationId, fingerprint: 'ordinary', authenticated: true }
   await expect(repository.admit(ordinary, settings, timestamp)).resolves.toMatchObject({ id: ordinary.id })
-  expect(await repository.remaining(actor, 10, timestamp)).toBe(8)
+  expect(await repository.remaining(actor, 10, timestamp)).toBe(10)
   const engine = createAssistantEngine({ repository, settings, content, credentials: assistantCredentialsSchema.parse({}), secret, actor: previewActor, preview: true, configVersion: 1, signal: new AbortController().signal, now: () => timestamp, model, moderation })
   const result = await engine.start(preview)
   expect(result.kind).toBe('completed')
@@ -201,14 +201,15 @@ test('本地历史通过加密续传继续，凭据不能重复使用或跨身�
   expect((await repository.tasks.list({ page: 1, pageSize: 20 })).total).toBe(1)
   expect(await repository.remaining(actor, 10, timestamp)).toBe(9)
 })
-test('上下文预算裁剪完整历史摘要并标记长回复截断', async () => {
+test('上下文预算丢弃最早历史、保留最新问题并标记长回复截断', async () => {
   const record = await signTurn(secret, actor, { id: crypto.randomUUID(), conversationId: crypto.randomUUID(), createdAt: timestamp - 100, user: '上次的问题', assistant: { id: crypto.randomUUID(), role: 'assistant', blocks: [{ type: 'text', text: '长'.repeat(1800) }], references: [] } })
-  const history = Array.from({ length: 8 }, (_, i) => ({ ...record, id: crypto.randomUUID(), user: `${i === 0 ? '最早问题' : '最近问题'}${'问'.repeat(490)}` }))
+  const history = Array.from({ length: 8 }, (_, i) => ({ ...record, id: crypto.randomUUID(), user: `历史问题${i}${'问'.repeat(490)}` }))
   const request = { requestId: crypto.randomUUID(), conversationId: record.conversationId, text: 'x'.repeat(500), page: { path: null }, history }
   const context = contextMessages({ request, groups: [] })
   expect(context.limited).toBe(true)
   expect(JSON.stringify(context.messages).length).toBeLessThanOrEqual(16_000)
-  expect(context.messages[0]?.content).not.toContain('最早问题')
+  expect(context.messages[0]?.content).not.toContain('历史问题0')
+  expect(context.messages[0]?.content).toContain(history.at(-1)!.user)
   expect(context.messages[0]?.content).toContain('历史摘要已截断')
   expect(context.messages[0]?.content).toContain(request.text)
 })
@@ -241,11 +242,11 @@ test('无限工具循环触及单轮调用上限后终止', async () => {
   expect(model).toHaveBeenCalledTimes(5)
 })
 
-test('审核拒绝停留审核阶段，取消后迟到模型响应不会完成任务，失败仍计一次', async () => {
+test('审核拒绝停留审核阶段，取消后迟到模型响应不会完成任务，失败不扣日额度', async () => {
   const blocked = await setup(vi.fn(async () => final), async () => false)
   await expect(blocked.engine.start(blocked.request)).rejects.toMatchObject({ code: 'moderation_rejected' })
   expect(await blocked.repository.tasks.detail(blocked.request.requestId)).toMatchObject({ status: 'failed', stage: 'review', modelCalls: 0 })
-  expect(await blocked.repository.remaining(actor, 10, timestamp)).toBe(9)
+  expect(await blocked.repository.remaining(actor, 10, timestamp)).toBe(10)
   const response = Promise.withResolvers<typeof final>()
   const started = Promise.withResolvers<void>()
   const model = vi.fn(async () => {
@@ -260,5 +261,5 @@ test('审核拒绝停留审核阶段，取消后迟到模型响应不会完成�
   response.resolve(final)
   await assertion
   expect(await cancelled.repository.tasks.detail(cancelled.request.requestId)).toMatchObject({ status: 'cancelled', stage: 'reply', finishedAt: timestamp + 100 })
-  expect(await cancelled.repository.remaining(actor, 10, timestamp)).toBe(9)
+  expect(await cancelled.repository.remaining(actor, 10, timestamp)).toBe(10)
 })

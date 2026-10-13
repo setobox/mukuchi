@@ -107,8 +107,8 @@ async function renderMarkdown(source: string) {
   }) })
   app.provide(imagePreviewKey, createImagePreview())
   app.component('NuxtLink', defineComponent({
-    props: { href: String, target: String },
-    setup: (props, { slots }) => () => h('a', props, slots.default?.()),
+    props: { to: [String, Object], target: String },
+    setup: (props, { slots }) => () => h('a', { href: typeof props.to === 'string' ? props.to : props.to?.hash, target: props.target }, slots.default?.()),
   }))
   return renderToString(app)
 }

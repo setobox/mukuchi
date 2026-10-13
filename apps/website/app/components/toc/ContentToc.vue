@@ -127,7 +127,7 @@ useResizeObserver(previewViewport, () => followActive('instant'))
 async function scrollToHeading(id: string) {
   const path = route.path
   if (props.scrollRoot === undefined)
-    await router.push(`#${encodeURIComponent(id)}`)
+    await router.push({ hash: `#${id}`, query: route.query })
   emit('move', id)
   await nextTick()
   if (route.path !== path)

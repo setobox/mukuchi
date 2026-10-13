@@ -87,7 +87,7 @@ export async function assistantTestRoute(event: H3Event) {
           streamed = true
         if (event.type === 'retry')
           await repository.countCall(requestId, actor, 'model', Date.now())
-      }))
+      }, { requestId, source: 'capability_test' }))
       if (!streamed)
         throw new AssistantError(422, 'capability_failed', '模型接口未返回 SSE 流，请检查 stream 参数支持')
       return result

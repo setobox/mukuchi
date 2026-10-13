@@ -2,7 +2,7 @@ import type { H3Event } from 'h3'
 import * as oidc from 'openid-client'
 import { z } from 'zod'
 import { sha256 } from '../../../shared/admin/model'
-import { AuthError, safeReturnTo } from '../../../shared/auth/model'
+import { AuthError, safeReturnTo, socialLoginProviderSchema } from '../../../shared/auth/model'
 import { authCookieOptions, readAuthJson, withAuth } from './http'
 import { discoverOidc, exchangeIdentity } from './providers'
 import { createSession, requireAuthSession, session } from './session'
@@ -31,6 +31,7 @@ export async function startOAuth(event: H3Event, link = false) {
   if (current?.user.local)
     throw new AuthError(400, '本地开发会话不能绑定账号中心')
   const input = link ? z.object({ returnTo: z.string().optional() }).parse(await readAuthJson(event)) : getQuery(event)
+  const provider = link ? undefined : socialLoginProviderSchema.optional().parse(getQuery(event).provider)
   const returnTo = safeReturnTo(input.returnTo, useRuntimeConfig(event).app.baseURL)
   const config = await discoverOidc(settings)
   const state = oidc.randomState()
@@ -40,7 +41,7 @@ export async function startOAuth(event: H3Event, link = false) {
   const challenge = await oidc.calculatePKCECodeChallenge(verifier)
   await withAuth(event, async repo => repo.saveTransaction(await sha256(state), { browser_hash: await sha256(browser), verifier, nonce, issuer: settings.oidcIssuer, client_id: settings.oidcClientId, redirect_uri: settings.oidcRedirectUri, user_id: current?.user.id ?? null, session_hash: current?.hash ?? null, return_to: returnTo, expires_at: Date.now() + 600_000 }))
   setCookie(event, transactionCookie, browser, authCookieOptions(event, 600))
-  const url = oidc.buildAuthorizationUrl(config, { client_id: settings.oidcClientId, redirect_uri: settings.oidcRedirectUri, response_type: 'code', scope: settings.oidcScopes, state, nonce, code_challenge: challenge, code_challenge_method: 'S256' })
+  const url = oidc.buildAuthorizationUrl(config, { client_id: settings.oidcClientId, redirect_uri: settings.oidcRedirectUri, response_type: 'code', scope: settings.oidcScopes, state, nonce, code_challenge: challenge, code_challenge_method: 'S256', ...(provider ? { mu3_provider: provider, prompt: 'login' } : {}) })
   return { url: url.href }
 }
 export async function finishOAuth(event: H3Event) {

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { rssPath } from '#shared/rss/config'
+import AssistantLauncher from './components/assistant/AssistantLauncher.vue'
 import BaseUiProvider from './components/base/BaseUiProvider.vue'
 
 useProvideActionButtons()
@@ -27,6 +28,6 @@ useSeoMeta({ ogUrl: canonical })
   <BaseUiProvider>
     <NuxtRouteAnnouncer />
     <NuxtLayout><NuxtPage /></NuxtLayout>
-    <ClientOnly><CommandPalette /><AssistantPanel /></ClientOnly>
+    <ClientOnly><CommandPalette /><AssistantPanel /><AssistantLauncher /></ClientOnly>
   </BaseUiProvider>
 </template>

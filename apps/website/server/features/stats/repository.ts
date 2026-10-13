@@ -14,6 +14,10 @@ export class StatsEventConflict extends Error {}
 
 export function createStatsRepository(db: StatsDatabase) {
   return {
+    async popular() {
+      const rows = (await db.batch([{ sql: 'SELECT path FROM stats_pages WHERE path LIKE \'/posts/%\' AND page_views > 0 ORDER BY page_views DESC, path LIMIT 100' }]))[0]
+      return z.array(z.object({ path: z.string() })).parse(rows).map(row => row.path)
+    },
     async summary() {
       const results = await db.batch([{ sql: totalsSql }])
       return summary(results[0]?.[0])

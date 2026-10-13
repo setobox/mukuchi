@@ -26,7 +26,6 @@ const local = ref(false)
 const mode = ref<'source' | 'rich'>('source')
 const segments = ref<{ source: string, raw: boolean }[]>([])
 const richKey = ref(0)
-const previewOpen = ref(false)
 const metadata = computed(() => {
   try {
     return parseDocument(splitDocument(source.value).yaml).toJS({ maxAliasCount: 20 }) as Record<string, unknown> ?? {}
@@ -45,6 +44,8 @@ const summaryBusy = ref(false)
 const summaryState = ref<SummaryState | null>(null)
 const summaryText = ref('')
 const summaryEdited = ref(false)
+const articlePreview = useArticlePreviewPublisher(id, () => ({ source: source.value, summaryText: summaryEdited.value ? summaryText.value : undefined }))
+watch([source, summaryText, summaryEdited, assets], articlePreview.update, { deep: true, flush: 'sync' })
 const summaryError = ref('')
 const dirty = computed(() => !sameArticleSource(source.value, saved.value))
 const publication = ref<Publication | null>(null)
@@ -404,7 +405,7 @@ onBeforeUnmount(() => {
           <button v-for="tab in (['rich', 'source'] as const)" :key="tab" class="control-base control-quiet px-5" :class="{ 'control-selected': mode === tab }" :aria-pressed="mode === tab" :disabled="busy" @click="switchMode(tab)">
             {{ { rich: '富文本', source: '源码' }[tab] }}
           </button>
-          <BaseButton variant="border" class="ml-auto" @click="previewOpen = true">
+          <BaseButton variant="border" class="ml-auto" :disabled="!draft" @click="articlePreview.open">
             <span class="i-lucide-eye mr-2" aria-hidden="true" />预览文章
           </BaseButton>
         </div>
@@ -499,7 +500,9 @@ onBeforeUnmount(() => {
         </div>
       </aside>
     </div>
-    <AdminArticlePreview v-model="previewOpen" :draft-id="id" :source="source" :summary-text="summaryEdited ? summaryText : undefined" />
+    <p v-if="articlePreview.error.value" role="alert" class="mt-4 text-error">
+      {{ articlePreview.error.value }}
+    </p>
     <AcrylicDialog v-model="coverOpen" title="封面制作器" placement="editor" :dismissible="!coverBusy">
       <LazyCoverMaker v-if="coverOpen" :initial-title="typeof metadata.title === 'string' ? metadata.title : ''" :apply-cover="applyCover" @busy="coverBusy = $event" />
     </AcrylicDialog>

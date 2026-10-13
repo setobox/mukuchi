@@ -30,12 +30,18 @@ const [useProvideAssistant, useInjectedAssistant] = createInjectionState(() => {
   })
   async function request(path: string, init?: RequestInit): Promise<unknown> {
     const response = await fetch(`${base}/api/assistant${path}`, { credentials: 'same-origin', cache: 'no-store', ...init })
-    return response.json() as Promise<unknown>
+    const body: unknown = await response.json()
+    if (!response.ok) {
+      const message = body && typeof body === 'object' && 'message' in body && typeof body.message === 'string' ? body.message : '请求失败，请稍后重试'
+      throw new Error(message)
+    }
+    return body
   }
   const controller = createAssistantController({
     history,
     ownerId,
     transport: {
+      history: (path, method, body, csrf) => request(path, { method, ...(body ? { body: JSON.stringify(body), headers: { 'content-type': 'application/json', 'x-csrf-token': csrf ?? '' } } : {}) }),
       session: () => request('/session'),
       post: (path, body, csrf, signal) => request(path, { method: 'POST', body: JSON.stringify(body), headers: { 'content-type': 'application/json', 'x-csrf-token': csrf }, signal }),
       stream: async (path, body, csrf, requestId, receive, signal) => {
@@ -67,13 +73,13 @@ const [useProvideAssistant, useInjectedAssistant] = createInjectionState(() => {
     }
     catch { /* Server admission still guarantees concurrency if this API is unavailable. */ }
     ready(createLocalHistory(db, change => channel?.postMessage(change)))
-    controller.routeChanged(route.path, String(route.meta.title ?? ''))
+    controller.routeChanged(route.path, document.title)
     await controller.refreshSession()
   })
   watch(() => route.path, path => controller.routeChanged(path, typeof document === 'undefined' ? '' : document.title))
   const unhook = useNuxtApp().hook('page:finish', () => {
     if (import.meta.client)
-      controller.pageTitle.value = document.title
+      controller.routeChanged(route.path, document.title)
   })
   watch(() => auth.current.value.user?.id, () => {
     if (import.meta.client)
@@ -83,6 +89,9 @@ const [useProvideAssistant, useInjectedAssistant] = createInjectionState(() => {
     if (controller.session.value)
       void controller.tick().catch(warn)
   }, 30_000)
+  useEventListener(import.meta.client ? window : undefined, 'online', () => {
+    void controller.syncHistory(true)
+  })
   useEventListener(import.meta.client ? document : undefined, 'visibilitychange', () => {
     if (document.visibilityState === 'visible')
       void controller.tick().catch(warn)

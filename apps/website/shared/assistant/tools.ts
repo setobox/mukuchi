@@ -5,6 +5,7 @@ import { architectureSchema, checklistSchema, comparisonSchema, htmlSchema, medi
 
 export const toolInputs = {
   get_site_info: z.object({ scope: z.enum(['site', 'author', 'all']) }).strict(),
+  get_popular_articles: z.object({ limit: z.number().int().min(1).max(5) }).strict(),
   get_taxonomy: z.object({ kind: z.enum(['category', 'tag', 'all']) }).strict(),
   get_article: z.object({ articleId: articlePathSchema, sectionId: z.string().min(1).max(200).nullable() }).strict(),
   search_articles: z.object({ query: z.string().trim().min(1).max(200), limit: z.number().int().min(1).max(5), category: z.string().max(100).nullable(), tag: z.string().max(100).nullable() }).strict(),
@@ -14,6 +15,7 @@ export const toolInputs = {
 export type ToolName = keyof typeof toolInputs
 const descriptions: Record<ToolName, string> = {
   get_site_info: '获取站点和作者公开资料。',
+  get_popular_articles: '按真实阅读量推荐已发布文章。统计不可用时返回普通推荐，必须依据 ranking 字段说明，不能虚构热度。',
   get_taxonomy: '获取公开文章分类和标签。',
   get_article: '读取文章正文或章节；长文仅返回明确标记的片段，不能声称全文已读。articleId 必须来自当前页面或搜索结果，sectionId 无指定时为 null。',
   search_articles: '搜索公开博客文章，返回候选项；解释细节前仍须 get_article。',

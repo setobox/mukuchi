@@ -56,6 +56,14 @@ test('实际插件只采集成功页面，忽略参数变化并在缓存恢复�
   expect(send).toHaveBeenCalledTimes(3)
   const events = send.mock.calls.map(call => call[1].body.eventId)
   expect(new Set(events).size).toBe(3)
+  currentRoute.value.path = '/admin/preview/draft'
+  currentRoute.value.fullPath = '/admin/preview/draft?session=editor'
+  hooks.get('page:loading:end')?.()
+  await nextTick()
+  await nextTick()
+  restorePage(true)
+  await nextTick()
+  expect(send).toHaveBeenCalledTimes(3)
   hooks.get('app:error')?.()
   error.value = { statusCode: 500 }
   restorePage(true)

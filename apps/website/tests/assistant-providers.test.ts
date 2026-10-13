@@ -63,7 +63,7 @@ test('模型只接受有界工具调用或最终 JSON，请求包含系统与工
   expect(body.parallel_tool_calls).toBe(false)
   expect(body.tool_choice).toBe('auto')
   expect(body.max_tokens).toBe(4096)
-  expect(body.tools).toHaveLength(6)
+  expect(body.tools.some(tool => tool.function.name === 'get_popular_articles')).toBe(true)
   expect(body.tools.every(tool => tool.function.strict)).toBe(true)
   expect(body.response_format.json_schema.strict).toBe(true)
   const schema = JSON.stringify(body.response_format.json_schema.schema)

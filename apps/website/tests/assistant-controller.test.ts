@@ -40,6 +40,52 @@ async function setup() {
   return { controller, history, transport, navigate, response, started, identity }
 }
 
+test('路径变化开始空会话，后台回答留在原会话且不自动跳转；同页重开和缩放保留会话', async () => {
+  const { controller, history, response, started, navigate, identity } = await setup()
+  controller.routeChanged('/posts/a', '文章 A - Setobox')
+  expect(controller.pageTitle.value).toBe('文章 A')
+  const sending = controller.send()
+  const request = await started.promise
+  controller.routeChanged('/posts/b', '文章 B - Setobox')
+  const fresh = controller.currentId.value
+  expect(fresh).not.toBe(request.conversationId)
+  expect(controller.turns.value).toEqual([])
+  response.resolve(answer(request, true))
+  await sending
+  expect(controller.currentId.value).toBe(fresh)
+  expect(controller.turns.value).toEqual([])
+  expect((await history.messages(identity.namespace, request.conversationId))[0]?.status).toBe('completed')
+  expect(navigate).not.toHaveBeenCalled()
+  controller.routeChanged('/posts/b')
+  expect(controller.currentId.value).toBe(fresh)
+  controller.close()
+  await controller.open(undefined, false, 'floating')
+  await controller.open(undefined, false, 'fullscreen')
+  expect(controller.currentId.value).toBe(fresh)
+  controller.dispose()
+})
+
+test('501 字符仅产生本地 Agent 反馈且保留草稿；500 字符可提交并由服务器刷新额度', async () => {
+  const { controller, transport, response, started } = await setup()
+  controller.draft.value = '问'.repeat(501)
+  await controller.send()
+  expect(controller.feedback.value).toBe('您的问题内容太多了，精简一下再问吧~')
+  expect(controller.draft.value).toHaveLength(501)
+  expect(controller.turns.value).toEqual([])
+  expect(transport.post).not.toHaveBeenCalled()
+  controller.draft.value = '问'.repeat(500)
+  const sending = controller.send()
+  const request = await started.promise
+  response.resolve(answer(request))
+  await sending
+  expect(controller.feedback.value).toBe('')
+  expect(controller.session.value?.remaining).toBe(50)
+  expect(transport.session).toHaveBeenCalledTimes(2)
+  controller.draft.value = '第一行\n第二行\r\n第三行'
+  expect(controller.draft.value).toBe('第一行 第二行 第三行')
+  controller.dispose()
+})
+
 test('流式部分回复在停止后保留，迟到事件被丢弃且不作为可信历史上传', async () => {
   const { controller, transport, response, started } = await setup()
   let receive: (payload: StreamPayload) => void = () => {}
@@ -170,7 +216,7 @@ test('身份切换不合并本地历史，旧身份结果不出现在新身份�
   expect(controller.conversations.value).toEqual([])
   controller.dispose()
 })
-test('刷新可恢复本地记录，历史导航不会自动重放', async () => {
+test('刷新默认新会话，手动选择历史后不会重放导航', async () => {
   const { controller, history, transport, response, started, navigate } = await setup()
   const sending = controller.send()
   const request = await started.promise
@@ -181,6 +227,8 @@ test('刷新可恢复本地记录，历史导航不会自动重放', async () =>
   await restored.refreshSession()
   expect(restored.mode.value).toBe('hidden')
   await restored.open()
+  expect(restored.turns.value).toEqual([])
+  await restored.select(request.conversationId)
   expect(restored.turns.value[0]?.record?.id).toBe(request.requestId)
   expect(navigate).not.toHaveBeenCalled()
   controller.dispose()
