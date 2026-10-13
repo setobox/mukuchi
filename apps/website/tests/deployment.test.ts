@@ -8,6 +8,7 @@ import { pageUrl } from '../shared/site/url'
 afterEach(() => {
   vi.unstubAllGlobals()
   vi.useRealTimers()
+  vi.restoreAllMocks()
 })
 
 test('正式链接只使用配置域名，保留路径编码并去掉查询参数和锚点', () => {
@@ -43,6 +44,9 @@ test('预渲染文章以构建日完成 hydration，挂载后按当前上海日�
   }).component('AppIcon', { template: '<span />' })
   const html = await renderToString(makeApp())
   expect(html).not.toContain('内容时效提醒')
+  expect(day.value).toBe('2025-01-01')
+  const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+  const error = vi.spyOn(console, 'error').mockImplementation(() => {})
   const target = document.createElement('div')
   target.innerHTML = html
   document.body.append(target)
@@ -52,6 +56,8 @@ test('预渲染文章以构建日完成 hydration，挂载后按当前上海日�
     await nextTick()
     expect(target.textContent).toContain('内容时效提醒')
     expect(day.value).toBe('2026-09-15')
+    expect(warn).not.toHaveBeenCalled()
+    expect(error).not.toHaveBeenCalled()
   }
   finally {
     app.unmount()

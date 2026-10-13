@@ -46,8 +46,12 @@ test('全部新旧展示样例符合协议并渲染为语义内容，追问只�
 test('来源鼠标悬停再点击保持打开，键盘可进入链接并用 Escape 关闭', async () => {
   const host = await mount(AssistantMessage, { message: showcaseMessage(2) })
   const trigger = host.querySelector<HTMLButtonElement>('[aria-label="查看本段来源"]')!
+  expect(trigger.getAttribute('aria-expanded')).toBe('false')
   trigger.dispatchEvent(new MouseEvent('mouseenter'))
-  await nextTick()
+  await vi.waitFor(() => {
+    expect(trigger.getAttribute('aria-expanded')).toBe('true')
+    expect(document.querySelector('.assistant-source-popover')).not.toBeNull()
+  })
   trigger.click()
   await vi.waitFor(() => expect(trigger.getAttribute('aria-expanded')).toBe('true'))
   await vi.waitFor(() => expect(document.querySelector('.assistant-source-popover')).not.toBeNull())
@@ -55,6 +59,7 @@ test('来源鼠标悬停再点击保持打开，键盘可进入链接并用 Esca
   expect(link.href).toContain('/posts/2026/cordis#architecture')
   expect(link.textContent).toContain('运行时与工作流')
   link.focus()
+  expect(document.activeElement).toBe(link)
   link.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
   await vi.waitFor(() => expect(trigger.getAttribute('aria-expanded')).toBe('false'))
   trigger.click()
