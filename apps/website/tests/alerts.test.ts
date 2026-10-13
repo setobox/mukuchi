@@ -5,9 +5,10 @@ import { afterEach, beforeEach, expect, test, vi } from 'vite-plus/test'
 import { createApp, createSSRApp, h, nextTick, Suspense } from 'vue'
 import { renderToString } from 'vue/server-renderer'
 import Alert from '../app/components/content/Alert.vue'
+import { renderArticlePreview } from '../app/features/admin/preview'
 import { resolveAlert } from '../app/features/alerts/model'
 import { revealContent } from '../app/features/collapse/reveal'
-import { renderArticlePreview } from '../server/features/admin/preview'
+import { prepareArticlePreview } from '../server/features/admin/preview'
 import { alertTheme, mdcBoolean } from '../shared/content/alerts'
 
 const cleanups: (() => void)[] = []
@@ -162,7 +163,8 @@ test('关闭提醒框时焦点回到触发按钮，正文不被卸载', async ()
 
 test('后台预览解析的提醒框与普通 Markdown 使用相同组件及属性', async () => {
   const body = '::alert{theme="docusaurus" type="danger" collapsible :open="true" title="预览提醒"}\n\n**预览正文**。\n\n::'
-  const preview = await renderArticlePreview(`---\ntitle: 测试\ndescription: 提醒框预览\npublish: '2026-09-27'\n---\n\n${body}`, 'alerts.md', [], '', { status: 'missing', record: null, message: '' })
+  const source = `---\ntitle: 测试\ndescription: 提醒框预览\npublish: '2026-09-27'\n---\n\n${body}`
+  const preview = await renderArticlePreview(source, prepareArticlePreview(source, 'alerts.md', [], '', { status: 'missing', record: null, message: '' }))
   const html = await renderToString(createSSRApp({ render: () => h(MDCRenderer, {
     body: preview.body,
     data: preview.data,

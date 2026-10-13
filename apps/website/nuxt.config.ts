@@ -3,7 +3,6 @@ import process from 'node:process'
 import { fileURLToPath } from 'node:url'
 import githubSnapshots from './content/github/module'
 import contentImport from './content/module'
-import adminPreview from './modules/admin-preview/module'
 import audio from './modules/audio/module'
 import coverIcons from './modules/cover-icons/module'
 import { localRequestAllowed } from './server/features/auth/policy.ts'
@@ -49,7 +48,7 @@ export default defineNuxtConfig({
     prerender: { crawlLinks: false, failOnError: true, routes: ['/about', '/use', '/collections', '/categories', '/tags', rssPath] },
     cloudflare: { deployConfig: true, nodeCompat: true },
   },
-  modules: [contentImport, '@nuxt/content', '@nuxtjs/color-mode', '@unocss/nuxt', '@vueuse/nuxt', '@nuxt/eslint', githubSnapshots, coverIcons, audio, adminPreview],
+  modules: [contentImport, '@nuxt/content', '@nuxtjs/color-mode', '@unocss/nuxt', '@vueuse/nuxt', '@nuxt/eslint', githubSnapshots, coverIcons, audio],
   colorMode: {
     preference: 'system',
     fallback: 'dark',
@@ -123,6 +122,7 @@ export default defineNuxtConfig({
     '/assistant/showcase': { prerender: false, headers: { 'x-robots-tag': 'noindex, nofollow' } },
     '/admin': { prerender: false, headers: { 'cache-control': 'private, no-store', 'x-robots-tag': 'noindex, nofollow' } },
     '/admin/**': { prerender: false, headers: { 'cache-control': 'private, no-store', 'x-robots-tag': 'noindex, nofollow' } },
+    '/admin/preview/**': { ssr: false, prerender: false, headers: { 'cache-control': 'private, no-store', 'x-robots-tag': 'noindex, nofollow' } },
     '/api/auth/**': { prerender: false, headers: { 'cache-control': 'no-store' } },
     '/api/assistant/**': { prerender: false, headers: { 'cache-control': 'no-store' } },
     '/api/admin/**': { prerender: false, headers: { 'cache-control': 'no-store' } },

@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { tocPreviewHeight } from '~/features/toc/model'
 import { resolveBackTarget } from '~/shared/navigation'
 
 definePageMeta({
@@ -10,7 +9,6 @@ definePageMeta({
   key: route => route.path,
 })
 const route = useRoute()
-const pagePath = route.path
 let path: string
 try {
   path = decodeURI(route.path).replace(/\/$/, '')
@@ -24,35 +22,10 @@ if (error.value)
   throw createError({ statusCode: 500, message: '文章加载失败' })
 if (!post.value)
   throw createError({ statusCode: 404, message: '文章不存在' })
-const permalink = usePageUrl(() => post.value?.path ?? pagePath)
-useArticleTheme(pagePath, () => post.value?.theme)
-const links = computed(() => post.value?.body.toc?.links ?? [])
-const collapsedRows = 3
-const mobileToc = useTemplateRef<HTMLElement>('mobileToc')
-const { height: tocHeight } = useElementSize(mobileToc, { width: 0, height: 0 }, { box: 'border-box' })
-const { tags } = usePostCatalog()
-const articleTitle = useState<{ path: string, title: string } | null>(
-  'page:article-title',
-  () => null,
-)
-watchEffect(() => {
-  articleTitle.value = { path: pagePath, title: post.value?.title ?? '文章' }
-})
-onBeforeUnmount(() => {
-  if (articleTitle.value?.path === pagePath)
-    articleTitle.value = null
-})
 watch(post, (value) => {
   if (value === null)
     showError({ statusCode: 404, message: '文章不存在' })
 })
-useHead({ htmlAttrs: {
-  class: computed(() => links.value.length ? 'has-article-toc' : ''),
-  style: computed(() => ({
-    '--toc-preview-height': `${tocPreviewHeight(links.value, collapsedRows)}rem`,
-    ...(tocHeight.value > 0 ? { '--toc-height': `${tocHeight.value}px` } : {}),
-  })),
-} })
 useSeoMeta({
   title: () => post.value?.title,
   description: () => post.value?.description,
@@ -66,7 +39,6 @@ useSeoMeta({
 const page = usePageContext()
 const previousPath = useState<string | null>('navigation:previous', () => null)
 const router = useRouter()
-const { isScrolled, scrollToTop } = useScrollToTop()
 
 useActionButton({
   id: 'back',
@@ -92,52 +64,8 @@ useActionButton({
     }
   },
 })
-useActionButton({
-  id: 'top',
-  icon: 'i-lucide-chevron-up',
-  label: '回到页面顶部',
-  order: 40,
-  visible: isScrolled,
-  onClick: scrollToTop,
-})
 </script>
 
 <template>
-  <div v-if="post">
-    <div
-      v-if="links.length"
-      ref="mobileToc"
-      class="sticky top-[var(--header-height)] z-20 mb-8 bg-acrylic px-5 backdrop-blur-sm -mx-5 lg:hidden md:px-8 md:-mx-8"
-    >
-      <ContentToc :links="links" :collapsed-rows="collapsedRows" highlight highlight-variant="circuit" />
-    </div>
-    <SiteColumns sticky>
-      <template #sidebar>
-        <SiteSidebar :tags="tags">
-          <template #after-profile>
-            <ContentToc :links="links" highlight highlight-variant="circuit" class="hidden px-2 lg:block" />
-          </template>
-        </SiteSidebar>
-      </template>
-      <article class="min-w-0">
-        <ArticleHeader :post="post" />
-        <ClientOnly><ArticleAudio :path="post.path" /></ClientOnly>
-        <ArticleSeries v-if="post.series" :name="post.series" :current-path="post.path" />
-        <ArticleSummary :text="post.description" />
-        <ArticleContent :value="post" />
-        <ArticleLicense
-          class="mt-10"
-          :title="post.title"
-          :permalink="permalink"
-          :published-at="post.publish"
-        />
-        <footer class="mt-12 border-t border-line pt-6">
-          <NuxtLink to="/posts" class="text-link">
-            <AppIcon name="left" />返回文章列表
-          </NuxtLink>
-        </footer>
-        <ClientOnly><LazyArticleComments :path="post.path" /></ClientOnly>
-      </article>
-    </SiteColumns>
-  </div>
+  <ArticlePage v-if="post" :post="post" :links="post.body.toc?.links ?? []" :content-key="post.id" />
 </template>

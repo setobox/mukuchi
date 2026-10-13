@@ -9,7 +9,8 @@ import { createSSRApp, h } from 'vue'
 import { renderToString } from 'vue/server-renderer'
 import CodeGroup from '../app/components/content/CodeGroup.vue'
 import ProsePre from '../app/components/content/ProsePre.vue'
-import { renderArticlePreview } from '../server/features/admin/preview'
+import { renderArticlePreview } from '../app/features/admin/preview'
+import { prepareArticlePreview } from '../server/features/admin/preview'
 import { codeHighlight, codeThemes } from '../shared/content/code'
 
 // Exercise MDC's installed Shiki dependency rather than mocking tokenization.
@@ -110,6 +111,6 @@ test('后台预览与文章解析对同一代码生成相同的高亮内容', as
     rehype: { plugins: { highlight: { instance: rehypeHighlight, options: highlight } } },
   })
   const source = `---\ntitle: 高亮测试\ndescription: 测试\npublish: '2026-10-04'\n---\n\n${sample}`
-  const preview = await renderArticlePreview(source, 'highlight.md', [], '', { status: 'missing', record: null, message: '' }, undefined, highlight.highlighter)
+  const preview = await renderArticlePreview(source, prepareArticlePreview(source, 'highlight.md', [], '', { status: 'missing', record: null, message: '' }), highlight.highlighter)
   expect(preview.body).toEqual(body)
 })

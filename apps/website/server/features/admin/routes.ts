@@ -1,7 +1,6 @@
 import type { H3Event } from 'h3'
 import { z } from 'zod'
 import { listContent, readContent } from '#admin-driver'
-import highlighter from '#admin-preview-highlighter'
 import { AdminError, articlePublication, articleTitle, createDraftSchema, imageLimit, newArticleSource, publicationInput, sameArticleSource, saveDraftSchema, sha256 } from '../../../shared/admin/model'
 import { writeSummary } from '../ai/content'
 import { currentSummary, draftSummaryRoute } from '../ai/service'
@@ -11,7 +10,7 @@ import { identifyImage } from '../media/images'
 import { githubClient, publicationStatus, publishDraft } from '../publishing/service'
 import { listArticleRows } from './article-list'
 import { adminOptions, adminStorage, readAdminJson, readLimitedBody, withAdmin } from './http'
-import { renderArticlePreview } from './preview'
+import { prepareArticlePreview } from './preview'
 
 export async function adminRoute(event: H3Event) {
   await requireOwner(event)
@@ -92,7 +91,7 @@ export async function adminRoute(event: H3Event) {
       const summary = await currentSummary(event, input.source)
       const assets = await withAdmin(event, repo => repo.assets(id))
       const prefix = useRuntimeConfig(event).app.baseURL.replace(/\/$/, '')
-      return renderArticlePreview(input.source, draft.path, assets, prefix, summary, input.summaryText, highlighter)
+      return prepareArticlePreview(input.source, draft.path, assets, prefix, summary, input.summaryText)
     }
   }
   if (resource === 'assets') {
