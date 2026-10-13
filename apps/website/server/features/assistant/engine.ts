@@ -98,7 +98,7 @@ export function createAssistantEngine(dependencies: EngineDependencies) {
   async function check(requestId: string, text: string) {
     await status(requestId, '正在检查输入…')
     await tracked(requestId, '输入审核', 'review', async () => {
-      if (!await moderation(text, 'input', settings, credentials, signal))
+      if (!await moderation(text, 'input', settings, credentials, signal, undefined, { requestId, source: dependencies.preview ? 'admin_preview' : 'conversation' }))
         throw new AssistantError(400, 'moderation_rejected', '本次内容未通过安全检查，请调整问题后重试')
     })
   }

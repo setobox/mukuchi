@@ -23,11 +23,11 @@ export function logFullModelRequest(context: ModelLogContext) {
   return process.env.NODE_ENV === 'development' || context.source === 'admin_preview' || context.source === 'capability_test'
 }
 
-function serverLog(record: ModelLogRecord) {
+function serverLog(record: ModelLogRecord, service: 'model' | 'moderation') {
   if (process.env.NODE_ENV !== 'test') {
     // Structured operational logs belong at info level, not warning level.
     // eslint-disable-next-line no-console
-    console.info(`[assistant:model] ${JSON.stringify(record)}`)
+    console.info(`[assistant:${service}] ${JSON.stringify(record)}`)
   }
 }
 
@@ -55,6 +55,38 @@ export function modelErrorDetails(error: unknown): LogValue {
 }
 
 export function createModelTrace(context: ModelLogContext, secrets: string[]) {
+  return createServiceTrace(context, secrets, 'model')
+}
+
+/** Raw transport messages are restricted to server logs and scrubbed by the trace. */
+export function moderationErrorDetails(error: unknown): LogValue {
+  const chain: LogValue[] = []
+  const seen = new Set<unknown>()
+  let current = error
+  for (let depth = 0; depth < 4 && current != null && !seen.has(current); depth++) {
+    seen.add(current)
+    if (typeof current !== 'object') {
+      chain.push({ message: String(current) })
+      break
+    }
+    const item = current as Record<string, unknown>
+    chain.push({
+      name: typeof item.name === 'string' ? item.name : 'Error',
+      message: typeof item.message === 'string' ? item.message : undefined,
+      code: typeof item.code === 'string' || typeof item.code === 'number' ? item.code : undefined,
+    })
+    current = item.cause
+  }
+  return chain
+}
+
+export function createModerationTrace(context: ModelLogContext, secrets: string[]) {
+  // Exceptions can reflect form-encoded or JSON-escaped request data.
+  const variants = secrets.filter(Boolean).flatMap(value => [value, JSON.stringify(value).slice(1, -1), encodeURIComponent(value.toWellFormed()), new URLSearchParams({ v: value }).toString().slice(2)])
+  return createServiceTrace(context, variants, 'moderation')
+}
+
+function createServiceTrace(context: ModelLogContext, secrets: string[], service: 'model' | 'moderation') {
   const startedAt = Date.now()
   const callId = crypto.randomUUID()
   const knownSecrets = secrets.filter(Boolean).sort((a, b) => b.length - a.length)
@@ -63,6 +95,8 @@ export function createModelTrace(context: ModelLogContext, secrets: string[]) {
       let text = value
       for (const secret of knownSecrets) text = text.replaceAll(secret, '[REDACTED]')
       text = text.replace(/Bearer\s+\S+|sk-[\w-]+/gi, '[REDACTED]')
+      if (service === 'moderation')
+        text = text.replace(/ACS3-HMAC-SHA256\s+[^\r\n"}]+|\b(?:Signature|Credential)=[^\s,;"}]+/gi, '[REDACTED]')
       // JSON.stringify escapes control characters for the single-line log. Keep
       // the actual input's whitespace and length intact when debugging payloads.
       return fullText ? text : text.replace(/\p{Cc}/gu, ' ').slice(0, 2000)
@@ -75,7 +109,7 @@ export function createModelTrace(context: ModelLogContext, secrets: string[]) {
   }
   return (event: string, attempt: number, details: LogValue) => {
     try {
-      (context.log ?? serverLog)({
+      const record: ModelLogRecord = {
         timestamp: new Date().toISOString(),
         event,
         requestId: typeof context.requestId === 'string' && /^[\w-]{1,100}$/.test(context.requestId) ? context.requestId : null,
@@ -84,7 +118,10 @@ export function createModelTrace(context: ModelLogContext, secrets: string[]) {
         attempt,
         elapsedMs: Date.now() - startedAt,
         details: clean(details, event === 'request_body'),
-      })
+      }
+      if (context.log)
+        context.log(record)
+      else serverLog(record, service)
     }
     catch { /* Diagnostic sinks must never change model execution. */ }
   }

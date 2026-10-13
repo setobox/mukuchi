@@ -1,7 +1,9 @@
 import type { AssistantCredentials, AssistantSettings } from '../../../shared/assistant/settings'
+import type { LogValue, ModelLogContext } from './diagnostics'
 import type { Fetch } from './network'
 import { z } from 'zod'
 import { AssistantError, assistantLimits } from '../../../shared/assistant/model'
+import { createModerationTrace, moderationErrorDetails } from './diagnostics'
 import { boundedJson, readBoundedJson, withTimeout } from './network'
 
 const aliyunErrors = {
@@ -70,23 +72,60 @@ export function moderationPassed(value: unknown): boolean {
     throw new AssistantError(503, 'moderation_incomplete', '安全检查配置尚未完成，助手暂不可用')
   return data.Suggestion === 'pass' && data.Detail.every(item => item.Suggestion === 'pass')
 }
-export async function moderate(text: string, direction: 'input' | 'output', settings: AssistantSettings, credentials: AssistantCredentials, signal: AbortSignal, fetcher: Fetch = fetch): Promise<boolean> {
+export async function moderate(text: string, direction: 'input' | 'output', settings: AssistantSettings, credentials: AssistantCredentials, signal: AbortSignal, fetcher: Fetch = fetch, context: ModelLogContext = {}): Promise<boolean> {
   if (!text || text.length > (direction === 'input' ? assistantLimits.inputLength : assistantLimits.visibleLength))
     throw new AssistantError(400, 'context_limit', '本次上下文过长，请缩小问题范围')
-  return withTimeout(signal, assistantLimits.moderationMs, async (activeSignal) => {
-    const host = `green-cip.${settings.region}.aliyuncs.com`
-    const body = new URLSearchParams({ Service: direction === 'input' ? settings.queryService : settings.responseService, ServiceParameters: JSON.stringify({ content: text }) }).toString()
-    const headers = await aliyunAuthorization({ host, body, action: 'MultiModalGuard', version: '2022-03-02', date: new Date().toISOString().replace(/\.\d{3}Z$/, 'Z'), nonce: crypto.randomUUID(), keyId: credentials.aliyunKeyId, keySecret: credentials.aliyunKeySecret })
-    const response = await fetcher(`https://${host}/`, { method: 'POST', body, headers: { ...headers, 'content-type': 'application/x-www-form-urlencoded', 'accept': 'application/json' }, signal: activeSignal, redirect: 'error' })
-    if (response.status !== 200 && !response.redirected) {
-      // Never forward Message/Recommend/HostId: error bodies may contain credentials.
-      const failure = await readBoundedJson(response, 8192).catch(() => null)
-      throw new AliyunModerationError(response.status, failure)
-    }
-    const value = await boundedJson(response)
-    const envelope = failureSchema.safeParse(value)
-    if (envelope.success && envelope.data.Code !== 200)
-      throw new AliyunModerationError(response.status, value)
-    return moderationPassed(value)
-  }, '阿里云审核')
+  const host = `green-cip.${settings.region}.aliyuncs.com`
+  const service = direction === 'input' ? settings.queryService : settings.responseService
+  const body = new URLSearchParams({ Service: service, ServiceParameters: JSON.stringify({ content: text }) }).toString()
+  const trace = createModerationTrace(context, [...Object.values(credentials), text, body])
+  let phase = 'signing'
+  let upstreamStatus: number | null = null
+  let originalError: LogValue = null
+  const captureBodyError = (error: unknown) => {
+    originalError = moderationErrorDetails(error)
+  }
+  trace('request', 1, { endpoint: `https://${host}/`, region: settings.region, service, direction, chars: text.length })
+  try {
+    const passed = await withTimeout(signal, assistantLimits.moderationMs, async (activeSignal) => {
+      try {
+        const headers = await aliyunAuthorization({ host, body, action: 'MultiModalGuard', version: '2022-03-02', date: new Date().toISOString().replace(/\.\d{3}Z$/, 'Z'), nonce: crypto.randomUUID(), keyId: credentials.aliyunKeyId, keySecret: credentials.aliyunKeySecret })
+        phase = 'waiting_headers'
+        trace('signed', 1, { phase })
+        const response = await fetcher(`https://${host}/`, { method: 'POST', body, headers: { ...headers, 'content-type': 'application/x-www-form-urlencoded', 'accept': 'application/json' }, signal: activeSignal, redirect: 'error' })
+        upstreamStatus = response.status
+        phase = 'reading_body'
+        trace('response', 1, { status: upstreamStatus, redirected: response.redirected })
+        if (response.status !== 200 && !response.redirected) {
+          // Never forward Message/Recommend/HostId: error bodies may contain credentials.
+          const failure = await readBoundedJson(response, 8192, captureBodyError).catch(() => null)
+          throw new AliyunModerationError(response.status, failure)
+        }
+        const value = await boundedJson(response, assistantLimits.bodyBytes, captureBodyError)
+        phase = 'validating_response'
+        const envelope = failureSchema.safeParse(value)
+        if (envelope.success && envelope.data.Code !== 200)
+          throw new AliyunModerationError(response.status, value)
+        return moderationPassed(value)
+      }
+      catch (error) {
+        // Capture before withTimeout replaces runtime/transport exceptions.
+        originalError ??= moderationErrorDetails(error)
+        throw error
+      }
+    }, '阿里云审核')
+    trace('completed', 1, { passed })
+    return passed
+  }
+  catch (error) {
+    trace('failed', 1, {
+      phase,
+      receivedHeaders: upstreamStatus !== null,
+      upstreamStatus,
+      error: moderationErrorDetails(error),
+      originalError,
+      ...(error instanceof AliyunModerationError ? { upstreamCode: error.upstreamCode, upstreamRequestId: error.requestId } : {}),
+    })
+    throw error
+  }
 }

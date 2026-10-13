@@ -9,16 +9,16 @@ export class UpstreamResponseError extends AssistantError {
     this.adminMessage = `模型请求失败（HTTP ${upstreamStatus}${upstreamCode ? ` / ${upstreamCode}` : ''}）。${advice}`
   }
 }
-export async function boundedJson(response: Response, limit = assistantLimits.bodyBytes): Promise<unknown> {
+export async function boundedJson(response: Response, limit = assistantLimits.bodyBytes, onError?: (error: unknown) => void): Promise<unknown> {
   if (!response.ok || response.redirected) {
     await response.body?.cancel()
     throw new AssistantError(503, 'upstream_unavailable', '服务暂不可用，请稍后重试')
   }
-  return readBoundedJson(response, limit)
+  return readBoundedJson(response, limit, onError)
 }
 
 // Reads error envelopes under the same byte limit; callers must check HTTP status.
-export async function readBoundedJson(response: Response, limit: number): Promise<unknown> {
+export async function readBoundedJson(response: Response, limit: number, onError?: (error: unknown) => void): Promise<unknown> {
   if (!response.body)
     throw new AssistantError(503, 'invalid_response', '服务暂不可用，请稍后重试')
   const reader = response.body.getReader()
@@ -39,6 +39,10 @@ export async function readBoundedJson(response: Response, limit: number): Promis
     return JSON.parse(body) as unknown
   }
   catch (error) {
+    try {
+      onError?.(error)
+    }
+    catch { /* Diagnostic sinks must not change response handling. */ }
     await reader.cancel().catch(() => {})
     if (error instanceof AssistantError)
       throw error

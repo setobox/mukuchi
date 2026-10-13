@@ -88,7 +88,7 @@ export async function assistantTestRoute(event: H3Event) {
     async function audit(text: string, expected: boolean) {
       stage = '阿里云输入审核'
       await tracked(expected ? stage : '攻击样本拦截测试', 'review', async () => {
-        const result = await moderate(text, 'input', settings, credentials, controller.signal)
+        const result = await moderate(text, 'input', settings, credentials, controller.signal, undefined, { requestId, source: 'capability_test' })
         if (result !== expected)
           throw new AssistantError(422, 'capability_failed', '审核策略未满足测试预期，请检查内容合规和提示词攻击检测两个维度')
       })
