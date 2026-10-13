@@ -92,7 +92,8 @@ export async function moderate(text: string, direction: 'input' | 'output', sett
         const headers = await aliyunAuthorization({ host, body, action: 'MultiModalGuard', version: '2022-03-02', date: new Date().toISOString().replace(/\.\d{3}Z$/, 'Z'), nonce: crypto.randomUUID(), keyId: credentials.aliyunKeyId, keySecret: credentials.aliyunKeySecret })
         phase = 'waiting_headers'
         trace('signed', 1, { phase })
-        const response = await fetcher(`https://${host}/`, { method: 'POST', body, headers: { ...headers, 'content-type': 'application/x-www-form-urlencoded', 'accept': 'application/json' }, signal: activeSignal, redirect: 'error' })
+        // Workers supports manual redirects; the status check below rejects 3xx.
+        const response = await fetcher(`https://${host}/`, { method: 'POST', body, headers: { ...headers, 'content-type': 'application/x-www-form-urlencoded', 'accept': 'application/json' }, signal: activeSignal, redirect: 'manual' })
         upstreamStatus = response.status
         phase = 'reading_body'
         trace('response', 1, { status: upstreamStatus, redirected: response.redirected })

@@ -39,7 +39,7 @@ test('审核整个文本、拒绝超长内容，不跟随重定向或自动重�
   expect(await moderate('问题和完整上下文', 'input', settings, credentials, signal, fetcher)).toBe(true)
   const [url, init] = fetcher.mock.calls[0]!
   expect(url).toBe('https://green-cip.cn-shanghai.aliyuncs.com/')
-  expect(init).toMatchObject({ method: 'POST', redirect: 'error' })
+  expect(init).toMatchObject({ method: 'POST', redirect: 'manual' })
   const form = new URLSearchParams(String(init?.body))
   expect(form.get('Service')).toBe('query_security_check_pro')
   expect(JSON.parse(form.get('ServiceParameters')!)).toEqual({ content: '问题和完整上下文' })
@@ -54,7 +54,7 @@ test('模型只接受有界工具调用或最终 JSON，请求包含系统与工
   const intent = { text: '你好', articles: [], references: [], taxonomy: null }
   const fetcher = vi.fn<Fetch>(async () => Response.json({ choices: [{ finish_reason: 'stop', message: { role: 'assistant', content: JSON.stringify(intent) } }], usage: { prompt_tokens: 100, completion_tokens: 10 } }))
   expect(await callModel(settings, credentials, body, signal, fetcher)).toMatchObject({ kind: 'final', intent, usage: { prompt_tokens: 100, completion_tokens: 10 } })
-  expect(fetcher.mock.calls[0]?.[1]).toMatchObject({ redirect: 'error', headers: { authorization: 'Bearer test-key' } })
+  expect(fetcher.mock.calls[0]?.[1]).toMatchObject({ redirect: 'manual', headers: { authorization: 'Bearer test-key' } })
   expect(body.messages[0]?.content).not.toContain(JSON.stringify(body.response_format.json_schema.schema))
   expect(body.messages[0]?.content).not.toContain('"$schema"')
   expect(body.messages[0]?.content).toContain('response_format')

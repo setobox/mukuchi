@@ -274,7 +274,8 @@ export async function callModel(settings: AssistantSettings, credentials: Assist
         }, 10_000)
         // Capture transport causes before withTimeout maps them to public errors.
         try {
-          const response = await fetcher(endpoint.href, { method: 'POST', headers: { 'content-type': 'application/json', 'authorization': `Bearer ${credentials.modelKey}` }, body: encodedBody, signal: activeSignal, redirect: 'error' })
+          // Reject 3xx below before reading SSE, without forwarding credentials.
+          const response = await fetcher(endpoint.href, { method: 'POST', headers: { 'content-type': 'application/json', 'authorization': `Bearer ${credentials.modelKey}` }, body: encodedBody, signal: activeSignal, redirect: 'manual' })
           receivedHeaders = true
           phase = 'reading_response'
           trace('response', attemptNumber, {

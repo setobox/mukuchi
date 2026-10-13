@@ -11,7 +11,7 @@ export async function verifyTurnstile(input: { secret: string, token: string | u
   return withTimeout(signal, 5000, async (activeSignal) => {
     const response = await fetcher('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
       method: 'POST',
-      redirect: 'error',
+      redirect: 'manual', // boundedJson rejects 3xx without following Location.
       signal: activeSignal,
       body: new URLSearchParams({ secret: input.secret, response: token, ...(input.ip === 'unknown' ? {} : { remoteip: input.ip }) }),
     })
