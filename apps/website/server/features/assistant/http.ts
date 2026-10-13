@@ -16,6 +16,14 @@ import { createAssistantRepository } from './repository'
 
 const anonymousCookie = 'setobox:assistant:v1'
 
+export async function anonymousActor(event: H3Event) {
+  const cookie = getCookie(event, anonymousCookie)
+  const [id, ...signature] = (cookie && cookie.length <= 200 ? cookie : '').split('.')
+  if (!id || !z.uuid().safeParse(id).success || !await verifyValue(assistantSecret(event), 'anonymous', id, signature.join('.')))
+    throw new AssistantError(400, 'invalid_history', '游客身份已变化，本地历史暂时无法同步')
+  return `anonymous:${id}`
+}
+
 export function assistantSecret(event: H3Event) {
   return String(useRuntimeConfig(event).aiEncryptionKey || '')
 }

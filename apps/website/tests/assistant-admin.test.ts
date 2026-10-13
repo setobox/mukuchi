@@ -32,6 +32,7 @@ test.each([
     db.exec(readFileSync(new URL('../migrations/admin/0006_assistant.sql', import.meta.url), 'utf8'))
     db.exec(readFileSync(new URL('../migrations/admin/0007_assistant_budget.sql', import.meta.url), 'utf8'))
     db.exec(readFileSync(new URL('../migrations/admin/0008_runtime_settings_tasks.sql', import.meta.url), 'utf8'))
+    db.exec(readFileSync(new URL('../migrations/admin/0010_assistant_history.sql', import.meta.url), 'utf8'))
     const repo = createAssistantRepository({ close() {}, async batch(statements) {
       db.exec('BEGIN IMMEDIATE')
       try {

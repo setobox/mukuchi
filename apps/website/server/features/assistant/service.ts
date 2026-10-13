@@ -11,20 +11,20 @@ import { taskFailure } from './tasks'
 import { verifyTurnstile } from './turnstile'
 
 export async function sessionRoute(event: H3Event) {
-  const disabled = { enabled: false, namespace: '', csrf: '', authenticated: false, turnstileSiteKey: '', remaining: 0, inputLimit: assistantLimits.inputLength }
+  const disabled = { enabled: false, namespace: '', csrf: '', authenticated: false, turnstileSiteKey: '', remaining: 0, dailyLimit: 0, inputLimit: assistantLimits.inputLength }
   return withAssistant(event, async (repository) => {
     const config = await assistantConfiguration(event, repository, false)
     if (!config.settings.enabled || !config.ready)
       return disabled
     const identity = await assistantIdentity(event)
-    return { enabled: true, namespace: identity.namespace, csrf: identity.csrf, authenticated: identity.authenticated, turnstileSiteKey: config.settings.turnstileSiteKey, inputLimit: assistantLimits.inputLength, remaining: await repository.remaining(identity.actor, identity.authenticated ? config.settings.userDay : config.settings.guestDay, Date.now()) }
+    return { enabled: true, namespace: identity.namespace, csrf: identity.csrf, authenticated: identity.authenticated, turnstileSiteKey: config.settings.turnstileSiteKey, inputLimit: assistantLimits.inputLength, dailyLimit: identity.authenticated ? config.settings.userDay : config.settings.guestDay, remaining: await repository.remaining(identity.actor, identity.authenticated ? config.settings.userDay : config.settings.guestDay, Date.now()) }
   })
 }
 export async function previewSessionRoute(event: H3Event) {
   const identity = await previewIdentity(event)
   return withAssistant(event, async (repository) => {
     const config = await previewConfiguration(event, repository)
-    return { model: config.settings.model, session: { enabled: true, namespace: identity.namespace, csrf: identity.csrf, authenticated: true, turnstileSiteKey: '', remaining: 0, inputLimit: assistantLimits.inputLength } }
+    return { model: config.settings.model, session: { enabled: true, namespace: identity.namespace, csrf: identity.csrf, authenticated: true, turnstileSiteKey: '', remaining: 0, dailyLimit: 0, inputLimit: assistantLimits.inputLength } }
   })
 }
 export async function turnsRoute(event: H3Event, continuing = false, preview = false): Promise<TurnResponse | Response> {
@@ -54,6 +54,7 @@ export async function turnsRoute(event: H3Event, continuing = false, preview = f
       else
         await repository.admit({ ...admission, ipHash: await signValue(config.secret, 'ip', ip), authenticated: identity.authenticated }, config.settings, Date.now())
       try {
+        await repository.history.begin(identity.actor, request, Date.now())
         return await engine.start(request)
       }
       catch (error) {

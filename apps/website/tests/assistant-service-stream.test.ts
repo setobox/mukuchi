@@ -31,7 +31,7 @@ vi.mock('../server/features/assistant/http', () => ({
   withAssistant: async (_event: H3Event, operation: (repository: AssistantRepository) => Promise<unknown>) => {
     fixture.open = true
     try {
-      return await operation({ clean: fixture.clean, admit: fixture.admit, admitPreview: fixture.admitPreview, end: fixture.end } as unknown as AssistantRepository)
+      return await operation({ history: { begin: async () => {} }, clean: fixture.clean, admit: fixture.admit, admitPreview: fixture.admitPreview, end: fixture.end } as unknown as AssistantRepository)
     }
     finally { fixture.open = false }
   },

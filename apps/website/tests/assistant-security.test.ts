@@ -100,10 +100,12 @@ test('IP 额度不能用不同匿名身份绕过，每日额度按上海自然�
   const midnight = Date.parse('2026-09-30T16:00:00Z')
   const value = { id: crypto.randomUUID(), actor: 'a', ipHash: 'same', conversationId: crypto.randomUUID(), fingerprint: 'x', authenticated: false }
   await repository.admit(value, settings, midnight - 1)
+  await repository.countCall(value.id, value.actor, 'model', midnight - 1)
   await repository.end(value.id, value.actor, 'completed')
   await expect(repository.admit({ ...value, id: crypto.randomUUID() }, settings, midnight - 1)).rejects.toThrow()
   const next = { ...value, id: crypto.randomUUID(), actor: 'b' }
   await repository.admit(next, settings, midnight - 1)
+  await repository.countCall(next.id, next.actor, 'model', midnight - 1)
   await repository.end(next.id, next.actor, 'completed')
   await expect(repository.admit({ ...next, id: crypto.randomUUID(), actor: 'c' }, settings, midnight)).rejects.toThrow()
   await expect(repository.admit({ ...value, id: crypto.randomUUID() }, settings, midnight + 60_000)).resolves.toBeDefined()

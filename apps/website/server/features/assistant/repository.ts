@@ -1,3 +1,4 @@
+import type { SignedTurn } from '../../../shared/assistant/model'
 import type { AssistantSettings } from '../../../shared/assistant/settings'
 import type { TaskError } from '../../../shared/assistant/tasks'
 import type { AdminDatabase, SqlValue, Statement } from '../admin/database'
@@ -5,6 +6,7 @@ import { z } from 'zod'
 import { AssistantError, assistantLimits } from '../../../shared/assistant/model'
 
 import { assistantSettingsSchema, defaultAssistantSettings } from '../../../shared/assistant/settings'
+import { createCloudHistory } from './cloud-history'
 import { createTaskRepository } from './tasks'
 
 const requestSchema = z.object({
@@ -48,8 +50,10 @@ export function createAssistantRepository(db: AdminDatabase) {
     return row ? requestSchema.parse(row) : null
   }
   const tasks = createTaskRepository(db)
+  const history = createCloudHistory(db)
   return {
     tasks,
+    history,
     async settings() {
       const [row] = await query('SELECT config, encrypted_credentials, version, verified_hash FROM assistant_settings WHERE id = 1')
       const legacySettings: unknown = row ? JSON.parse(z.string().parse(row.config)) : { ...defaultAssistantSettings }
@@ -92,13 +96,13 @@ export function createAssistantRepository(db: AdminDatabase) {
           sql: `INSERT INTO assistant_requests (id,actor,ip_hash,conversation_id,fingerprint,day,created_at,lease_until,status)
             SELECT ?,?,?,?,?,?,?,?,'active'
             WHERE (SELECT COUNT(*) FROM assistant_requests WHERE actor = ? AND created_at > ?) < ?
-              AND (SELECT COUNT(*) FROM assistant_requests WHERE actor = ? AND day = ?) < ?
+              AND (SELECT COUNT(*) FROM assistant_requests WHERE actor = ? AND day = ? AND ((status = 'completed' AND model_calls > 0) OR (status IN ('active','waiting') AND lease_until > ?))) < ?
               AND (SELECT COUNT(*) FROM assistant_requests WHERE ip_hash = ? AND created_at > ?) < ?
               AND (SELECT COUNT(*) FROM assistant_requests WHERE ip_hash = ? AND day = ?) < ?
               AND (SELECT COUNT(*) FROM assistant_requests WHERE actor = ? AND status IN ('active','waiting','cancelled') AND lease_until > ?) = 0
               AND (SELECT COUNT(*) FROM assistant_requests WHERE actor NOT LIKE 'admin-preview:%' AND status IN ('active','waiting','cancelled') AND lease_until > ?) < ?
             ON CONFLICT DO NOTHING RETURNING id`,
-          params: [input.id, input.actor, input.ipHash, input.conversationId, input.fingerprint, day, now, now + assistantLimits.turnMs + 5000, input.actor, now - 60_000, minute, input.actor, day, daily, input.ipHash, now - 60_000, settings.ipMinute, input.ipHash, day, settings.ipDay, input.actor, now, now, settings.concurrency],
+          params: [input.id, input.actor, input.ipHash, input.conversationId, input.fingerprint, day, now, now + assistantLimits.turnMs + 5000, input.actor, now - 60_000, minute, input.actor, day, now, daily, input.ipHash, now - 60_000, settings.ipMinute, input.ipHash, day, settings.ipDay, input.actor, now, now, settings.concurrency],
         },
         { sql: `INSERT INTO assistant_tasks(id,kind,config_version,created_at,updated_at,deadline) SELECT ?,?,?,?,?,? WHERE changes() = 1`, params: [input.id, input.kind ?? 'conversation', input.configVersion ?? 0, now, now, now + assistantLimits.turnMs + 5000] },
         { sql: `INSERT INTO assistant_task_steps(id,task_id,stage,label,status,started_at,finished_at) SELECT ?,?,'task','请求校验与次数检查','completed',?,? WHERE changes() = 1`, params: [crypto.randomUUID(), input.id, now, now] },
@@ -115,7 +119,7 @@ export function createAssistantRepository(db: AdminDatabase) {
       throw new AssistantError(429, 'request_limit', '当前请求较多或已达提问次数上限，请稍后再试')
     },
     async remaining(actor: string, limit: number, now: number) {
-      const [row] = await query('SELECT COUNT(*) AS used FROM assistant_requests WHERE actor = ? AND day = ?', [actor, billingDay(now)])
+      const [row] = await query('SELECT COUNT(*) AS used FROM assistant_requests WHERE actor = ? AND day = ? AND status = \'completed\' AND model_calls > 0', [actor, billingDay(now)])
       return Math.max(0, limit - z.number().parse(row?.used))
     },
     async assertActive(id: string, actor: string, now: number) {
@@ -135,9 +139,18 @@ export function createAssistantRepository(db: AdminDatabase) {
       return requestSchema.parse(rows[0])
     },
     async end(id: string, actor: string, status: 'completed' | 'cancelled' | 'failed', error: TaskError | null = null, now = Date.now()) {
-      const rows = await query('UPDATE assistant_requests SET status = ? WHERE id = ? AND actor = ? AND status IN (\'active\',\'waiting\') RETURNING id', [status, id, actor])
-      if (rows.length)
+      const [rows] = await db.batch([{ sql: `UPDATE assistant_requests SET status = ? WHERE id = ? AND actor = ? AND status IN ('active','waiting') RETURNING id`, params: [status, id, actor] }, ...history.terminal(actor, id, status, now)])
+      if (rows?.length)
         await tasks.finish(id, status, now, error)
+    },
+    async complete(actor: string, record: SignedTurn, now: number) {
+      const [rows] = await db.batch([
+        { sql: `UPDATE assistant_requests SET status = 'completed' WHERE id = ? AND actor = ? AND status = 'active' AND created_at > ? RETURNING id`, params: [record.id, actor, now - assistantLimits.turnMs] },
+        ...history.completion(actor, record, now),
+      ])
+      if (!rows?.length)
+        throw new AssistantError(409, 'request_inactive', '本次回答已停止或超时，请重新提问')
+      await tasks.finish(record.id, 'completed', now, null)
     },
     async waitForHistory(id: string, actor: string, nonce: string, now: number) {
       const results = await db.batch([

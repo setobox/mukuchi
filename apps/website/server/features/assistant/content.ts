@@ -9,6 +9,7 @@ export interface PublicContentSource {
   sections: () => Promise<SearchDocument[]>
   siteInfo: (scope: 'site' | 'author' | 'all') => Promise<unknown>
   image?: (articleId: string) => Promise<string | undefined>
+  popular?: () => Promise<string[]>
 }
 export interface ArticleReading { article: ArticleCard, sectionId: string | null, text: string, partial: boolean, sections: { id: string, title: string }[] }
 function clip(value: string, limit: number) {
@@ -24,6 +25,17 @@ export function createPublicContent(source: PublicContentSource) {
   return {
     siteInfo: source.siteInfo,
     image: async (articleId: string) => source.image?.(articleId),
+    async popular(limit: number) {
+      const documents = [...new Map((await source.sections()).map(document => [document.path, document])).values()]
+      try {
+        const ranking = await source.popular?.()
+        const articles = ranking?.flatMap(path => documents.some(document => document.path === path) ? [card(documents.find(document => document.path === path)!)] : []).slice(0, limit)
+        if (articles?.length)
+          return { articles, ranking: '阅读量' }
+      }
+      catch { /* Statistics are optional; ordinary recommendations remain available. */ }
+      return { articles: documents.slice(0, limit).map(card), ranking: '普通推荐（暂无可用阅读统计）' }
+    },
     async article(path: string) {
       const document = (await source.sections()).find(item => item.path === path)
       return document ? card(document) : null

@@ -159,6 +159,13 @@ export function createAssistantEngine(dependencies: EngineDependencies) {
     catch { throw new AssistantError(503, 'invalid_tool', '工具参数无效，请重新提问') }
     await repository.countCall(state.request.requestId, actor, 'tool', now())
     switch (call.function.name) {
+      case 'get_popular_articles': {
+        await status(state.request.requestId, '正在推荐文章…', call.function.name)
+        const input = toolInputs.get_popular_articles.parse(args)
+        const result = await content.popular(input.limit)
+        state.knownArticles = [...new Set([...state.knownArticles, ...result.articles.map(article => article.articleId)])]
+        return result
+      }
       case 'get_site_info': {
         await status(state.request.requestId, '正在了解站点资料…', call.function.name)
         const input = toolInputs.get_site_info.parse(args)
@@ -354,7 +361,7 @@ export function createAssistantEngine(dependencies: EngineDependencies) {
           await repository.createAction({ id: actionId, actor, conversationId: request.conversationId, messageId: id, articleId: state.navigation, authorized }, now())
         const record = await signTurn(secret, actor, { id: request.requestId, conversationId: request.conversationId, user: request.text, createdAt: now(), assistant: message, durationMs: Math.max(0, now() - state.startedAt) })
         await active(request.requestId)
-        await repository.end(request.requestId, actor, 'completed', null, now())
+        await repository.complete(actor, record, now())
         return { kind: 'completed', record, contextLimited: state.contextLimited, ...(authorized && actionId ? { navigate: actionId } : {}) }
       }
     }
@@ -387,7 +394,7 @@ export function createAssistantEngine(dependencies: EngineDependencies) {
               throw new AssistantError(409, 'action_expired', '操作已失效，请重新选择')
             const record = await signTurn(secret, actor, { id: request.requestId, conversationId: request.conversationId, user: request.text, createdAt: now(), assistant: message, durationMs: Math.max(0, now() - startedAt) })
             await active(request.requestId)
-            await repository.end(request.requestId, actor, 'completed', null, now())
+            await repository.complete(actor, record, now())
             return { kind: 'completed', record, contextLimited: context.limited, navigate: action.id }
           }
         }

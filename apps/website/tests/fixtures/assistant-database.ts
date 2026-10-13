@@ -6,7 +6,7 @@ import { createAssistantRepository } from '../../server/features/assistant/repos
 export function assistantDatabase() {
   const db = new DatabaseSync(':memory:')
   db.exec('PRAGMA foreign_keys = ON')
-  for (const name of ['0006_assistant.sql', '0007_assistant_budget.sql', '0008_runtime_settings_tasks.sql'])
+  for (const name of ['0006_assistant.sql', '0007_assistant_budget.sql', '0008_runtime_settings_tasks.sql', '0010_assistant_history.sql'])
     db.exec(readFileSync(new URL(`../../migrations/admin/${name}`, import.meta.url), 'utf8'))
   const connection: AdminDatabase = { close() {
     db.close()

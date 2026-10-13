@@ -3,6 +3,8 @@ import { queryCollection, queryCollectionSearchSections } from '@nuxt/content/se
 import { articleImageSchema } from '../../../shared/assistant/paths'
 import { prepareSearchDocuments } from '../../../shared/content/search'
 import { publicSite } from '../../../shared/content/site'
+import { rssPath } from '../../../shared/rss/config'
+import { withStats } from '../stats/http'
 import { createPublicContent } from './content'
 
 export function publicContent(event: H3Event) {
@@ -15,6 +17,7 @@ export function publicContent(event: H3Event) {
   }).then(prepareSearchDocuments)
   return createPublicContent({
     sections,
+    popular: () => withStats(event, repository => repository.popular()),
     async image(articleId) {
       const article = await queryCollection(event, 'posts').where('path', '=', articleId).select('cover').first()
       const cover = article?.cover
@@ -24,7 +27,7 @@ export function publicContent(event: H3Event) {
     async siteInfo(scope) {
       const about = await queryCollectionSearchSections(event, 'about', { ignoredTags: ['script', 'style'], minHeading: 'h1', maxHeading: 'h6' })
       return {
-        ...(scope !== 'author' ? { name: publicSite.name, description: publicSite.description, about: about.map(item => item.content).join('\n').slice(0, 500), aboutPath: '/about' } : {}),
+        ...(scope !== 'author' ? { name: publicSite.name, description: publicSite.description, about: about.map(item => item.content).join('\n').slice(0, 500), aboutPath: '/about', rss: new URL(`${useRuntimeConfig(event).app.baseURL.replace(/\/$/, '')}${rssPath}`, useRuntimeConfig(event).public.siteUrl || getRequestURL(event).origin).href } : {}),
         ...(scope !== 'site' ? { author: { name: publicSite.owner.name, description: publicSite.owner.description, introduction: publicSite.owner.introduction, github: publicSite.owner.github } } : {}),
       }
     },
