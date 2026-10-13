@@ -28,6 +28,8 @@ AI 设置各功能分为“配置／任务”，开关、保存和测试集中�
 
 助手使用 POST SSE 实时展示文本、当前工具状态和结构块；每轮仅审核本次用户输入。段落来源限于实际读取的站内文章，追问建议点击后填入输入框。结构调试页可通过 `/assistant/showcase` 直接访问，支持本地 JSON/HTML/CSS 编辑、主题与宽度切换及流式重播；不加入导航并禁止索引。
 
+模型接口日志默认输出到开发服务终端或 Cloudflare Worker 日志，搜索 `[assistant:model]`，用 `requestId` 关联页面任务、`callId` 区分模型调用、`attempt` 区分重试。日志包含请求参数摘要、HTTP 状态、首帧／首段耗时、结束原因、用量和底层错误码；等待时每 10 秒记录一次阶段与流式计数。开发环境及管理员实测／能力测试额外输出 `event: "request_body"`，其 `details` 是实际发送的完整请求 JSON，包括用户输入、系统提示、历史、工具参数及结果、工具定义和 JSON Schema，保留换行且不截断。密钥仍脱敏；生产普通对话只记录摘要。
+
 助手设置页提供运行进度、类型和状态筛选、分页及脱敏错误详情。任务历史保留 30 天，不保存聊天正文，页面可见时每 2 秒刷新。执行中断由查询和现有定时任务收敛，旧任务不补造阶段记录。
 
 升级时运行 `vp run website#admin:migrate` 应用新增 `0008_runtime_settings_tasks.sql`；Cloudflare 发布前置流程会应用远程迁移。后台开关保存后生效，摘要内容仍在下次构建更新。验证命令为 `vp run check`、`vp run -r test`、`vp run -r build` 和 `vp run website#build:cloudflare`，并分别运行现有预渲染、后台、统计及音频产物检查。

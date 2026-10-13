@@ -258,7 +258,7 @@ export function createAssistantEngine(dependencies: EngineDependencies) {
             if (block.type !== 'text')
               await status(request.requestId, '正在生成回复…')
           }
-        }))
+        }, { requestId: request.requestId, source: dependencies.preview ? 'admin_preview' : 'conversation' }))
         if (result.kind === 'tools') {
           // Tool parameters are still validated before execution; they are not user input.
           const proposal = JSON.stringify(result.calls)

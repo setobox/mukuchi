@@ -1,5 +1,6 @@
 import type { AssistantCredentials, AssistantSettings } from '../../../shared/assistant/settings'
 import type { FinalIntent, IntentBlock, ModelMessage, RichIntent, ToolCall } from '../../../shared/assistant/tools'
+import type { LogValue, ModelLogContext } from './diagnostics'
 import type { Fetch } from './network'
 import { JSONParser } from '@streamparser/json'
 import { z } from 'zod'
@@ -7,6 +8,7 @@ import { AssistantError, assistantLimits } from '../../../shared/assistant/model
 import { assistantSystemPrompt, publicHttpsEndpoint } from '../../../shared/assistant/settings'
 import { readSse, SseProtocolError } from '../../../shared/assistant/stream'
 import { finalIntentSchema, intentBlockSchema, richIntentSchema, toolCallSchema, toolDefinitions } from '../../../shared/assistant/tools'
+import { createModelTrace, logFullModelRequest, modelErrorDetails } from './diagnostics'
 import { boundedJson, readBoundedJson, UpstreamResponseError, withTimeout } from './network'
 
 const usageSchema = z.object({ prompt_tokens: z.number().int().nonnegative().max(10_000_000), completion_tokens: z.number().int().nonnegative().max(10_000_000) })
@@ -113,7 +115,7 @@ const chunkSchema = z.object({
   usage: usageSchema.nullable().optional(),
 })
 
-async function streamModel(response: Response, signal: AbortSignal, observer: ModelObserver): Promise<ModelResult> {
+async function streamModel(response: Response, signal: AbortSignal, observer: ModelObserver, diagnostics: { frame: (data: string) => void, finish: (reason: string | null) => void }): Promise<ModelResult> {
   if (!response.body)
     throw new AssistantError(503, 'invalid_model_response', '模型没有返回流式响应')
   const parser = new JSONParser({ emitPartialTokens: true, emitPartialValues: true, paths: ['$.blocks.*', '$.blocks.*.type', '$.blocks.*.text', '$.text'] })
@@ -146,6 +148,7 @@ async function streamModel(response: Response, signal: AbortSignal, observer: Mo
   let done = false
   let usage: ModelUsage | undefined
   for await (const data of readSse(response.body, signal, assistantLimits.bodyBytes)) {
+    diagnostics.frame(data)
     if (data === '[DONE]') {
       done = true
       break
@@ -186,6 +189,7 @@ async function streamModel(response: Response, signal: AbortSignal, observer: Mo
     }
     finish = choice.finish_reason ?? finish
   }
+  diagnostics.finish(finish)
   if (!done || !finish)
     throw new AssistantError(503, 'invalid_model_response', '模型响应已中断，请重试')
   if (finish === 'tool_calls' && calls.size && !content.trim())
@@ -218,9 +222,13 @@ async function retryDelay(ms: number, signal: AbortSignal) {
   })
 }
 
-export async function callModel(settings: AssistantSettings, credentials: AssistantCredentials, body: ReturnType<typeof modelBody>, signal: AbortSignal, fetcher: Fetch = fetch, observer?: ModelObserver): Promise<ModelResult> {
+export async function callModel(settings: AssistantSettings, credentials: AssistantCredentials, body: ReturnType<typeof modelBody>, signal: AbortSignal, fetcher: Fetch = fetch, observer?: ModelObserver, logContext: ModelLogContext = {}): Promise<ModelResult> {
   if (!settings.baseUrl || !publicHttpsEndpoint(settings.baseUrl))
     throw new AssistantError(503, 'not_configured', '模型地址尚未配置')
+  const trace = createModelTrace(logContext, Object.values(credentials))
+  const endpoint = new URL(`${settings.baseUrl}/chat/completions`)
+  const encodedBody = JSON.stringify(body)
+  const encoder = new TextEncoder()
   let received = false
   const notify: ModelObserver = async (event) => {
     if (event.type !== 'retry' && event.type !== 'stream')
@@ -228,54 +236,128 @@ export async function callModel(settings: AssistantSettings, credentials: Assist
     await observer?.(event)
   }
   for (let attempt = 0; ; attempt++) {
+    const attemptNumber = attempt + 1
+    const attemptStartedAt = Date.now()
     let receivedHeaders = false
     let receivedFrames = 0
+    let sseDataBytes = 0
+    let textChars = 0
+    let blocks = 0
+    let done = false
+    let phase = 'waiting_headers'
+    let lastFrameAt: number | null = null
+    let transportError: ReturnType<typeof modelErrorDetails>
+    const progress = () => ({ phase, attemptMs: Date.now() - attemptStartedAt, receivedHeaders, receivedFrames, sseDataBytes, textChars, blocks, done, idleMs: Date.now() - (lastFrameAt ?? attemptStartedAt) })
+    trace('request', attemptNumber, {
+      method: 'POST',
+      endpoint: `${endpoint.origin}${endpoint.pathname}`,
+      headers: { 'content-type': 'application/json', 'authorization': '[REDACTED]' },
+      model: body.model,
+      stream: body.stream,
+      maxTokens: body.max_tokens,
+      timeoutMs: assistantLimits.modelMs,
+      toolChoice: body.tool_choice,
+      parallelToolCalls: body.parallel_tool_calls,
+      tools: body.tools.map(tool => tool.function.name),
+      responseFormat: { type: body.response_format.type, name: body.response_format.json_schema.name, strict: body.response_format.json_schema.strict },
+      requestBytes: encoder.encode(encodedBody).byteLength,
+      messages: body.messages.map(message => ({ role: message.role, chars: message.content?.length ?? 0 })),
+    })
+    if (logFullModelRequest(logContext))
+      trace('request_body', attemptNumber, JSON.parse(encodedBody) as LogValue)
+    let heartbeat: ReturnType<typeof setInterval> | undefined
     try {
-      return await withTimeout(signal, assistantLimits.modelMs, async (activeSignal) => {
-        const response = await fetcher(`${settings.baseUrl}/chat/completions`, { method: 'POST', headers: { 'content-type': 'application/json', 'authorization': `Bearer ${credentials.modelKey}` }, body: JSON.stringify(body), signal: activeSignal, redirect: 'error' })
-        receivedHeaders = true
-        if (!response.ok && !response.redirected) {
-          const value = await readBoundedJson(response, 8192).catch(() => null)
-          const parsed = z.object({ error: z.object({ code: z.string().regex(/^[\w.-]{1,100}$/).optional() }) }).safeParse(value)
-          const requestId = z.string().regex(/^[\w.-]{1,150}$/).safeParse(response.headers.get('x-request-id'))
-          throw new UpstreamResponseError(response.status, parsed.success ? parsed.data.error.code : undefined, requestId.success ? requestId.data : undefined)
-        }
-        if (response.headers.get('content-type')?.includes('text/event-stream')) {
-          try {
-            return await streamModel(response, activeSignal, async (event) => {
-              if (event.type === 'stream')
+      const result = await withTimeout(signal, assistantLimits.modelMs, async (activeSignal) => {
+        heartbeat = setInterval(() => {
+          if (!activeSignal.aborted)
+            trace('progress', attemptNumber, progress())
+        }, 10_000)
+        // Capture transport causes before withTimeout maps them to public errors.
+        try {
+          const response = await fetcher(endpoint.href, { method: 'POST', headers: { 'content-type': 'application/json', 'authorization': `Bearer ${credentials.modelKey}` }, body: encodedBody, signal: activeSignal, redirect: 'error' })
+          receivedHeaders = true
+          phase = 'reading_response'
+          trace('response', attemptNumber, {
+            ...progress(),
+            status: response.status,
+            headers: Object.fromEntries(['content-type', 'content-length', 'x-request-id', 'cf-ray', 'retry-after', 'server'].map(name => [name, response.headers.get(name)])),
+          })
+          if (!response.ok && !response.redirected) {
+            const value = await readBoundedJson(response, 8192).catch(() => null)
+            const parsed = z.object({ error: z.object({ code: z.string().regex(/^[\w.-]{1,100}$/).optional() }) }).safeParse(value)
+            const requestId = z.string().regex(/^[\w.-]{1,150}$/).safeParse(response.headers.get('x-request-id'))
+            throw new UpstreamResponseError(response.status, parsed.success ? parsed.data.error.code : undefined, requestId.success ? requestId.data : undefined)
+          }
+          if (response.headers.get('content-type')?.includes('text/event-stream')) {
+            try {
+              return await streamModel(response, activeSignal, async (event) => {
+                if (event.type === 'text') {
+                  if (!textChars)
+                    trace('first_text', attemptNumber, progress())
+                  textChars += event.text.length
+                }
+                if (event.type === 'block')
+                  blocks++
+                await notify(event)
+              }, { frame: (data) => {
                 receivedFrames++
-              await notify(event)
-            })
+                sseDataBytes += encoder.encode(data).byteLength
+                lastFrameAt = Date.now()
+                phase = 'reading_stream'
+                done ||= data === '[DONE]'
+                if (receivedFrames === 1)
+                  trace('first_frame', attemptNumber, progress())
+              }, finish: (reason) => {
+                phase = 'validating_response'
+                trace('stream_end', attemptNumber, { ...progress(), finishReason: reason && ['stop', 'tool_calls', 'length', 'content_filter', 'function_call'].includes(reason) ? reason : 'unknown' })
+              } })
+            }
+            catch (error) {
+              if (error instanceof z.ZodError || error instanceof SyntaxError || error instanceof SseProtocolError)
+                throw new AssistantError(503, 'invalid_model_response', '模型返回的流式结构无效，请重试')
+              throw error
+            }
           }
-          catch (error) {
-            if (error instanceof z.ZodError || error instanceof SyntaxError || error instanceof SseProtocolError)
-              throw new AssistantError(503, 'invalid_model_response', '模型返回的流式结构无效，请重试')
-            throw error
-          }
+          const parsed = providerResponseSchema.safeParse(await boundedJson(response))
+          if (!parsed.success)
+            throw new AssistantError(503, 'invalid_model_response', '模型返回内容不完整或格式不受支持，请稍后再试')
+          const choice = parsed.data.choices[0]!
+          const { message } = choice
+          if (message.refusal)
+            throw new AssistantError(400, 'model_rejected', '暂时无法回答这个问题，请换一种表达')
+          if (choice.finish_reason === 'tool_calls' && message.tool_calls?.length && !message.content)
+            return { kind: 'tools' as const, calls: message.tool_calls, usage: parsed.data.usage }
+          if (choice.finish_reason !== 'stop' || message.tool_calls?.length || !message.content)
+            throw new AssistantError(503, 'invalid_model_response', '模型返回内容不完整，请缩小问题范围后重试')
+          return { kind: 'final' as const, intent: parseIntent(message.content), usage: parsed.data.usage }
         }
-        const parsed = providerResponseSchema.safeParse(await boundedJson(response))
-        if (!parsed.success)
-          throw new AssistantError(503, 'invalid_model_response', '模型返回内容不完整或格式不受支持，请稍后再试')
-        const choice = parsed.data.choices[0]!
-        const { message } = choice
-        if (message.refusal)
-          throw new AssistantError(400, 'model_rejected', '暂时无法回答这个问题，请换一种表达')
-        if (choice.finish_reason === 'tool_calls' && message.tool_calls?.length && !message.content)
-          return { kind: 'tools' as const, calls: message.tool_calls, usage: parsed.data.usage }
-        if (choice.finish_reason !== 'stop' || message.tool_calls?.length || !message.content)
-          throw new AssistantError(503, 'invalid_model_response', '模型返回内容不完整，请缩小问题范围后重试')
-        return { kind: 'final' as const, intent: parseIntent(message.content), usage: parsed.data.usage }
+        catch (error) {
+          transportError = modelErrorDetails(error)
+          throw error
+        }
       }, '模型')
+      trace('completed', attemptNumber, {
+        ...progress(),
+        kind: result.kind,
+        usage: result.usage,
+        ...(result.kind === 'tools'
+          ? { tools: result.calls.map(call => ({ name: call.function.name, argumentChars: call.function.arguments.length })) }
+          : { blockTypes: 'blocks' in result.intent ? result.intent.blocks.map(block => block.type) : ['legacy_text'] }),
+      })
+      return result
     }
     catch (error) {
-      if (error instanceof AssistantError && error.code === 'upstream_timeout')
-        throw new ModelTimeoutError(receivedHeaders, receivedFrames)
+      const failure = error instanceof AssistantError && error.code === 'upstream_timeout' ? new ModelTimeoutError(receivedHeaders, receivedFrames) : error
       const retryable = error instanceof UpstreamResponseError ? error.upstreamStatus === 429 || [500, 502, 503, 504].includes(error.upstreamStatus) : error instanceof AssistantError && error.code === 'upstream_unavailable'
-      if (!observer || received || !retryable || attempt >= 2 || signal.aborted)
-        throw error
+      const retry = !!observer && !received && retryable && attempt < 2 && !signal.aborted
+      clearInterval(heartbeat)
+      trace('failed', attemptNumber, { ...progress(), error: modelErrorDetails(failure), transportError, retry })
+      if (!retry)
+        throw failure
+      trace('retry', attemptNumber, { nextAttempt: attemptNumber + 1, delayMs: 1000 * (attempt + 1) })
       await notify({ type: 'retry', attempt: attempt + 1 })
       await retryDelay(1000 * (attempt + 1), signal)
     }
+    finally { clearInterval(heartbeat) }
   }
 }
