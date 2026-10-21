@@ -29,6 +29,13 @@ jobs:
           cache: true
           run-install: false
       - run: vp install --frozen-lockfile
+      - name: Resolve site URL
+        working-directory: apps/website
+        env:
+          PUBLIC_SITE_URL: ${{ vars.PUBLIC_SITE_URL }}
+        run: |
+          site_url=$(node --input-type=module -e "import { readPublicEnvironment } from './shared/config/environment.ts'; console.log(readPublicEnvironment({ PUBLIC_SITE_URL: process.env.PUBLIC_SITE_URL || undefined }).siteUrl)")
+          echo "PUBLIC_SITE_URL=$site_url" >> "$GITHUB_ENV"
       - run: vp run check
       - run: vp run -r test
       - name: Prepare AI summaries
@@ -69,11 +76,11 @@ jobs:
           vp run website#smoke
           vp run website#admin:smoke:production
         env:
-          MUKUCHI_SMOKE_URL: ${{ vars.MUKUCHI_SMOKE_URL }}
+          MUKUCHI_SMOKE_URL: ${{ vars.MUKUCHI_SMOKE_URL || env.PUBLIC_SITE_URL }}
       - name: Sync published audio manifest
         if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         continue-on-error: true
         run: vp run website#audio:sync
         env:
-          MUKUCHI_SMOKE_URL: ${{ vars.MUKUCHI_SMOKE_URL }}
+          MUKUCHI_SMOKE_URL: ${{ vars.MUKUCHI_SMOKE_URL || env.PUBLIC_SITE_URL }}
           AUDIO_SYNC_TOKEN: ${{ secrets.AUDIO_SYNC_TOKEN }}

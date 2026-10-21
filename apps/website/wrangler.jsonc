@@ -5,9 +5,7 @@
   "compatibility_flags": ["nodejs_compat"],
   "workers_dev": false,
   "preview_urls": false,
-  "routes": [
-    { "pattern": "blog.seto.box", "custom_domain": true, "zone_name": "seto.box" }
-  ],
+  // Custom domain routes are generated from PUBLIC_SITE_URL by nuxt.config.ts.
   "assets": { "html_handling": "drop-trailing-slash" },
   "d1_databases": [
     {

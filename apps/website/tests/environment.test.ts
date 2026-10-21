@@ -1,7 +1,10 @@
 import type { WebsiteEnvironmentConfig } from '../shared/config/environment'
 import { expect, test } from 'vite-plus/test'
+import { productionOidcClient } from '../config/oidc-client.production'
 import { missingAudioResources } from '../server/features/audio/cloudflare'
 import { publicEnvironmentDefaults, readPublicEnvironment, resolveWebsiteEnvironment } from '../shared/config/environment'
+import { cloudflareSiteRoutes } from '../shared/site/cloudflare'
+import { pageUrl } from '../shared/site/url'
 
 const defaults: WebsiteEnvironmentConfig = {
   adminAssetsDirectory: '/data/assets',
@@ -90,4 +93,30 @@ test('拒绝不可信绑定类型，错误不包含密钥值', () => {
 test('音频工作流资源检查使用新密钥名称', () => {
   expect(missingAudioResources({ AI_ENCRYPTION_KEY: 'worker-key' })).toEqual(['ADMIN_DB', 'AUDIO_ASSETS', 'ARTICLE_AUDIO_WORKFLOW'])
   expect(missingAudioResources({})).toContain('AI_ENCRYPTION_KEY')
+})
+
+test.each(['https://blog.example.com', 'https://journal.example.net/'])('自定义站点 %s 同时用于正式链接和部署路由', (siteUrl) => {
+  const config = readPublicEnvironment({ PUBLIC_SITE_URL: siteUrl })
+  const site = new URL(siteUrl)
+  expect(config.siteUrl).toBe(site.origin)
+  expect(pageUrl(config.siteUrl, '/', '/posts/example')).toBe(`${site.origin}/posts/example`)
+  expect(cloudflareSiteRoutes(config.siteUrl)).toEqual([{ pattern: site.hostname, custom_domain: true }])
+  expect(productionOidcClient(config.siteUrl)).toMatchObject({
+    redirectUris: [`${site.origin}/api/auth/sso/callback`],
+    postLogoutRedirectUris: [`${site.origin}/`],
+  })
+  const runtime = resolveWebsiteEnvironment(defaults, { PUBLIC_SITE_URL: 'https://build.example.com' }, { PUBLIC_SITE_URL: siteUrl })
+  expect(runtime.public.siteUrl).toBe(config.siteUrl)
+  expect(publicEnvironmentDefaults.siteUrl).not.toBe(config.siteUrl)
+})
+
+test.each(['', 'invalid', 'javascript:alert(1)', 'https://user:password@example.com', 'https://example.com/blog', 'https://example.com/?q=1', 'https://example.com/#hash'])('在配置入口拒绝无效站点地址 %j', (siteUrl) => {
+  expect(() => readPublicEnvironment({ PUBLIC_SITE_URL: siteUrl })).toThrow('PUBLIC_SITE_URL')
+  expect(() => resolveWebsiteEnvironment(defaults, {}, { PUBLIC_SITE_URL: siteUrl })).toThrow('PUBLIC_SITE_URL')
+})
+
+test('本地允许 HTTP 和端口，Cloudflare 自定义域名拒绝这两种配置', () => {
+  expect(readPublicEnvironment({ PUBLIC_SITE_URL: 'http://localhost:3333/' }).siteUrl).toBe('http://localhost:3333')
+  for (const siteUrl of ['http://example.com', 'https://example.com:3333'])
+    expect(() => cloudflareSiteRoutes(siteUrl)).toThrow('Cloudflare')
 })

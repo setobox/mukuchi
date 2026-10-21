@@ -16,6 +16,10 @@ export default defineConfig({
         command: 'node scripts/smoke-auth.ts',
         cache: false,
       },
+      'auth:client:production': {
+        command: 'node scripts/print-oidc-client.ts',
+        cache: false,
+      },
       'audio:check-build': {
         command: 'node scripts/check-audio-build.ts',
         cache: false,

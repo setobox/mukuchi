@@ -14,7 +14,7 @@ Token、密钥与 Giscus 的精简模板见 [.env.example](.env.example)；启�
 
 | 功能 | 本地 / Worker 名称 | GitHub Actions |
 | --- | --- | --- |
-| 公开站点 | `PUBLIC_SITE_URL`（可选） | 默认由代码提供 |
+| 公开站点 | `PUBLIC_SITE_URL`（可选） | 同名 Variable；未设置时使用代码中的统一默认值 |
 | giscus | `PUBLIC_GISCUS_CATEGORY_ID`、`PUBLIC_GISCUS_REPO`、`PUBLIC_GISCUS_REPO_ID` | 保留 `MUKUCHI_GISCUS_*` Variables，由工作流映射 |
 | 登录 | `APP_ORIGIN`、`OIDC_CLIENT_ID`、`OIDC_CLIENT_SECRET`、`OIDC_ISSUER`、`OIDC_POST_LOGOUT_REDIRECT_URI`、`OIDC_REDIRECT_URI`、`OIDC_SCOPES` | 无须配置 |
 | 会话 / 管理员 | `AUTH_ADMIN_EMAILS`、`AUTH_SESSION_KEY`、`AUTH_SESSION_MAX_AGE` | 无须配置 |
@@ -26,6 +26,18 @@ Token、密钥与 Giscus 的精简模板见 [.env.example](.env.example)；启�
 | 构建 / 验收 | `MUKUCHI_GITHUB_TOKEN`、`MUKUCHI_SMOKE_URL` | 前者由临时 GitHub token 提供，后者为 Variable |
 
 Worker 的七项凭据使用 Secrets：`AI_ENCRYPTION_KEY`、`AUDIO_SYNC_TOKEN`、`AUTH_SESSION_KEY`、`GITHUB_PUBLISH_TOKEN`、`OIDC_CLIENT_SECRET`、`STATS_ADMIN_TOKEN`、`STATS_HASH_SECRET`。登录地址、客户端 ID、管理员邮箱、会话时长、scopes 和 Giscus 共十一项使用普通 Variables；普通变量仍仅按代码映射公开，管理员邮箱不会因此发送到浏览器。发布检查也接受普通服务端配置继续存为 Secret。D1、R2 和 Workflow 绑定不是待清理的环境变量，不删除。
+
+## 切换博客域名
+
+博客地址统一由 `PUBLIC_SITE_URL` 提供，默认值在 `shared/config/environment.ts`，当前为 `https://blog.setobox.me`。本地可在 `.env` 覆盖，CI 可设置同名 GitHub Actions Variable。地址必须是完整的 HTTP(S) 源地址，不含路径、凭据、查询参数或锚点；Cloudflare 部署还要求 HTTPS 且不含端口。
+
+页面 canonical、RSS、Cloudflare 自定义域名路由及验收脚本都读取这个配置。`wrangler.jsonc` 不再单独填写域名或 zone，Nuxt 构建自动生成部署路由；发布继续使用 `.output/server/wrangler.json`。修改后重新构建并发布，不能只改 Worker 的运行时变量，否则预渲染页面与动态页面可能指向不同域名。
+
+生产验收与音频同步默认跟随该地址；如设置了 `MUKUCHI_SMOKE_URL`，它仍优先作为请求目标，切换时须同步更新或移除旧覆盖。它不会改变被验证的 canonical 和 RSS 地址。本地 HTTP 冒烟测试仍默认访问 `http://127.0.0.1:8787`。
+
+登录仍使用独立的 `APP_ORIGIN`、`OIDC_REDIRECT_URI`、`OIDC_POST_LOGOUT_REDIRECT_URI`。正式切换时同步更新 Worker 中这三项与身份服务登记的回调地址，并检查 Cloudflare 域名和 Turnstile 允许的主机名；修改代码不会自动修改这些外部配置。
+
+原 `config/oidc-client.production.json` 改为按站点地址生成：运行 `vp run website#auth:client:production` 查看用于身份服务登记的生产客户端 JSON，命令只输出配置，不修改身份服务。
 
 ## 从旧名称迁移
 

@@ -1,3 +1,5 @@
+import { pageUrl } from '../site/url.ts'
+
 /** Only named leaf values are read; Windows' PUBLIC must never replace config.public. */
 export type Environment = Readonly<Record<string, unknown>>
 
@@ -42,7 +44,7 @@ export const publicEnvironmentDefaults: PublicEnvironmentConfig = {
   giscusCategoryId: '',
   giscusRepo: 'setobox/mukuchi',
   giscusRepoId: '',
-  siteUrl: 'https://blog.seto.box',
+  siteUrl: 'https://blog.setobox.me',
 }
 
 function environmentString(name: string, environment: Environment, bindings: Environment): string | undefined {
@@ -58,6 +60,12 @@ export function readPublicEnvironment(environment: Environment, defaults = publi
   const config = { ...defaults }
   for (const key of Object.keys(publicVariables) as (keyof typeof publicVariables)[]) {
     config[key] = environmentString(publicVariables[key], environment, bindings) ?? defaults[key]
+  }
+  try {
+    config.siteUrl = new URL(pageUrl(config.siteUrl, '/', '/')).origin
+  }
+  catch {
+    throw new TypeError('环境变量 PUBLIC_SITE_URL 必须是完整的 HTTP(S) 源地址，不含路径、凭据、查询参数或锚点')
   }
   return config
 }

@@ -1,13 +1,14 @@
 import type { Document } from '@xmldom/xmldom'
 import assert from 'node:assert/strict'
 import { taxonomyPath } from '../../shared/content/taxonomy.ts'
+import { pageUrl } from '../../shared/site/url.ts'
 
-export function assertTaxonomyDirectory(document: Document, posts: readonly { tags: unknown, categories: unknown }[], field: 'tags' | 'categories') {
+export function assertTaxonomyDirectory(document: Document, posts: readonly { tags: unknown, categories: unknown }[], field: 'tags' | 'categories', siteUrl: string) {
   const label = field === 'tags' ? '标签' : '分类'
   const path = `/${field}`
   assert.equal(document.getElementsByTagName('h1')[0]?.textContent?.trim(), label)
   assert.equal(document.getElementsByTagName('article').length, 0, `${path} 不展示文章卡片`)
-  assert([...document.getElementsByTagName('link')].some(link => link.getAttribute('rel') === 'canonical' && link.getAttribute('href') === `https://blog.seto.box${path}`), `${path} 的正式链接`)
+  assert([...document.getElementsByTagName('link')].some(link => link.getAttribute('rel') === 'canonical' && link.getAttribute('href') === pageUrl(siteUrl, '/', path)), `${path} 的正式链接`)
   assert([...document.getElementsByTagName('meta')].some(meta => meta.getAttribute('name') === 'description' && meta.getAttribute('content') === `浏览全部${label}及文章数量，找到感兴趣的内容。`), `${path} 的 SEO 简介`)
   const counts = new Map<string, number>()
   for (const post of posts) {

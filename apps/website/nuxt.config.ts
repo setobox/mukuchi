@@ -9,9 +9,11 @@ import { localRequestAllowed } from './server/features/auth/policy.ts'
 import { readPublicEnvironment } from './shared/config/environment.ts'
 import { codeHighlight } from './shared/content/code.ts'
 import { rssCacheControl, rssContentType, rssPath } from './shared/rss/config.ts'
+import { cloudflareSiteRoutes } from './shared/site/cloudflare.ts'
 import { themeCookieBootstrap, themeCookieKey, themeCookieOptions } from './shared/theme/preference.ts'
 
 const localDevProof = randomUUID()
+const publicEnvironment = readPublicEnvironment(process.env)
 
 export default defineNuxtConfig({
   compatibilityDate: '2026-09-13',
@@ -39,7 +41,7 @@ export default defineNuxtConfig({
     statsHashSecret: '',
     statsAdminToken: '',
     statsDatabasePath: fileURLToPath(new URL('./.data/stats.sqlite', import.meta.url)),
-    public: readPublicEnvironment(process.env),
+    public: publicEnvironment,
   },
   alias: {
     '#stats-driver': fileURLToPath(new URL('./server/features/stats/drivers/node', import.meta.url)),
@@ -77,6 +79,13 @@ export default defineNuxtConfig({
     },
     'nitro:config': (config) => {
       const preset = process.env.NITRO_PRESET || config.preset || ''
+      if (preset.includes('cloudflare')) {
+        config.cloudflare ||= {}
+        config.cloudflare.wrangler = {
+          ...config.cloudflare.wrangler,
+          routes: cloudflareSiteRoutes(publicEnvironment.siteUrl),
+        }
+      }
       config.alias ||= {}
       config.alias['#admin-driver'] = fileURLToPath(new URL(
         `./server/features/admin/drivers/${preset.includes('cloudflare') ? 'cloudflare' : 'node'}.ts`,

@@ -2,15 +2,19 @@ import assert from 'node:assert/strict'
 import { existsSync } from 'node:fs'
 import { access, readFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
+import process from 'node:process'
 import { DatabaseSync } from 'node:sqlite'
 import { fileURLToPath } from 'node:url'
 import { DOMParser } from '@xmldom/xmldom'
 import { z } from 'zod'
+import { readPublicEnvironment } from '../shared/config/environment.ts'
 import { collectSeries } from '../shared/content/series.ts'
 import { pageUrl } from '../shared/site/url.ts'
 import { assertRss } from './lib/rss.ts'
 import { assertTaxonomyDirectory } from './lib/taxonomy.ts'
+import './stats-environment.ts'
 
+const { siteUrl } = readPublicEnvironment(process.env)
 const root = new URL('../', import.meta.url)
 const database = new DatabaseSync(fileURLToPath(new URL('.data/content/contents.sqlite', root)), { readOnly: true })
 let paths: string[]
@@ -38,11 +42,11 @@ assert(collectionsHtml.includes('网站、开发资源与在线工具收藏。')
 assert(collectionsHtml.includes('正在加载'), '导航页只预渲染外壳，数据由客户端加载')
 assert(!collectionsHtml.includes('aria-label="侧边栏"'), '导航页不显示博客侧栏')
 assert.deepEqual(await readFile(new URL('favicon.ico', publicRoot)), await readFile(new URL('public/favicon.ico', root)), '图标静态资源进入构建产物')
-assertRss(await readFile(new URL('rss.xml', publicRoot), 'utf8'), rssPosts, 'https://blog.seto.box')
+assertRss(await readFile(new URL('rss.xml', publicRoot), 'utf8'), rssPosts, siteUrl)
 for (const path of ['/about', ...paths]) {
   const directory = new URL(`${path.slice(1)}/`, publicRoot)
   const html = (await readFile(new URL('index.html', directory), 'utf8')).replace(/<!--[\s\S]*?-->/g, '')
-  assert(html.includes(pageUrl('https://blog.seto.box', '/', path)), `缺少正式链接：${path}`)
+  assert(html.includes(pageUrl(siteUrl, '/', path)), `缺少正式链接：${path}`)
   if (path === '/about')
     assert.match(html, /href="\/use"[^>]*>\s*Use · 我的装备/, '关于页提供 Use 入口')
   const description = descriptions.get(path)
@@ -76,7 +80,7 @@ for (const field of ['categories', 'tags'] as const) {
   const directory = new URL(`${field}/`, publicRoot)
   const html = (await readFile(new URL('index.html', directory), 'utf8')).replace(/<script\b[^>]*>[\s\S]*?<\/script>/g, '')
   const document = new DOMParser().parseFromString(html, 'text/html')
-  const detailPaths = assertTaxonomyDirectory(document, taxonomyPosts, field)
+  const detailPaths = assertTaxonomyDirectory(document, taxonomyPosts, field, siteUrl)
   const payload: unknown = JSON.parse(await readFile(new URL('_payload.json', directory), 'utf8'))
   assert(Array.isArray(payload) && payload.some(value => value && typeof value === 'object' && 'posts:catalog' in value), `/${field} 的静态数据包含文章目录，供客户端水合复用`)
   for (const path of detailPaths)

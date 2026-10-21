@@ -6,14 +6,18 @@ import { DatabaseSync } from 'node:sqlite'
 import { fileURLToPath } from 'node:url'
 import { DOMParser } from '@xmldom/xmldom'
 import { postPageSize } from '../app/features/posts/pagination.ts'
+import { readPublicEnvironment } from '../shared/config/environment.ts'
 import { comparePostOrder } from '../shared/content/catalog.ts'
 import { collectSeries } from '../shared/content/series.ts'
 import { taxonomyPath } from '../shared/content/taxonomy.ts'
 import { rssCacheControl, rssContentType } from '../shared/rss/config.ts'
+import { pageUrl } from '../shared/site/url.ts'
 import { assertSmokeStatus } from './lib/http.ts'
 import { assertRss } from './lib/rss.ts'
 import { assertTaxonomyDirectory } from './lib/taxonomy.ts'
+import './stats-environment.ts'
 
+const { siteUrl } = readPublicEnvironment(process.env)
 const origin = new URL(process.env.MUKUCHI_SMOKE_URL || 'http://127.0.0.1:8787')
 assert(['http:', 'https:'].includes(origin.protocol))
 const db = new DatabaseSync(fileURLToPath(new URL('../.data/content/contents.sqlite', import.meta.url)), { readOnly: true })
@@ -54,10 +58,10 @@ async function browse(taxonomyOnly = false) {
     assert.equal(document.getElementsByTagName('h1')[0]?.textContent?.trim(), title)
     assert.equal(document.getElementsByTagName('article').length, 0, `${path} 不展示文章卡片`)
     const canonical = [...document.getElementsByTagName('link')].find(link => link.getAttribute('rel') === 'canonical')
-    assert.equal(canonical?.getAttribute('href'), `https://blog.seto.box${path}`)
+    assert.equal(canonical?.getAttribute('href'), pageUrl(siteUrl, '/', path))
     assert([...document.getElementsByTagName('meta')].some(meta => meta.getAttribute('name') === 'description' && meta.getAttribute('content')), `${path} 的 SEO 简介`)
     if (field) {
-      assertTaxonomyDirectory(document, posts.map(post => ({ tags: post.tags, categories: post.categories })), field)
+      assertTaxonomyDirectory(document, posts.map(post => ({ tags: post.tags, categories: post.categories })), field, siteUrl)
       const payload = await request(`${path}/_payload.json`)
       assert.match(payload.headers.get('content-type') || '', /application\/json/)
       assert((await payload.text()).includes('"posts:catalog"'), `${path} 的静态数据包含文章目录`)
@@ -83,7 +87,7 @@ async function seriesBrowse() {
   const { document, response } = await documentAt('/series')
   assert(response.headers.get('cache-control')?.includes('no-store'))
   assert.equal(document.getElementsByTagName('h1')[0]?.textContent?.trim(), '系列')
-  assert([...document.getElementsByTagName('link')].some(link => link.getAttribute('rel') === 'canonical' && link.getAttribute('href') === 'https://blog.seto.box/series'))
+  assert([...document.getElementsByTagName('link')].some(link => link.getAttribute('rel') === 'canonical' && link.getAttribute('href') === pageUrl(siteUrl, '/', '/series')))
   assert([...document.getElementsByTagName('meta')].some(meta => meta.getAttribute('name') === 'description' && meta.getAttribute('content')))
   const directory = [...document.getElementsByTagName('section')].find(section => section.getAttribute('aria-label') === '系列目录')
   if (!groups.length) {
@@ -136,7 +140,7 @@ assert.deepEqual(faviconBytes, await readFile(new URL('../public/favicon.ico', i
 const rss = await request('/rss.xml')
 assert.equal(rss.headers.get('content-type'), rssContentType)
 assert.equal(rss.headers.get('cache-control'), rssCacheControl)
-assertRss(await rss.text(), posts, 'https://blog.seto.box')
+assertRss(await rss.text(), posts, siteUrl)
 for (const view of ['list', 'grid']) {
   await list('/posts?tag=missing&category=missing', posts.length, view)
 }
@@ -151,9 +155,9 @@ for (const [kind, field] of [['tag', 'tags'], ['category', 'categories']] as con
 for (const path of ['/about', ...posts.map(post => String(post.path))]) {
   const response = await request(path)
   const html = await response.text()
-  assert(html.includes('https://blog.seto.box'), `正式地址：${path}`)
+  assert(html.includes(pageUrl(siteUrl, '/', path)), `正式地址：${path}`)
   assert(/<link\s[^>]*rel="icon"[^>]*href="\/favicon\.ico"/.test(html), `页面使用本地静态图标：${path}`)
-  assert(/<link\s[^>]*rel="alternate"[^>]*href="https:\/\/blog\.seto\.box\/rss\.xml"/.test(html), `RSS 自动发现：${path}`)
+  assert.equal(html.match(/<link\s[^>]*rel="alternate"[^>]*href="([^"]*)"/)?.[1], pageUrl(siteUrl, '/', '/rss.xml'), `RSS 自动发现：${path}`)
   await request(`${path}/_payload.json`)
 }
 await request('/posts/__deployment_missing__', '', 404)

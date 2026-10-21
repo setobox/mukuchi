@@ -1,8 +1,10 @@
 import assert from 'node:assert/strict'
 import process from 'node:process'
 import { z } from 'zod'
+import { readPublicEnvironment } from '../shared/config/environment.ts'
+import './stats-environment.ts'
 
-const origin = new URL(process.env.MUKUCHI_SMOKE_URL || 'https://blog.seto.box')
+const origin = new URL(process.env.MUKUCHI_SMOKE_URL || readPublicEnvironment(process.env).siteUrl)
 assert.equal(origin.protocol, 'https:')
 const request = (path: string) => fetch(new URL(path, origin), { redirect: 'manual', signal: AbortSignal.timeout(15_000) })
 const session = await request('/api/auth/session')
